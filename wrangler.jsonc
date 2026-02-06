@@ -2,5 +2,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "multi-bots",
   "compatibility_date": "2025-08-03",
-  "main": "./root/apps/dashboard/src/index.tsx"
+  "main": "./root/apps/dashboard/src/index.tsx",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "multi-bots-db",
+      "database_id": "local"
+    }
+  ]
 }
