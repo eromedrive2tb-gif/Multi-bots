@@ -186,4 +186,89 @@ app.get('/dashboard/settings', authMiddleware, async (c) => {
   )
 })
 
+// Bots Management
+import { BotsPage } from './pages/bots'
+import { BotManagerService } from './lib/organisms/BotManagerService'
+import type { BotProvider, TelegramCredentials, DiscordCredentials } from './core/types'
+
+app.get('/dashboard/bots', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
+  const bots = await botManager.listBots()
+
+  return c.render(
+    <BotsPage
+      user={tenant.user}
+      bots={bots}
+    />
+  )
+})
+
+// ============================================
+// BOT API ENDPOINTS
+// ============================================
+
+// Add Bot
+app.post('/api/bots', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const formData = await c.req.formData()
+
+  const name = formData.get('name')?.toString() || ''
+  const provider = formData.get('provider')?.toString() as BotProvider
+
+  let credentials: TelegramCredentials | DiscordCredentials
+
+  if (provider === 'telegram') {
+    credentials = {
+      token: formData.get('telegram_token')?.toString() || '',
+    }
+  } else if (provider === 'discord') {
+    credentials = {
+      applicationId: formData.get('discord_application_id')?.toString() || '',
+      publicKey: formData.get('discord_public_key')?.toString() || '',
+      token: formData.get('discord_token')?.toString() || '',
+    }
+  } else {
+    return c.redirect('/dashboard/bots?error=Provider+inválido')
+  }
+
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
+  const result = await botManager.addBot(name, provider, credentials)
+
+  if (!result.success) {
+    const bots = await botManager.listBots()
+    return c.render(
+      <BotsPage
+        user={tenant.user}
+        bots={bots}
+        error={result.error}
+      />
+    )
+  }
+
+  return c.redirect('/dashboard/bots')
+})
+
+// Check Bot Health
+app.post('/api/bots/:id/check', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const botId = c.req.param('id')
+
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
+  await botManager.checkBotHealth(botId)
+
+  return c.redirect('/dashboard/bots')
+})
+
+// Delete Bot
+app.post('/api/bots/:id/delete', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const botId = c.req.param('id')
+
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
+  await botManager.removeBot(botId)
+
+  return c.redirect('/dashboard/bots')
+})
+
 export default app

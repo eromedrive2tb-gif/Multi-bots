@@ -71,3 +71,83 @@ export interface Env {
     DB: D1Database
     AUTH_SECRET: string
 }
+
+// ============================================
+// BOT MANAGEMENT
+// ============================================
+
+export type BotProvider = 'telegram' | 'discord'
+export type BotStatus = 'online' | 'offline' | 'error'
+
+export interface TelegramCredentials {
+    token: string
+}
+
+export interface DiscordCredentials {
+    applicationId: string
+    publicKey: string
+    token: string
+}
+
+export type BotCredentials = TelegramCredentials | DiscordCredentials
+
+export interface Bot {
+    id: string
+    tenantId: string
+    name: string
+    provider: BotProvider
+    credentials: BotCredentials
+    status: BotStatus
+    statusMessage?: string
+    lastCheck?: Date
+    webhookSecret?: string
+    createdAt: Date
+    updatedAt: Date
+}
+
+export interface BotInfo {
+    id: number | string
+    username?: string
+    name: string
+    isValid: boolean
+}
+
+// ============================================
+// BOT ZOD SCHEMAS
+// ============================================
+
+export const telegramCredentialsSchema = z.object({
+    token: z.string().min(30, 'Token inválido'),
+})
+
+export const discordCredentialsSchema = z.object({
+    applicationId: z.string().min(10, 'Application ID inválido'),
+    publicKey: z.string().min(30, 'Public Key inválida'),
+    token: z.string().min(50, 'Token inválido'),
+})
+
+export const addBotSchema = z.object({
+    name: z.string().min(2, 'Nome do bot deve ter no mínimo 2 caracteres'),
+    provider: z.enum(['telegram', 'discord']),
+    credentials: z.union([telegramCredentialsSchema, discordCredentialsSchema]),
+})
+
+export type AddBotInput = z.infer<typeof addBotSchema>
+
+// ============================================
+// GENERIC MESSAGE (Provider Abstraction)
+// ============================================
+
+export interface GenericMessage {
+    id: string
+    chatId: string
+    text: string
+    from: {
+        id: string
+        name: string
+        username?: string
+    }
+    timestamp: Date
+    provider: BotProvider
+    raw: unknown
+}

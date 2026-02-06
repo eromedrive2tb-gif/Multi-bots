@@ -829,3 +829,293 @@ code {
 .card {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* ============================================
+   BOT MANAGEMENT PAGE
+   ============================================ */
+
+.bots-header {
+  margin-bottom: var(--space-xl);
+}
+
+.bots-stats {
+  display: flex;
+  gap: var(--space-xl);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.stat-value.stat-online {
+  color: var(--color-success);
+}
+
+.stat-value.stat-offline {
+  color: var(--color-text-muted);
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.bots-content {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: var(--space-xl);
+}
+
+.bots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.bots-sidebar {
+  position: sticky;
+  top: var(--space-lg);
+  height: fit-content;
+}
+
+/* Bot Card */
+.bot-card {
+  transition: all var(--transition-normal);
+}
+
+.bot-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.bot-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.bot-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.bot-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.bot-badges {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--badge-color, var(--color-text-secondary));
+}
+
+.status-icon {
+  font-size: 0.5rem;
+}
+
+/* Provider Badge */
+.provider-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.provider-telegram {
+  background: rgba(0, 136, 204, 0.15);
+  color: #0088cc;
+}
+
+.provider-discord {
+  background: rgba(88, 101, 242, 0.15);
+  color: #5865f2;
+}
+
+/* Bot Details */
+.bot-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.bot-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-label {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.detail-value {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.detail-status {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Bot Actions */
+.bot-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.inline-form {
+  display: inline;
+}
+
+/* Add Bot Form */
+.add-bot-form {
+  background: var(--color-bg-card);
+}
+
+.bot-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Provider Select */
+.provider-select {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.provider-option {
+  cursor: pointer;
+}
+
+.provider-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.provider-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-normal);
+}
+
+.provider-option input:checked+.provider-card {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.provider-option:hover .provider-card {
+  border-color: var(--color-border-hover);
+}
+
+.provider-icon {
+  font-size: 2rem;
+}
+
+.provider-name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* Credentials Sections */
+.credentials-section {
+  padding: var(--space-lg);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.credentials-section h4 {
+  margin: 0 0 var(--space-md);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.form-hint {
+  margin-top: var(--space-sm);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Empty State */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-lg);
+}
+
+.empty-state h3 {
+  margin: 0 0 var(--space-sm);
+  color: var(--color-text-primary);
+}
+
+.empty-state p {
+  color: var(--color-text-muted);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .bots-content {
+    grid-template-columns: 1fr;
+  }
+
+  .bots-sidebar {
+    position: static;
+    order: -1;
+  }
+}
+
+/* Alias for compatibility */
+:root {
+  --clr-success: var(--color-success);
+  --clr-danger: var(--color-danger);
+  --clr-text-muted: var(--color-text-muted);
+}

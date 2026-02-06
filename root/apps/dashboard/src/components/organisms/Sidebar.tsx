@@ -13,6 +13,7 @@ interface SidebarProps {
 export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
     const navItems = [
         { href: '/dashboard', icon: '📊', label: 'Dashboard' },
+        { href: '/dashboard/bots', icon: '🤖', label: 'Gerenciar Bots' },
         { href: '/dashboard/settings', icon: '⚙️', label: 'Configurações' },
     ]
 

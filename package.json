@@ -9,9 +9,12 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
-    "hono": "^4.11.7",
-    "@hono/auth-js": "^1.0.0",
     "@auth/core": "^0.37.0",
+    "@hono/auth-js": "^1.0.0",
+    "discord-api-types": "^0.38.38",
+    "discord-hono": "^0.20.3",
+    "grammy": "^1.39.3",
+    "hono": "^4.11.7",
     "zod": "^3.24.0"
   },
   "devDependencies": {
