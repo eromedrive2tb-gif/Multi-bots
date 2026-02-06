@@ -1,10 +1,10 @@
 /**
  * MOLECULE: validate-and-save-bot
- * Responsabilidade: Valida token com o provider + salva no banco
- * Compõe: tg-get-me ou dc-validate-token + db-save-bot
+ * Responsabilidade: Valida token com o provider + salva no banco + registra webhook
+ * Compõe: tg-get-me, tg-set-webhook ou dc-validate-token + db-save-bot
  */
 
-import { tgGetMe } from '../atoms/telegram'
+import { tgGetMe, tgSetWebhook } from '../atoms/telegram'
 import { dcValidateToken } from '../atoms/discord'
 import { dbSaveBot } from '../atoms/database'
 import type { Bot, BotCredentials, BotProvider, TelegramCredentials, DiscordCredentials } from '../../core/types'
@@ -68,6 +68,19 @@ export async function validateAndSaveBot({
             credentials,
             webhookSecret,
         })
+
+        // Step 3: Registrar webhook no Telegram
+        const webhookUrl = `${baseWebhookUrl}/webhooks/telegram/${botId}`
+        const webhookResult = await tgSetWebhook({
+            token: tgCreds.token,
+            url: webhookUrl,
+            secretToken: webhookSecret,
+        })
+
+        if (!webhookResult.success) {
+            console.error('Failed to set Telegram webhook:', webhookResult.error)
+            // Não falha a criação, apenas loga o erro
+        }
 
         return {
             success: true,

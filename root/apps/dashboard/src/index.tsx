@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { renderer } from './renderer'
 import { getCookie } from 'hono/cookie'
 import type { Env } from './core/types'
@@ -21,6 +22,20 @@ import { LoginPage } from './pages/login'
 import { RegisterPage } from './pages/register'
 import { DashboardPage } from './pages/dashboard'
 import { SettingsPage } from './pages/settings'
+
+// Helper to get base URL from forwarded headers (for tunnels like cloudflared)
+function getBaseUrl(c: Context): string {
+  // Try X-Forwarded headers first (set by reverse proxies/tunnels)
+  const forwardedProto = c.req.header('X-Forwarded-Proto') || 'https'
+  const forwardedHost = c.req.header('X-Forwarded-Host') || c.req.header('Host')
+
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`
+  }
+
+  // Fallback to request URL origin
+  return new URL(c.req.url).origin
+}
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -193,7 +208,8 @@ import type { BotProvider, TelegramCredentials, DiscordCredentials } from './cor
 
 app.get('/dashboard/bots', authMiddleware, async (c) => {
   const tenant = c.get('tenant')
-  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
+  const origin = getBaseUrl(c)
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
   const bots = await botManager.listBots()
 
   return c.render(
@@ -232,7 +248,8 @@ app.post('/api/bots', authMiddleware, async (c) => {
     return c.redirect('/dashboard/bots?error=Provider+inválido')
   }
 
-  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
+  const origin = getBaseUrl(c)
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
   const result = await botManager.addBot(name, provider, credentials)
 
   if (!result.success) {
@@ -254,10 +271,27 @@ app.post('/api/bots/:id/check', authMiddleware, async (c) => {
   const tenant = c.get('tenant')
   const botId = c.req.param('id')
 
-  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
-  await botManager.checkBotHealth(botId)
+  const origin = getBaseUrl(c)
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+  const bot = await botManager.getBot(botId)
+  const result = await botManager.checkBotHealth(botId)
+  const bots = await botManager.listBots()
 
-  return c.redirect('/dashboard/bots')
+  // Create health check result for alert
+  const healthCheckResult = {
+    botName: bot?.name || 'Bot',
+    status: result.status as 'online' | 'offline' | 'error',
+    message: result.error || 'Token válido e respondendo',
+    timestamp: new Date().toLocaleString('pt-BR'),
+  }
+
+  return c.render(
+    <BotsPage
+      user={tenant.user}
+      bots={bots}
+      healthCheckResult={healthCheckResult}
+    />
+  )
 })
 
 // Delete Bot
@@ -265,10 +299,63 @@ app.post('/api/bots/:id/delete', authMiddleware, async (c) => {
   const tenant = c.get('tenant')
   const botId = c.req.param('id')
 
-  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, 'https://your-domain.com')
+  const origin = getBaseUrl(c)
+  const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
   await botManager.removeBot(botId)
 
   return c.redirect('/dashboard/bots')
 })
 
+// ============================================
+// TELEGRAM WEBHOOK ENDPOINT
+// ============================================
+
+import { handleTelegramWebhook } from './lib/organisms/TelegramWebhookHandler'
+import type { TelegramUpdate } from './lib/atoms/telegram'
+import { dbGetBotById } from './lib/atoms/database'
+
+app.post('/webhooks/telegram/:botId', async (c) => {
+  const botId = c.req.param('botId')
+  const webhookSecret = c.req.header('X-Telegram-Bot-Api-Secret-Token')
+
+  // Get bot from database
+  const bot = await dbGetBotById({ db: c.env.DB, id: botId })
+
+  if (!bot) {
+    return c.json({ error: 'Bot not found' }, 404)
+  }
+
+  // Verify webhook secret
+  if (bot.webhookSecret && bot.webhookSecret !== webhookSecret) {
+    return c.json({ error: 'Invalid secret' }, 401)
+  }
+
+  // Get user info for the health response
+  const userResult = await c.env.DB.prepare(`
+    SELECT u.name FROM users u 
+    JOIN tenants t ON u.tenant_id = t.id 
+    WHERE t.id = ?
+    LIMIT 1
+  `).bind(bot.tenantId).first<{ name: string }>()
+
+  const userName = userResult?.name || 'Usuário'
+
+  try {
+    const update = await c.req.json<TelegramUpdate>()
+
+    await handleTelegramWebhook(update, {
+      db: c.env.DB,
+      botId,
+      tenantId: bot.tenantId,
+      userName,
+    })
+
+    return c.json({ ok: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    return c.json({ ok: true }) // Always return 200 to Telegram
+  }
+})
+
 export default app
+

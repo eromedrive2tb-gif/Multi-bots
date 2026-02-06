@@ -2,7 +2,15 @@ import type { FC } from 'hono/jsx'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
 import { BotCard } from '../components/organisms/BotCard'
 import { AddBotForm } from '../components/organisms/AddBotForm'
+import { Alert } from '../components/atoms/Alert'
 import type { Bot } from '../core/types'
+
+interface HealthCheckResult {
+    botName: string
+    status: 'online' | 'offline' | 'error'
+    message: string
+    timestamp: string
+}
 
 interface BotsPageProps {
     user: {
@@ -11,9 +19,10 @@ interface BotsPageProps {
     }
     bots: Bot[]
     error?: string
+    healthCheckResult?: HealthCheckResult
 }
 
-export const BotsPage: FC<BotsPageProps> = ({ user, bots, error }) => {
+export const BotsPage: FC<BotsPageProps> = ({ user, bots, error, healthCheckResult }) => {
     const onlineBots = bots.filter(b => b.status === 'online').length
     const totalBots = bots.length
 
@@ -23,6 +32,24 @@ export const BotsPage: FC<BotsPageProps> = ({ user, bots, error }) => {
             currentPath="/dashboard/bots"
             user={user}
         >
+            {/* Health Check Alert */}
+            {healthCheckResult && (
+                <div class="health-check-alert-container">
+                    <Alert
+                        type={healthCheckResult.status === 'online' ? 'success' : 'error'}
+                        message={`${healthCheckResult.botName}: ${healthCheckResult.status === 'online' ? 'Online e Funcionando!' : 'Não está respondendo'}`}
+                        details={`${healthCheckResult.message} • ${healthCheckResult.timestamp}`}
+                    />
+                </div>
+            )}
+
+            {/* Error Alert */}
+            {error && (
+                <div class="error-alert-container">
+                    <Alert type="error" message={error} />
+                </div>
+            )}
+
             <div class="bots-header">
                 <div class="bots-stats">
                     <div class="stat-item">
@@ -54,7 +81,7 @@ export const BotsPage: FC<BotsPageProps> = ({ user, bots, error }) => {
                 </div>
 
                 <div class="bots-sidebar">
-                    <AddBotForm error={error} />
+                    <AddBotForm error={undefined} />
                 </div>
             </div>
         </DashboardLayout>

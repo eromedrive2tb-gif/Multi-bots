@@ -1119,3 +1119,94 @@ code {
   --clr-danger: var(--color-danger);
   --clr-text-muted: var(--color-text-muted);
 }
+
+/* ============================================
+   ALERT BANNERS
+   ============================================ */
+
+.health-check-alert-container,
+.error-alert-container {
+  margin-bottom: var(--space-lg);
+}
+
+.alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--alert-bg);
+  border-left: 4px solid var(--alert-border);
+  animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  flex: 1;
+}
+
+.alert-message {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.alert-details {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.alert-dismiss {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  font-size: 0.875rem;
+}
+
+.alert-dismiss:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+}
+
+.alert-success {
+  --alert-bg: rgba(16, 185, 129, 0.1);
+  --alert-border: var(--color-success);
+}
+
+.alert-error {
+  --alert-bg: rgba(239, 68, 68, 0.1);
+  --alert-border: var(--color-danger);
+}
+
+.alert-warning {
+  --alert-bg: rgba(245, 158, 11, 0.1);
+  --alert-border: var(--color-warning);
+}
+
+.alert-info {
+  --alert-bg: rgba(99, 102, 241, 0.1);
+  --alert-border: var(--color-primary);
+}
