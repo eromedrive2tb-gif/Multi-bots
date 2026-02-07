@@ -3,6 +3,9 @@
   "name": "multi-bots",
   "compatibility_date": "2025-08-03",
   "main": "./root/apps/dashboard/src/index.tsx",
+  "vars": {
+    "WEBHOOK_BASE_URL": "https://multibotcrmdev.vitrine.top"
+  },
   "d1_databases": [
     {
       "binding": "DB",

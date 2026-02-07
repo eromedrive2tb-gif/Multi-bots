@@ -239,4 +239,5 @@ export interface Env {
     BLUEPRINTS_KV: KVNamespace
     SESSIONS_KV: KVNamespace
     AUTH_SECRET: string
+    WEBHOOK_BASE_URL?: string  // Override webhook URL for production
 }

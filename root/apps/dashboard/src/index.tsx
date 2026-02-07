@@ -2,8 +2,11 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { renderer } from './renderer'
 import { getCookie } from 'hono/cookie'
-import type { Env } from './core/types'
+import type { Env, TelegramCredentials } from './core/types'
 import { loginSchema, registerSchema } from './core/types'
+import { tgSetWebhook } from './lib/atoms/telegram'
+import { dbGetBots, dbGetBotById } from './lib/atoms/database'
+
 import {
   hashPassword,
   verifyPassword,
@@ -23,9 +26,15 @@ import { RegisterPage } from './pages/register'
 import { DashboardPage } from './pages/dashboard'
 import { SettingsPage } from './pages/settings'
 
-// Helper to get base URL from forwarded headers (for tunnels like cloudflared)
-function getBaseUrl(c: Context): string {
-  // Try X-Forwarded headers first (set by reverse proxies/tunnels)
+// Helper to get base URL for webhooks
+// Priority: 1) ENV var, 2) X-Forwarded headers, 3) Request origin
+function getBaseUrl(c: Context<{ Bindings: Env }>): string {
+  // 1. Check for explicit WEBHOOK_BASE_URL env var (production)
+  if (c.env.WEBHOOK_BASE_URL) {
+    return c.env.WEBHOOK_BASE_URL.replace(/\/$/, '') // Remove trailing slash
+  }
+
+  // 2. Try X-Forwarded headers (set by reverse proxies/tunnels)
   const forwardedProto = c.req.header('X-Forwarded-Proto') || 'https'
   const forwardedHost = c.req.header('X-Forwarded-Host') || c.req.header('Host')
 
@@ -33,9 +42,10 @@ function getBaseUrl(c: Context): string {
     return `${forwardedProto}://${forwardedHost}`
   }
 
-  // Fallback to request URL origin
+  // 3. Fallback to request URL origin
   return new URL(c.req.url).origin
 }
+
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -261,7 +271,7 @@ app.get('/dashboard/blueprints/:id', authMiddleware, async (c) => {
 // Bots Management
 import { BotsPage } from './pages/bots'
 import { BotManagerService } from './lib/organisms/BotManagerService'
-import type { BotProvider, TelegramCredentials, DiscordCredentials } from './core/types'
+import type { BotProvider, DiscordCredentials } from './core/types'
 
 app.get('/dashboard/bots', authMiddleware, async (c) => {
   const tenant = c.get('tenant')
@@ -363,9 +373,87 @@ app.post('/api/bots/:id/delete', authMiddleware, async (c) => {
   return c.redirect('/dashboard/bots')
 })
 
+// Reconfigure Webhook for a single bot
+app.post('/api/bots/:id/webhook', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const botId = c.req.param('id')
+
+  const webhookBaseUrl = getBaseUrl(c)
+  const bot = await dbGetBotById({ db: c.env.DB, id: botId })
+
+  if (!bot || bot.tenantId !== tenant.tenantId) {
+    return c.json({ success: false, error: 'Bot não encontrado' }, 404)
+  }
+
+  if (bot.provider === 'telegram') {
+    const tgCreds = bot.credentials as TelegramCredentials
+    const webhookUrl = `${webhookBaseUrl}/webhooks/telegram/${botId}`
+
+    try {
+      await tgSetWebhook({
+        token: tgCreds.token,
+        url: webhookUrl,
+        secretToken: bot.webhookSecret || undefined,
+      })
+
+      return c.json({
+        success: true,
+        message: `Webhook configurado para ${webhookUrl}`,
+        webhookUrl,
+      })
+    } catch (error) {
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro ao configurar webhook'
+      }, 500)
+    }
+  }
+
+  return c.json({ success: false, error: 'Provider não suportado' }, 400)
+})
+
+// Refresh ALL webhooks for tenant (useful after domain change)
+app.post('/api/bots/webhooks/refresh', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const webhookBaseUrl = getBaseUrl(c)
+
+  const bots = await dbGetBots({ db: c.env.DB, tenantId: tenant.tenantId })
+  const results: { botId: string; name: string; success: boolean; webhookUrl?: string; error?: string }[] = []
+
+  for (const bot of bots) {
+    if (bot.provider === 'telegram') {
+      const tgCreds = bot.credentials as TelegramCredentials
+      const webhookUrl = `${webhookBaseUrl}/webhooks/telegram/${bot.id}`
+
+      try {
+        await tgSetWebhook({
+          token: tgCreds.token,
+          url: webhookUrl,
+          secretToken: bot.webhookSecret || undefined,
+        })
+        results.push({ botId: bot.id, name: bot.name, success: true, webhookUrl })
+      } catch (error) {
+        results.push({
+          botId: bot.id,
+          name: bot.name,
+          success: false,
+          error: error instanceof Error ? error.message : 'Erro'
+        })
+      }
+    }
+  }
+
+  return c.json({
+    success: true,
+    baseUrl: webhookBaseUrl,
+    results,
+  })
+})
+
 // ============================================
 // BLUEPRINT API ENDPOINTS
 // ============================================
+
 
 import { dbGetBlueprints, dbGetBlueprintById } from './lib/atoms/database'
 import { syncSaveBlueprint, syncDeleteBlueprint } from './lib/molecules/blueprint-sync'
@@ -505,12 +593,92 @@ app.delete('/api/blueprints/:id', authMiddleware, async (c) => {
 })
 
 // ============================================
+// SYNC & DEBUG ENDPOINTS
+// ============================================
+
+import { fullSyncBlueprintsToKv } from './lib/molecules/blueprint-sync'
+import { executeFromTrigger } from './core/engine'
+import type { UniversalContext } from './core/types'
+
+// Sync all blueprints from D1 to KV
+app.post('/api/blueprints/sync', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+
+  const result = await fullSyncBlueprintsToKv({
+    db: c.env.DB,
+    kv: c.env.BLUEPRINTS_KV,
+    tenantId: tenant.tenantId,
+  })
+
+  if (!result.success) {
+    return c.json({ success: false, error: result.error }, 500)
+  }
+
+  return c.json({
+    success: true,
+    message: `Sincronizado: ${result.data.synced} blueprints | Falhas: ${result.data.failed}`,
+    data: result.data,
+  })
+})
+
+// Debug endpoint: Test blueprint execution (without Telegram)
+app.post('/api/debug/trigger', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+
+  try {
+    const body = await c.req.json<{ trigger: string; userId?: string }>()
+    const trigger = body.trigger || '/start'
+    const userId = body.userId || 'debug_user_123'
+
+    // Build mock UniversalContext
+    const ctx: UniversalContext = {
+      provider: 'tg',
+      tenantId: tenant.tenantId,
+      userId,
+      chatId: userId,
+      botToken: 'debug_token',
+      metadata: {
+        userName: tenant.user.name,
+        lastInput: trigger,
+        command: trigger.startsWith('/') ? trigger.slice(1) : undefined,
+      },
+    }
+
+    console.log('[DEBUG] Testing trigger:', trigger, 'for tenant:', tenant.tenantId)
+
+    // Execute flow
+    const result = await executeFromTrigger(
+      {
+        blueprints: c.env.BLUEPRINTS_KV,
+        sessions: c.env.SESSIONS_KV,
+      },
+      ctx
+    )
+
+    console.log('[DEBUG] Flow result:', JSON.stringify(result))
+
+    return c.json({
+      success: result.success,
+      trigger,
+      tenantId: tenant.tenantId,
+      result,
+    })
+  } catch (error) {
+    console.error('[DEBUG] Error:', error)
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    }, 500)
+  }
+})
+
+// ============================================
 // TELEGRAM WEBHOOK ENDPOINT
 // ============================================
 
 import { handleTelegramWebhook } from './lib/organisms/TelegramWebhookHandler'
 import type { TelegramUpdate } from './lib/atoms/telegram'
-import { dbGetBotById } from './lib/atoms/database'
+
 
 app.post('/webhooks/telegram/:botId', async (c) => {
   const botId = c.req.param('botId')
