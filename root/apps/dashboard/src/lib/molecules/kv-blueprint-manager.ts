@@ -1,4 +1,4 @@
-/**
+ydf  /**
  * MOLECULE: kv-blueprint-manager
  * Responsabilidade: Orquestra operações de blueprint no KV com lógica de fallback
  * Segue o padrão de composição de átomos
@@ -19,33 +19,19 @@ const buildTriggerKey = (tenantId: string, trigger: string) => `tenant:${tenantI
 // ============================================
 
 /**
- * Busca um blueprint por ID com fallback para o global
+ * Busca um blueprint por ID (apenas do tenant específico)
  */
 export async function getBlueprintFromKv(
     kv: KVNamespace,
     tenantId: string,
     flowId: string
 ): Promise<Result<Blueprint | null>> {
-    // 1. Tenta buscar específico do tenant
     const tenantBp = await kvGet<Blueprint>({ kv, key: buildBlueprintKey(tenantId, flowId) })
 
     if (!tenantBp.success) return tenantBp
-
-    // 2. Se não achou e não é global, tenta o global
-    if (!tenantBp.data && tenantId !== 'global') {
-        const globalBp = await kvGet<Blueprint>({ kv, key: buildBlueprintKey('global', flowId) })
-        if (!globalBp.success) return globalBp
-        if (!globalBp.data) return { success: true, data: null }
-
-        // Validação do global
-        const parsed = blueprintSchema.safeParse(globalBp.data)
-        if (!parsed.success) return { success: false, error: `Blueprint global inválido: ${parsed.error.message}` }
-        return { success: true, data: parsed.data }
-    }
-
     if (!tenantBp.data) return { success: true, data: null }
 
-    // 3. Validação do tenant-specific
+    // Validação do blueprint
     const parsed = blueprintSchema.safeParse(tenantBp.data)
     if (!parsed.success) {
         return { success: false, error: `Blueprint inválido: ${parsed.error.message}` }
@@ -55,29 +41,18 @@ export async function getBlueprintFromKv(
 }
 
 /**
- * Busca blueprint por trigger (/start, etc)
+ * Busca blueprint por trigger (/start, etc) - apenas do tenant específico
  */
 export async function getBlueprintByTriggerFromKv(
     kv: KVNamespace,
     tenantId: string,
     trigger: string
 ): Promise<Result<Blueprint | null>> {
-    // 1. Busca flowId associado ao trigger (tenant)
     const tenantTrigger = await kvGet<string>({ kv, key: buildTriggerKey(tenantId, trigger), type: 'text' })
 
     if (!tenantTrigger.success) return { success: false, error: tenantTrigger.error }
-
-    // 2. Fallback para trigger global
-    if (!tenantTrigger.data && tenantId !== 'global') {
-        const globalTrigger = await kvGet<string>({ kv, key: buildTriggerKey('global', trigger), type: 'text' })
-        if (!globalTrigger.success) return { success: false, error: globalTrigger.error }
-        if (!globalTrigger.data) return { success: true, data: null }
-        return getBlueprintFromKv(kv, tenantId, globalTrigger.data)
-    }
-
     if (!tenantTrigger.data) return { success: true, data: null }
 
-    // 3. Busca o blueprint real
     return getBlueprintFromKv(kv, tenantId, tenantTrigger.data)
 }
 
