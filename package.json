@@ -1,12 +1,12 @@
 {
-  "name": "Multi-bots",
+  "name": "multi-bots",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
-    "preview": "$npm_execpath run build && vite preview",
-    "deploy": "$npm_execpath run build && wrangler deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "preview": "vite preview",
+    "deploy": "vite run build && vite wrangler deploy",
+    "cf-typegen": "vite wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
     "@auth/core": "^0.37.0",
