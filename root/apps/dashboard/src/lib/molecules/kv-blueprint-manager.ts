@@ -1,4 +1,4 @@
-ydf  /**
+/**
  * MOLECULE: kv-blueprint-manager
  * Responsabilidade: Orquestra operações de blueprint no KV com lógica de fallback
  * Segue o padrão de composição de átomos
