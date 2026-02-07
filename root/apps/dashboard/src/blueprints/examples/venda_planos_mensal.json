@@ -1,0 +1,369 @@
+{
+    "id": "venda_planos_mensal",
+    "name": "Venda de Planos Mensal - Exemplo Completo",
+    "description": "Blueprint de exemplo demonstrando um fluxo completo de auto-atendimento para venda de planos mensais. Inclui: boas-vindas, coleta de dados, seleção de plano, confirmação e link de pagamento.",
+    "trigger": "/planos",
+    "entry_step": "welcome",
+    "version": "1.0.0",
+    "steps": {
+        "welcome": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "🎉 <b>Bem-vindo ao nosso sistema de assinaturas!</b>\n\nAqui você pode assinar um de nossos planos mensais premium.\n\n📦 Temos opções para todos os perfis:\n• Plano Básico - Para iniciantes\n• Plano Pro - Para profissionais\n• Plano Enterprise - Para empresas\n\nVamos começar? Me diga seu <b>nome completo</b> para continuarmos:",
+                "parse_mode": "HTML"
+            },
+            "next_step": "collect_name",
+            "on_error": "error_handler"
+        },
+        "collect_name": {
+            "type": "molecule",
+            "action": "collect_input",
+            "params": {
+                "variable": "customer_name",
+                "validation": "any",
+                "timeout_seconds": 120,
+                "prompt_on_invalid": "Por favor, digite seu nome completo (mínimo 3 caracteres):"
+            },
+            "next_step": "log_name_collected",
+            "on_error": "error_handler"
+        },
+        "log_name_collected": {
+            "type": "atom",
+            "action": "log",
+            "params": {
+                "message": "📝 Nome coletado: {{session.customer_name}}",
+                "level": "info"
+            },
+            "next_step": "ask_email"
+        },
+        "ask_email": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "Ótimo, {{session.customer_name}}! 👋\n\nAgora preciso do seu <b>email</b> para enviar a confirmação do plano:",
+                "parse_mode": "HTML"
+            },
+            "next_step": "collect_email"
+        },
+        "collect_email": {
+            "type": "molecule",
+            "action": "collect_input",
+            "params": {
+                "variable": "customer_email",
+                "validation": "email",
+                "timeout_seconds": 120,
+                "prompt_on_invalid": "❌ Email inválido. Por favor, digite um email válido (ex: seu@email.com):"
+            },
+            "next_step": "log_email_collected",
+            "on_error": "error_handler"
+        },
+        "log_email_collected": {
+            "type": "atom",
+            "action": "log",
+            "params": {
+                "message": "📧 Email coletado: {{session.customer_email}} | Cliente: {{session.customer_name}}",
+                "level": "info"
+            },
+            "next_step": "ask_phone"
+        },
+        "ask_phone": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "Perfeito! 📧\n\nAgora, qual seu <b>telefone com DDD</b>?\n\n<i>(Ex: 11999998888)</i>",
+                "parse_mode": "HTML"
+            },
+            "next_step": "collect_phone"
+        },
+        "collect_phone": {
+            "type": "molecule",
+            "action": "collect_input",
+            "params": {
+                "variable": "customer_phone",
+                "validation": "phone",
+                "timeout_seconds": 120,
+                "prompt_on_invalid": "❌ Telefone inválido. Digite apenas números com DDD (ex: 11999998888):"
+            },
+            "next_step": "log_phone_collected",
+            "on_error": "error_handler"
+        },
+        "log_phone_collected": {
+            "type": "atom",
+            "action": "log",
+            "params": {
+                "message": "📱 Telefone coletado: {{session.customer_phone}} | Cliente: {{session.customer_name}} ({{session.customer_email}})",
+                "level": "info"
+            },
+            "next_step": "show_plans"
+        },
+        "show_plans": {
+            "type": "molecule",
+            "action": "inline_keyboard",
+            "params": {
+                "text": "Excelente, {{session.customer_name}}! 🎯\n\nAgora escolha o plano ideal para você:\n\n💎 <b>Plano Básico</b> - R$ 29,90/mês\n• 5 acessos por dia\n• Suporte por email\n• Relatórios básicos\n\n⭐ <b>Plano Pro</b> - R$ 79,90/mês\n• Acessos ilimitados\n• Suporte prioritário\n• Relatórios avançados\n• API Access\n\n🏢 <b>Plano Enterprise</b> - R$ 199,90/mês\n• Tudo do Pro\n• Gerente dedicado\n• Treinamento incluso\n• SLA 99.9%",
+                "buttons": [
+                    {
+                        "text": "💎 Básico R$29,90",
+                        "callback": "plan_basic"
+                    },
+                    {
+                        "text": "⭐ Pro R$79,90",
+                        "callback": "plan_pro"
+                    },
+                    {
+                        "text": "🏢 Enterprise R$199,90",
+                        "callback": "plan_enterprise"
+                    }
+                ]
+            },
+            "next_step": "collect_plan_choice",
+            "on_error": "error_handler"
+        },
+        "collect_plan_choice": {
+            "type": "molecule",
+            "action": "collect_input",
+            "params": {
+                "variable": "selected_plan",
+                "validation": "any",
+                "timeout_seconds": 180
+            },
+            "next_step": "process_plan_selection",
+            "on_error": "timeout_handler"
+        },
+        "process_plan_selection": {
+            "type": "molecule",
+            "action": "condition",
+            "params": {
+                "expression": "{{session.selected_plan}} == 'plan_basic'",
+                "true_step": "set_plan_basic",
+                "false_step": "check_plan_pro"
+            }
+        },
+        "set_plan_basic": {
+            "type": "atom",
+            "action": "set_variable",
+            "params": {
+                "variable": "plan_name",
+                "value": "Plano Básico"
+            },
+            "next_step": "set_plan_basic_price"
+        },
+        "set_plan_basic_price": {
+            "type": "atom",
+            "action": "set_variable",
+            "params": {
+                "variable": "plan_price",
+                "value": "29,90"
+            },
+            "next_step": "confirm_order"
+        },
+        "check_plan_pro": {
+            "type": "molecule",
+            "action": "condition",
+            "params": {
+                "expression": "{{session.selected_plan}} == 'plan_pro'",
+                "true_step": "set_plan_pro",
+                "false_step": "set_plan_enterprise"
+            }
+        },
+        "set_plan_pro": {
+            "type": "atom",
+            "action": "set_variable",
+            "params": {
+                "variable": "plan_name",
+                "value": "Plano Pro"
+            },
+            "next_step": "set_plan_pro_price"
+        },
+        "set_plan_pro_price": {
+            "type": "atom",
+            "action": "set_variable",
+            "params": {
+                "variable": "plan_price",
+                "value": "79,90"
+            },
+            "next_step": "confirm_order"
+        },
+        "set_plan_enterprise": {
+            "type": "atom",
+            "action": "set_variable",
+            "params": {
+                "variable": "plan_name",
+                "value": "Plano Enterprise"
+            },
+            "next_step": "set_plan_enterprise_price"
+        },
+        "set_plan_enterprise_price": {
+            "type": "atom",
+            "action": "set_variable",
+            "params": {
+                "variable": "plan_price",
+                "value": "199,90"
+            },
+            "next_step": "confirm_order"
+        },
+        "confirm_order": {
+            "type": "molecule",
+            "action": "log",
+            "params": {
+                "message": "🛒 PEDIDO CRIADO | Plano: {{session.plan_name}} | Preço: R${{session.plan_price}} | Cliente: {{session.customer_name}} | Email: {{session.customer_email}} | Tel: {{session.customer_phone}}",
+                "level": "info"
+            },
+            "next_step": "show_confirmation"
+        },
+        "show_confirmation": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "📋 <b>CONFIRMAÇÃO DO PEDIDO</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n👤 <b>Dados do Cliente:</b>\n• Nome: {{session.customer_name}}\n• Email: {{session.customer_email}}\n• Telefone: {{session.customer_phone}}\n\n━━━━━━━━━━━━━━━━━━━━━\n📦 <b>Plano Selecionado:</b>\n• {{session.plan_name}}\n• Valor: <b>R$ {{session.plan_price}}/mês</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ <i>Confira os dados acima antes de prosseguir.</i>",
+                "parse_mode": "HTML"
+            },
+            "next_step": "ask_confirmation"
+        },
+        "ask_confirmation": {
+            "type": "molecule",
+            "action": "inline_keyboard",
+            "params": {
+                "text": "Está tudo correto? 🤔",
+                "buttons": [
+                    {
+                        "text": "✅ Confirmar e Pagar",
+                        "callback": "confirm_yes"
+                    },
+                    {
+                        "text": "❌ Cancelar",
+                        "callback": "confirm_no"
+                    },
+                    {
+                        "text": "🔄 Alterar Plano",
+                        "callback": "change_plan"
+                    }
+                ]
+            },
+            "next_step": "collect_confirmation"
+        },
+        "collect_confirmation": {
+            "type": "molecule",
+            "action": "collect_input",
+            "params": {
+                "variable": "confirmation_choice",
+                "validation": "any",
+                "timeout_seconds": 180
+            },
+            "next_step": "process_confirmation",
+            "on_error": "timeout_handler"
+        },
+        "process_confirmation": {
+            "type": "molecule",
+            "action": "condition",
+            "params": {
+                "expression": "{{session.confirmation_choice}} == 'confirm_yes'",
+                "true_step": "generate_payment",
+                "false_step": "check_cancel"
+            }
+        },
+        "check_cancel": {
+            "type": "molecule",
+            "action": "condition",
+            "params": {
+                "expression": "{{session.confirmation_choice}} == 'confirm_no'",
+                "true_step": "cancel_order",
+                "false_step": "restart_plan_selection"
+            }
+        },
+        "cancel_order": {
+            "type": "molecule",
+            "action": "log",
+            "params": {
+                "message": "❌ PEDIDO CANCELADO | Cliente: {{session.customer_name}} | Email: {{session.customer_email}}",
+                "level": "warning"
+            },
+            "next_step": "send_cancel_message"
+        },
+        "send_cancel_message": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "😢 Pedido cancelado.\n\nSe mudar de ideia, é só digitar /planos novamente!\n\nTerremos o melhor plano esperando por você. 💙",
+                "parse_mode": "HTML"
+            },
+            "next_step": null
+        },
+        "restart_plan_selection": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "🔄 Sem problemas! Vamos escolher outro plano.",
+                "parse_mode": "HTML"
+            },
+            "next_step": "show_plans"
+        },
+        "generate_payment": {
+            "type": "molecule",
+            "action": "log",
+            "params": {
+                "message": "💳 PAGAMENTO INICIADO | Plano: {{session.plan_name}} | Valor: R${{session.plan_price}} | Cliente: {{session.customer_name}} ({{session.customer_email}})",
+                "level": "info"
+            },
+            "next_step": "send_payment_link"
+        },
+        "send_payment_link": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "🎉 <b>Excelente escolha, {{session.customer_name}}!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n💳 <b>LINK DE PAGAMENTO</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n📦 Plano: <b>{{session.plan_name}}</b>\n💰 Valor: <b>R$ {{session.plan_price}}/mês</b>\n\n👇 Clique no botão abaixo para pagar:\n\n🔗 <a href=\"https://seusite.com/checkout?plan={{session.selected_plan}}&email={{session.customer_email}}\">PAGAR AQUI</a>\n\n━━━━━━━━━━━━━━━━━━━━━\n\n⏰ Este link expira em <b>30 minutos</b>.\n📧 Após o pagamento, você receberá a confirmação no email informado.\n\n💬 Qualquer dúvida, digite /ajuda",
+                "parse_mode": "HTML"
+            },
+            "next_step": "final_log"
+        },
+        "final_log": {
+            "type": "atom",
+            "action": "log",
+            "params": {
+                "message": "✅ FLUXO COMPLETO | Cliente: {{session.customer_name}} | Email: {{session.customer_email}} | Tel: {{session.customer_phone}} | Plano: {{session.plan_name}} | Valor: R${{session.plan_price}}",
+                "level": "info"
+            },
+            "next_step": null
+        },
+        "error_handler": {
+            "type": "molecule",
+            "action": "log",
+            "params": {
+                "message": "❌ ERRO NO FLUXO | Step atual: {{session.currentStepId}} | Usuário: {{ctx.userId}}",
+                "level": "error"
+            },
+            "next_step": "send_error_message"
+        },
+        "send_error_message": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "😕 Ops! Algo deu errado.\n\nPor favor, tente novamente digitando /planos\n\nSe o problema persistir, entre em contato com nosso suporte: /ajuda",
+                "parse_mode": "HTML"
+            },
+            "next_step": null
+        },
+        "timeout_handler": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "⏰ O tempo para sua escolha expirou.\n\nSe ainda deseja continuar, digite /planos para recomeçar.\n\nEstamos aqui quando precisar! 💙",
+                "parse_mode": "HTML"
+            },
+            "next_step": null
+        }
+    },
+    "metadata": {
+        "author": "Sistema",
+        "category": "vendas",
+        "tags": [
+            "planos",
+            "assinatura",
+            "pagamento",
+            "coleta-dados"
+        ],
+        "estimated_duration_minutes": 3,
+        "complexity": "advanced"
+    }
+}

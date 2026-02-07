@@ -7,6 +7,10 @@
 import type { UniversalContext, Result } from './types'
 import { tgSendText } from '../lib/atoms/telegram'
 import { dcSendMessage } from '../lib/atoms/discord'
+import { setVariable } from '../lib/molecules/set-variable'
+import { condition } from '../lib/molecules/condition'
+import { collectInput } from '../lib/molecules/collect-input'
+import { inlineKeyboard } from '../lib/molecules/inline-keyboard'
 
 // ============================================
 // ACTION FUNCTION SIGNATURE
@@ -119,6 +123,10 @@ async function log(
 ACTION_REGISTRY.set('send_message', sendMessage)
 ACTION_REGISTRY.set('wait', wait)
 ACTION_REGISTRY.set('log', log)
+ACTION_REGISTRY.set('set_variable', setVariable)
+ACTION_REGISTRY.set('condition', condition)
+ACTION_REGISTRY.set('collect_input', collectInput)
+ACTION_REGISTRY.set('inline_keyboard', inlineKeyboard)
 
 // ============================================
 // REGISTRY API

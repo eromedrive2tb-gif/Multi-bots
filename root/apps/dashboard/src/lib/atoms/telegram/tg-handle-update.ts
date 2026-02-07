@@ -22,6 +22,23 @@ export interface TelegramUpdate {
         date: number
         text?: string
     }
+    callback_query?: {
+        id: string
+        from: {
+            id: number
+            first_name: string
+            username?: string
+        }
+        message?: {
+            message_id: number
+            chat: {
+                id: number
+                type: string
+            }
+            date: number
+        }
+        data?: string
+    }
 }
 
 export interface TgHandleUpdateResult {
@@ -29,9 +46,36 @@ export interface TgHandleUpdateResult {
     command?: string
     args?: string
     message?: GenericMessage
+    callbackQueryId?: string
 }
 
 export function tgHandleUpdate(update: TelegramUpdate): TgHandleUpdateResult {
+    // Handle Callback Query (Inline Buttons)
+    if (update.callback_query && update.callback_query.data) {
+        const cb = update.callback_query
+        const messageId = cb.message?.message_id ?? 0
+        const chatId = cb.message?.chat.id ?? 0
+
+        return {
+            isCommand: false,
+            callbackQueryId: cb.id,
+            message: {
+                id: String(messageId),
+                chatId: String(chatId),
+                text: cb.data ?? '', // Treat callback data as text input
+                from: {
+                    id: String(cb.from.id),
+                    name: cb.from.first_name,
+                    username: cb.from.username,
+                },
+                timestamp: new Date(),
+                provider: 'telegram' as BotProvider,
+                raw: update,
+            }
+        }
+    }
+
+    // Handle Text Message
     if (!update.message || !update.message.text) {
         return { isCommand: false }
     }

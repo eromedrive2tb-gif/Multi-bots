@@ -38,9 +38,18 @@ function injectVariables(
         // Handle dot notation for nested values
         const parts = key.split('.')
 
-        if (parts[0] === 'session' && parts[1]) {
-            const value = session.collectedData[parts[1]]
-            return value !== undefined ? String(value) : ''
+        if (parts[0] === 'session') {
+            if (parts[1]) {
+                // Try to get from collectedData first (common case)
+                let value = session.collectedData[parts[1]]
+
+                // If not found, try root properties (e.g. currentStepId, currentFlowId)
+                if (value === undefined && parts[1] in session) {
+                    value = (session as any)[parts[1]]
+                }
+
+                return value !== undefined ? String(value) : ''
+            }
         }
 
         if (parts[0] === 'ctx' && parts[1]) {
@@ -231,37 +240,123 @@ export async function executeFlow(
     }
 
     // Determine starting step
-    let currentStepId: string | null = startStepId ?? session.currentStepId ?? blueprint.entry_step
+    let startStepIdOverride: string | undefined = startStepId
+
+    // If triggered by command, force restart at entry_step
+    if (ctx.metadata.command && blueprint.id) {
+        // Only if we found a blueprint via trigger
+        const trigger = `/${ctx.metadata.command}`
+        // Check if this blueprint matches the trigger (it should, based on lookup above)
+        if (blueprint.trigger === trigger) {
+            startStepIdOverride = blueprint.entry_step
+            // Important: Clear session current step to avoid "resuming" logic
+            session.currentStepId = undefined
+            session.currentFlowId = blueprint.id
+        }
+    }
+
+    let currentStepId: string | null = startStepIdOverride ?? session.currentStepId ?? blueprint.entry_step
     let stepsExecuted = 0
     let lastResult: unknown = null
     let lastError: string | undefined
 
     // Iterative execution loop (stack-safe)
     while (currentStepId && stepsExecuted < MAX_STEPS_PER_EXECUTION) {
-        const step = blueprint.steps[currentStepId]
+        const step: BlueprintStep | undefined = blueprint.steps[currentStepId]
 
         if (!step) {
             lastError = `Step not found: ${currentStepId}`
             break
         }
 
-        // Execute the step
-        const result = await executeStep(step, currentStepId, ctx, session)
-        stepsExecuted++
+        // Check if we are resuming execution on this step
+        // This is true if we started the flow execution AT this step (from session)
+        // rather than transitioning to it from a previous step in this run
+        const isResuming = (stepsExecuted === 0 && currentStepId === session.currentStepId)
 
-        // Update session with current position
-        const updateResult = await updateSessionAt(
-            kv.sessions,
-            ctx.tenantId,
-            ctx.provider,
-            ctx.userId,
-            {},
-            { flowId: blueprint.id, stepId: result.nextStepId ?? undefined }
-        )
+        // Inject variables into params
+        const resolvedParams = injectVariablesDeep(step.params, ctx, session)
 
-        if (updateResult.success) {
-            session = updateResult.data
+        // Inject resuming flag
+        if (isResuming) {
+            resolvedParams['_is_resuming'] = true
         }
+
+        // Execute the action via registry
+        const result = await executeAction(step.action, ctx, resolvedParams)
+
+        // Handle success
+        if (result.success) {
+            stepsExecuted++ // Only count successful executions? Or attempts? Let's count successes.
+
+            const resultData = result.data as any
+            let nextId: string | null = step.next_step ?? null
+            let shouldSuspend = false
+
+            // Check for dynamic overrides from action
+            if (resultData && typeof resultData === 'object') {
+                if (resultData.next_step) {
+                    nextId = resultData.next_step
+                }
+                if (resultData.suspended) {
+                    shouldSuspend = true
+                }
+
+                // Update collected variables if any
+                // Molecules like set_variable or collect_input return data to save
+                if (!resultData.suspended && !resultData.next_step && !resultData.condition_met) {
+                    // Heuristic: if it returns data that isn't control flags, save it?
+                    // Or explicit "variables" prop?
+                    // For now, save everything that isn't reserved
+                    const { suspended, next_step, condition_met, ...vars } = resultData
+                    if (Object.keys(vars).length > 0) {
+                        // Update session with new variables
+                        const saveResult = await updateSessionAt(
+                            kv.sessions,
+                            ctx.tenantId,
+                            ctx.provider,
+                            ctx.userId,
+                            vars
+                        )
+                        if (saveResult.success) session = saveResult.data
+                    }
+                }
+            }
+
+            if (shouldSuspend) {
+                // Stop execution, stay on this step
+                // Session already has this step as current (from previous update or initial)
+                // Just return success
+                return {
+                    success: true,
+                    stepsExecuted,
+                    lastStepId: currentStepId,
+                    data: { suspended: true }
+                }
+            }
+
+            // Proceed to next step
+            // Update session with NEXT step
+            const updateResult = await updateSessionAt(
+                kv.sessions,
+                ctx.tenantId,
+                ctx.provider,
+                ctx.userId,
+                {},
+                { flowId: blueprint.id, stepId: nextId ?? undefined }
+            )
+
+            if (updateResult.success) {
+                session = updateResult.data
+            }
+
+            currentStepId = nextId
+            lastResult = result.data
+            continue
+        }
+
+        // Handle Error
+        // ... (error handling logic remains similar)
 
         if (!result.success) {
             // Check for error_handler step in blueprint
@@ -278,9 +373,6 @@ export async function executeFlow(
                 error: result.error,
             }
         }
-
-        lastResult = result.data
-        currentStepId = result.nextStepId
     }
 
     // Check for loop protection trigger

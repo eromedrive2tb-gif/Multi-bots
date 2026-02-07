@@ -91,6 +91,35 @@ blueprintsRoutes.get('/api/blueprints/:id', authMiddleware, async (c) => {
     return c.json({ success: true, data: result.data })
 })
 
+// Dashboard Editor Route
+blueprintsRoutes.get('/dashboard/blueprints/:id', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const id = c.req.param('id')
+
+    const listResult = await dbGetBlueprints({
+        db: c.env.DB,
+        tenantId: tenant.tenantId
+    })
+
+    const result = await dbGetBlueprintById({
+        db: c.env.DB,
+        tenantId: tenant.tenantId,
+        id
+    })
+
+    if (!result.success || !result.data) {
+        return c.redirect('/dashboard/blueprints')
+    }
+
+    return c.render(
+        <BlueprintsPage
+            user={tenant.user}
+            blueprints={listResult.success ? listResult.data : []}
+            selectedBlueprint={JSON.stringify(result.data, null, 2)}
+        />
+    )
+})
+
 // Create new blueprint
 blueprintsRoutes.post('/api/blueprints', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
