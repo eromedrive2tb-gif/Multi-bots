@@ -1,0 +1,27 @@
+{
+    "id": "health-flow",
+    "name": "Health Check Flow",
+    "trigger": "/health",
+    "version": "1.0",
+    "entry_step": "check",
+    "steps": {
+        "check": {
+            "type": "atom",
+            "action": "send_message",
+            "params": {
+                "text": "✅ <b>Bot Online e Funcionando!</b>\n\n📊 <b>Status:</b> Conectado\n🏢 <b>Tenant ID:</b> <code>{{tenant_id}}</code>\n👤 <b>Usuário:</b> {{user_name}}\n🕐 <b>Provider:</b> {{provider}}\n\n<i>Este bot está configurado e respondendo corretamente.</i>",
+                "parseMode": "HTML"
+            },
+            "next_step": null
+        },
+        "error_handler": {
+            "type": "atom",
+            "action": "send_message",
+            "params": {
+                "text": "❌ Erro ao verificar status. Tente novamente.",
+                "parseMode": "HTML"
+            },
+            "next_step": null
+        }
+    }
+}

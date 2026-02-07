@@ -1,0 +1,171 @@
+/**
+ * ACTION REGISTRY
+ * Maps action keys to provider-specific implementations
+ * Implements the Action Proxy pattern for provider dispatch
+ */
+
+import type { UniversalContext, Result } from './types'
+import { tgSendText } from '../lib/atoms/telegram'
+import { dcSendMessage } from '../lib/atoms/discord'
+
+// ============================================
+// ACTION FUNCTION SIGNATURE
+// ============================================
+
+export type ActionFn = (
+    ctx: UniversalContext,
+    params: Record<string, unknown>
+) => Promise<Result<unknown>>
+
+// ============================================
+// ACTION REGISTRY MAP
+// ============================================
+
+const ACTION_REGISTRY: Map<string, ActionFn> = new Map()
+
+// ============================================
+// PROVIDER-SPECIFIC IMPLEMENTATIONS
+// ============================================
+
+/**
+ * send_message - Universal message sending action
+ * Dispatches to provider-specific atom based on ctx.provider
+ */
+async function sendMessage(
+    ctx: UniversalContext,
+    params: Record<string, unknown>
+): Promise<Result<unknown>> {
+    const text = String(params.text ?? '')
+    const parseMode = params.parseMode as 'HTML' | 'Markdown' | 'MarkdownV2' | undefined
+
+    try {
+        switch (ctx.provider) {
+            case 'tg': {
+                const result = await tgSendText({
+                    token: ctx.botToken,
+                    chatId: ctx.chatId,
+                    text,
+                    parseMode: parseMode ?? 'HTML',
+                })
+                if (result.success) {
+                    return { success: true, data: { messageId: result.messageId } }
+                }
+                return { success: false, error: result.error ?? 'Failed to send message' }
+            }
+
+            case 'dc': {
+                const result = await dcSendMessage({
+                    token: ctx.botToken,
+                    channelId: ctx.chatId,
+                    content: text,
+                    embed: params.embed as { title?: string; description?: string; color?: number } | undefined,
+                })
+                if (result.success) {
+                    return { success: true, data: { messageId: result.messageId } }
+                }
+                return { success: false, error: result.error ?? 'Failed to send message' }
+            }
+
+            case 'wa': {
+                // WhatsApp implementation placeholder
+                return { success: false, error: 'WhatsApp provider not yet implemented' }
+            }
+
+            default:
+                return { success: false, error: `Unknown provider: ${ctx.provider}` }
+        }
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error in send_message',
+        }
+    }
+}
+
+/**
+ * wait - Delays execution (useful for flow pacing)
+ */
+async function wait(
+    _ctx: UniversalContext,
+    params: Record<string, unknown>
+): Promise<Result<unknown>> {
+    const ms = Number(params.ms ?? params.milliseconds ?? 1000)
+
+    // Edge-safe delay using scheduler or promise
+    await new Promise(resolve => setTimeout(resolve, Math.min(ms, 10000)))
+
+    return { success: true, data: { waited: ms } }
+}
+
+/**
+ * log - Debug logging action (logs to console or external service)
+ */
+async function log(
+    ctx: UniversalContext,
+    params: Record<string, unknown>
+): Promise<Result<unknown>> {
+    const message = String(params.message ?? '')
+    const level = String(params.level ?? 'info')
+
+    console.log(`[${level.toUpperCase()}] [${ctx.tenantId}] [${ctx.provider}:${ctx.userId}] ${message}`)
+
+    return { success: true, data: { logged: true } }
+}
+
+// ============================================
+// REGISTER ACTIONS
+// ============================================
+
+ACTION_REGISTRY.set('send_message', sendMessage)
+ACTION_REGISTRY.set('wait', wait)
+ACTION_REGISTRY.set('log', log)
+
+// ============================================
+// REGISTRY API
+// ============================================
+
+/**
+ * Resolves and returns the action function for a given action key
+ */
+export function resolveAction(actionKey: string): ActionFn | undefined {
+    return ACTION_REGISTRY.get(actionKey)
+}
+
+/**
+ * Executes an action by key with the given context and params
+ */
+export async function executeAction(
+    actionKey: string,
+    ctx: UniversalContext,
+    params: Record<string, unknown>
+): Promise<Result<unknown>> {
+    const action = resolveAction(actionKey)
+
+    if (!action) {
+        return { success: false, error: `Action not found: ${actionKey}` }
+    }
+
+    try {
+        return await action(ctx, params)
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : `Error executing action: ${actionKey}`,
+        }
+    }
+}
+
+/**
+ * Registers a new action to the registry
+ * Used for extending the engine with custom atoms/molecules
+ */
+export function registerAction(key: string, fn: ActionFn): void {
+    ACTION_REGISTRY.set(key, fn)
+}
+
+/**
+ * Lists all registered action keys
+ */
+export function listActions(): string[] {
+    return Array.from(ACTION_REGISTRY.keys())
+}

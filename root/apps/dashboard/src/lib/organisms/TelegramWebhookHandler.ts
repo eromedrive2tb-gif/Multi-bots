@@ -1,88 +1,153 @@
 /**
  * ORGANISM: TelegramWebhookHandler
- * Responsabilidade: Processa webhooks do Telegram e executa comandos
- * Orquestra: tg-handle-update, tg-send-text e operações de banco
+ * Responsabilidade: Processa webhooks do Telegram via Engine data-driven
+ * Orquestra: Engine, Session, tg-handle-update
+ * 
+ * REFACTORED: All command logic moved to Blueprint JSONs
  */
 
-import { tgHandleUpdate, tgSendText, type TelegramUpdate } from '../atoms/telegram'
+import { tgHandleUpdate, type TelegramUpdate } from '../atoms/telegram'
 import { dbGetBotById } from '../atoms/database'
-import type { TelegramCredentials } from '../../core/types'
+import { executeFromTrigger, type FlowExecutionResult } from '../../core/engine'
+import type {
+    TelegramCredentials,
+    UniversalContext,
+    Env
+} from '../../core/types'
+
+// ============================================
+// WEBHOOK CONTEXT
+// ============================================
 
 export interface WebhookContext {
-    db: D1Database
+    env: Env
     botId: string
     tenantId: string
-    userName: string
 }
 
 export interface WebhookResult {
     handled: boolean
-    command?: string
-    response?: string
+    flowResult?: FlowExecutionResult
+    error?: string
 }
 
+// ============================================
+// UPDATE TO CONTEXT CONVERTER
+// ============================================
+
+/**
+ * Converts a Telegram update to UniversalContext
+ */
+function buildUniversalContext(
+    update: TelegramUpdate,
+    tenantId: string,
+    botToken: string
+): UniversalContext | null {
+    const parsed = tgHandleUpdate(update)
+
+    if (!parsed.message) {
+        return null
+    }
+
+    return {
+        provider: 'tg',
+        tenantId,
+        userId: parsed.message.from.id,
+        chatId: parsed.message.chatId,
+        botToken,
+        metadata: {
+            userName: parsed.message.from.name,
+            lastInput: parsed.message.text,
+            command: parsed.isCommand ? parsed.command : undefined,
+            raw: update,
+        },
+    }
+}
+
+// ============================================
+// MAIN WEBHOOK HANDLER
+// ============================================
+
+/**
+ * Handle incoming Telegram webhook - now fully data-driven
+ * All command logic is defined in Blueprint JSONs
+ */
 export async function handleTelegramWebhook(
     update: TelegramUpdate,
     context: WebhookContext
 ): Promise<WebhookResult> {
-    const parsed = tgHandleUpdate(update)
+    try {
+        // Get bot credentials
+        const bot = await dbGetBotById({ db: context.env.DB, id: context.botId })
 
-    if (!parsed.isCommand || !parsed.message) {
-        return { handled: false }
-    }
+        if (!bot) {
+            return {
+                handled: false,
+                error: 'Bot not found'
+            }
+        }
 
-    // Get bot credentials
-    const bot = await dbGetBotById({ db: context.db, id: context.botId })
-    if (!bot) {
-        return { handled: false }
-    }
+        const token = (bot.credentials as TelegramCredentials).token
 
-    const token = (bot.credentials as TelegramCredentials).token
+        // Build UniversalContext from update
+        const ctx = buildUniversalContext(update, context.tenantId, token)
 
-    // Handle /health command
-    if (parsed.command === 'health') {
-        const response = `✅ <b>Bot Online e Funcionando!</b>\n\n` +
-            `📊 <b>Status:</b> Conectado\n` +
-            `🏢 <b>Tenant ID:</b> <code>${context.tenantId.slice(0, 8)}...</code>\n` +
-            `👤 <b>Usuário:</b> ${context.userName}\n` +
-            `🕐 <b>Timestamp:</b> ${new Date().toLocaleString('pt-BR')}\n\n` +
-            `<i>Este bot está configurado e respondendo corretamente.</i>`
+        if (!ctx) {
+            // Non-message update (e.g., edited_message, callback_query)
+            // Can be extended to handle these in the future
+            return { handled: false }
+        }
 
-        await tgSendText({
-            token,
-            chatId: parsed.message.chatId,
-            text: response,
-            parseMode: 'HTML',
-        })
+        // Execute flow via Engine
+        const flowResult = await executeFromTrigger(
+            {
+                blueprints: context.env.BLUEPRINTS_KV,
+                sessions: context.env.SESSIONS_KV,
+            },
+            ctx
+        )
 
         return {
-            handled: true,
-            command: 'health',
-            response: 'Health check enviado',
+            handled: flowResult.success || flowResult.stepsExecuted > 0,
+            flowResult,
         }
-    }
-
-    // Handle /start command
-    if (parsed.command === 'start') {
-        const response = `👋 <b>Olá!</b>\n\n` +
-            `Eu sou um bot gerenciado pelo Multi-Bots Dashboard.\n\n` +
-            `<b>Comandos disponíveis:</b>\n` +
-            `/health - Verificar status do bot\n` +
-            `/start - Mostrar esta mensagem`
-
-        await tgSendText({
-            token,
-            chatId: parsed.message.chatId,
-            text: response,
-            parseMode: 'HTML',
-        })
-
+    } catch (error) {
         return {
-            handled: true,
-            command: 'start',
-            response: 'Welcome message enviada',
+            handled: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
         }
     }
+}
 
-    return { handled: false }
+// ============================================
+// LEGACY COMMAND HANDLER (Deprecated)
+// ============================================
+
+/**
+ * @deprecated Use handleTelegramWebhook with Engine instead
+ * Kept for backward compatibility during migration
+ */
+export async function handleTelegramWebhookLegacy(
+    update: TelegramUpdate,
+    context: WebhookContext & { userName: string; db: D1Database }
+): Promise<{ handled: boolean; command?: string; response?: string }> {
+    console.warn('handleTelegramWebhookLegacy is deprecated. Migrate to Blueprint-based flows.')
+
+    // Forward to new handler
+    const result = await handleTelegramWebhook(update, {
+        env: {
+            DB: context.db,
+            AUTH_SECRET: '',
+            BLUEPRINTS_KV: undefined as unknown as KVNamespace,
+            SESSIONS_KV: undefined as unknown as KVNamespace,
+        },
+        botId: context.botId,
+        tenantId: context.tenantId,
+    })
+
+    return {
+        handled: result.handled,
+        command: undefined,
+        response: result.error,
+    }
 }

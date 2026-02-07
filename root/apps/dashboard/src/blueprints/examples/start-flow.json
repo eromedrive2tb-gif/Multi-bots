@@ -1,0 +1,27 @@
+{
+    "id": "start-flow",
+    "name": "Welcome Flow",
+    "trigger": "/start",
+    "version": "1.0",
+    "entry_step": "welcome",
+    "steps": {
+        "welcome": {
+            "type": "atom",
+            "action": "send_message",
+            "params": {
+                "text": "👋 <b>Olá, {{user_name}}!</b>\n\nEu sou um bot gerenciado pelo Multi-Bots Dashboard.\n\n<b>Comandos disponíveis:</b>\n/start - Mostrar esta mensagem\n/health - Verificar status do bot",
+                "parseMode": "HTML"
+            },
+            "next_step": null
+        },
+        "error_handler": {
+            "type": "atom",
+            "action": "send_message",
+            "params": {
+                "text": "❌ Ocorreu um erro ao processar sua solicitação. Tente novamente.",
+                "parseMode": "HTML"
+            },
+            "next_step": null
+        }
+    }
+}

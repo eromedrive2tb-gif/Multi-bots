@@ -330,24 +330,13 @@ app.post('/webhooks/telegram/:botId', async (c) => {
     return c.json({ error: 'Invalid secret' }, 401)
   }
 
-  // Get user info for the health response
-  const userResult = await c.env.DB.prepare(`
-    SELECT u.name FROM users u 
-    JOIN tenants t ON u.tenant_id = t.id 
-    WHERE t.id = ?
-    LIMIT 1
-  `).bind(bot.tenantId).first<{ name: string }>()
-
-  const userName = userResult?.name || 'Usuário'
-
   try {
     const update = await c.req.json<TelegramUpdate>()
 
     await handleTelegramWebhook(update, {
-      db: c.env.DB,
+      env: c.env,
       botId,
       tenantId: bot.tenantId,
-      userName,
     })
 
     return c.json({ ok: true })

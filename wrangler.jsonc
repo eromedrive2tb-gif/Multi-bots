@@ -9,5 +9,15 @@
       "database_name": "multi-bots-db",
       "database_id": "local"
     }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "BLUEPRINTS_KV",
+      "id": "a8ef9b3247b047dc9f9b8d7e56a1cda6"
+    },
+    {
+      "binding": "SESSIONS_KV",
+      "id": "68de345f1b5442b185ff91e6b258b053"
+    }
   ]
 }

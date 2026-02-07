@@ -64,13 +64,8 @@ export interface TenantContext {
 }
 
 // ============================================
-// CLOUDFLARE BINDINGS
+// CLOUDFLARE BINDINGS - see end of file
 // ============================================
-
-export interface Env {
-    DB: D1Database
-    AUTH_SECRET: string
-}
 
 // ============================================
 // BOT MANAGEMENT
@@ -150,4 +145,98 @@ export interface GenericMessage {
     timestamp: Date
     provider: BotProvider
     raw: unknown
+}
+
+// ============================================
+// UNIVERSAL ENGINE TYPES
+// ============================================
+
+/**
+ * Provider types for the Universal Engine
+ * 'tg' = Telegram, 'dc' = Discord, 'wa' = WhatsApp
+ */
+export type ProviderType = 'tg' | 'dc' | 'wa'
+
+/**
+ * Universal Context - Provider-agnostic execution context
+ * Passed to all Engine operations
+ */
+export interface UniversalContext {
+    provider: ProviderType
+    tenantId: string
+    userId: string
+    chatId: string
+    botToken: string
+    metadata: {
+        userName?: string
+        lastInput?: string
+        command?: string
+        raw?: unknown
+    }
+}
+
+/**
+ * Session data stored in KV
+ */
+export interface SessionData {
+    currentFlowId?: string
+    currentStepId?: string
+    collectedData: Record<string, unknown>
+    lastActivity: number
+}
+
+// ============================================
+// BLUEPRINT TYPES WITH ZOD SCHEMAS
+// ============================================
+
+export const blueprintStepTypeSchema = z.enum(['atom', 'molecule', 'organism'])
+
+export type BlueprintStepType = z.infer<typeof blueprintStepTypeSchema>
+
+export const blueprintStepSchema = z.object({
+    type: blueprintStepTypeSchema,
+    action: z.string().min(1),
+    params: z.record(z.string(), z.unknown()).default({}),
+    next_step: z.string().nullable().optional(),
+    on_error: z.string().nullable().optional(),
+})
+
+export type BlueprintStep = z.infer<typeof blueprintStepSchema>
+
+export const blueprintSchema = z.object({
+    id: z.string().min(1),
+    name: z.string().optional(),
+    trigger: z.string().min(1),
+    entry_step: z.string().min(1),
+    steps: z.record(z.string(), blueprintStepSchema),
+    version: z.string().optional().default('1.0'),
+})
+
+export type Blueprint = z.infer<typeof blueprintSchema>
+
+// ============================================
+// RESULT PATTERN
+// ============================================
+
+export interface ResultSuccess<T> {
+    success: true
+    data: T
+}
+
+export interface ResultError {
+    success: false
+    error: string
+}
+
+export type Result<T> = ResultSuccess<T> | ResultError
+
+// ============================================
+// UPDATED CLOUDFLARE BINDINGS
+// ============================================
+
+export interface Env {
+    DB: D1Database
+    BLUEPRINTS_KV: KVNamespace
+    SESSIONS_KV: KVNamespace
+    AUTH_SECRET: string
 }
