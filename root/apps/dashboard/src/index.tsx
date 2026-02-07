@@ -201,6 +201,63 @@ app.get('/dashboard/settings', authMiddleware, async (c) => {
   )
 })
 
+// Blueprints Management
+import { BlueprintsPage } from './pages/blueprints'
+import { dbGetBlueprints as dbGetBlueprintsList } from './lib/atoms/database'
+
+app.get('/dashboard/blueprints', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+
+  const result = await dbGetBlueprintsList({
+    db: c.env.DB,
+    tenantId: tenant.tenantId
+  })
+
+  return c.render(
+    <BlueprintsPage
+      user={tenant.user}
+      blueprints={result.success ? result.data : []}
+      error={result.success ? undefined : result.error}
+    />
+  )
+})
+
+app.get('/dashboard/blueprints/new', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+
+  return c.render(
+    <BlueprintsPage
+      user={tenant.user}
+      blueprints={[]}
+    />
+  )
+})
+
+app.get('/dashboard/blueprints/:id', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const id = c.req.param('id')
+
+  const listResult = await dbGetBlueprintsList({
+    db: c.env.DB,
+    tenantId: tenant.tenantId
+  })
+
+  const bpResult = await dbGetBlueprintById({
+    db: c.env.DB,
+    tenantId: tenant.tenantId,
+    id
+  })
+
+  return c.render(
+    <BlueprintsPage
+      user={tenant.user}
+      blueprints={listResult.success ? listResult.data : []}
+      selectedBlueprint={bpResult.success && bpResult.data ? JSON.stringify(bpResult.data) : undefined}
+      error={bpResult.success ? undefined : bpResult.error}
+    />
+  )
+})
+
 // Bots Management
 import { BotsPage } from './pages/bots'
 import { BotManagerService } from './lib/organisms/BotManagerService'
@@ -304,6 +361,147 @@ app.post('/api/bots/:id/delete', authMiddleware, async (c) => {
   await botManager.removeBot(botId)
 
   return c.redirect('/dashboard/bots')
+})
+
+// ============================================
+// BLUEPRINT API ENDPOINTS
+// ============================================
+
+import { dbGetBlueprints, dbGetBlueprintById } from './lib/atoms/database'
+import { syncSaveBlueprint, syncDeleteBlueprint } from './lib/molecules/blueprint-sync'
+import { blueprintSchema } from './core/types'
+
+// List all blueprints for tenant
+app.get('/api/blueprints', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+
+  const result = await dbGetBlueprints({
+    db: c.env.DB,
+    tenantId: tenant.tenantId
+  })
+
+  if (!result.success) {
+    return c.json({ success: false, error: result.error }, 500)
+  }
+
+  return c.json({ success: true, data: result.data })
+})
+
+// Get single blueprint
+app.get('/api/blueprints/:id', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const id = c.req.param('id')
+
+  const result = await dbGetBlueprintById({
+    db: c.env.DB,
+    tenantId: tenant.tenantId,
+    id
+  })
+
+  if (!result.success) {
+    return c.json({ success: false, error: result.error }, 500)
+  }
+
+  if (!result.data) {
+    return c.json({ success: false, error: 'Blueprint não encontrado' }, 404)
+  }
+
+  return c.json({ success: true, data: result.data })
+})
+
+// Create new blueprint
+app.post('/api/blueprints', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+
+  try {
+    const body = await c.req.json()
+
+    // Validate blueprint
+    const parsed = blueprintSchema.safeParse(body)
+    if (!parsed.success) {
+      return c.json({
+        success: false,
+        error: `Blueprint inválido: ${parsed.error.message}`
+      }, 400)
+    }
+
+    const result = await syncSaveBlueprint({
+      db: c.env.DB,
+      kv: c.env.BLUEPRINTS_KV,
+      tenantId: tenant.tenantId,
+      blueprint: parsed.data,
+    })
+
+    if (!result.success) {
+      return c.json({ success: false, error: result.error }, 500)
+    }
+
+    return c.json({ success: true, data: result.data }, 201)
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao criar blueprint'
+    }, 500)
+  }
+})
+
+// Update blueprint
+app.put('/api/blueprints/:id', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const id = c.req.param('id')
+
+  try {
+    const body = await c.req.json()
+
+    // Ensure ID matches
+    body.id = id
+
+    // Validate blueprint
+    const parsed = blueprintSchema.safeParse(body)
+    if (!parsed.success) {
+      return c.json({
+        success: false,
+        error: `Blueprint inválido: ${parsed.error.message}`
+      }, 400)
+    }
+
+    const result = await syncSaveBlueprint({
+      db: c.env.DB,
+      kv: c.env.BLUEPRINTS_KV,
+      tenantId: tenant.tenantId,
+      blueprint: parsed.data,
+    })
+
+    if (!result.success) {
+      return c.json({ success: false, error: result.error }, 500)
+    }
+
+    return c.json({ success: true, data: result.data })
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao atualizar blueprint'
+    }, 500)
+  }
+})
+
+// Delete blueprint
+app.delete('/api/blueprints/:id', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const id = c.req.param('id')
+
+  const result = await syncDeleteBlueprint({
+    db: c.env.DB,
+    kv: c.env.BLUEPRINTS_KV,
+    tenantId: tenant.tenantId,
+    blueprintId: id,
+  })
+
+  if (!result.success) {
+    return c.json({ success: false, error: result.error }, 500)
+  }
+
+  return c.json({ success: true })
 })
 
 // ============================================

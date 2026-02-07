@@ -1,0 +1,20 @@
+{
+    "extends": "../../../../../tsconfig.json",
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+        "esModuleInterop": true,
+        "lib": [
+            "ESNext",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "types": [
+            "vite/client"
+        ]
+    },
+    "include": [
+        "./**/*.tsx",
+        "./**/*.ts"
+    ]
+}

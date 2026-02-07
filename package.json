@@ -11,14 +11,19 @@
   "dependencies": {
     "@auth/core": "^0.37.0",
     "@hono/auth-js": "^1.0.0",
+    "@xyflow/react": "^12.10.0",
     "discord-api-types": "^0.38.38",
     "discord-hono": "^0.20.3",
     "grammy": "^1.39.3",
     "hono": "^4.11.7",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.2.3",
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3",
     "vite": "^6.3.5",
     "vite-ssr-components": "^0.5.2",
     "wrangler": "^4.17.0"
