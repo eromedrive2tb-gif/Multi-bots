@@ -573,7 +573,7 @@ app.put('/api/blueprints/:id', authMiddleware, async (c) => {
   }
 })
 
-// Delete blueprint
+// Delete blueprint (DELETE method - for API clients)
 app.delete('/api/blueprints/:id', authMiddleware, async (c) => {
   const tenant = c.get('tenant')
   const id = c.req.param('id')
@@ -591,6 +591,32 @@ app.delete('/api/blueprints/:id', authMiddleware, async (c) => {
 
   return c.json({ success: true })
 })
+
+// Delete blueprint (POST method - for HTML forms/dashboard)
+app.post('/api/blueprints/:id/delete', authMiddleware, async (c) => {
+  const tenant = c.get('tenant')
+  const id = c.req.param('id')
+
+  const result = await syncDeleteBlueprint({
+    db: c.env.DB,
+    kv: c.env.BLUEPRINTS_KV,
+    tenantId: tenant.tenantId,
+    blueprintId: id,
+  })
+
+  if (!result.success) {
+    return c.json({ success: false, error: result.error }, 500)
+  }
+
+  // Check if request wants JSON or redirect
+  const acceptHeader = c.req.header('Accept') || ''
+  if (acceptHeader.includes('application/json')) {
+    return c.json({ success: true })
+  }
+
+  return c.redirect('/dashboard/blueprints')
+})
+
 
 // ============================================
 // SYNC & DEBUG ENDPOINTS
