@@ -7,18 +7,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../core/types'
 import { loginSchema, registerSchema } from '../core/types'
-import {
-    hashPassword,
-    verifyPassword,
-    findUserByEmail,
-    createTenant,
-    createUser,
-    createSession,
-    deleteSession,
-    findUserById,
-    updateUser,
-    updatePassword
-} from '../lib/auth'
+import { AuthService } from '../lib/organisms/AuthService'
 import { setSessionCookie, clearSessionCookie, authMiddleware } from '../middleware/auth'
 import { getCookie } from 'hono/cookie'
 
@@ -44,24 +33,15 @@ authRoutes.post('/api/auth/login', async (c) => {
             return c.json({ success: false, error: "Email ou senha inválidos" }, 400)
         }
 
-        // Find user
-        const user = await findUserByEmail(c.env.DB, email)
-        if (!user) {
-            return c.json({ success: false, error: "Email ou senha inválidos" }, 401)
+        const authService = new AuthService(c.env.DB)
+        const loginResult = await authService.login(email, password)
+
+        if (!loginResult.success || !loginResult.user || !loginResult.sessionId) {
+            return c.json({ success: false, error: loginResult.error || "Login falhou" }, 401)
         }
 
-        // Verify password
-        const valid = await verifyPassword(password, user.passwordHash)
-        if (!valid) {
-            return c.json({ success: false, error: "Email ou senha inválidos" }, 401)
-        }
-
-        // Create session
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-        const sessionId = await createSession(c.env.DB, user.id, user.tenantId, expiresAt)
-
-        setSessionCookie(c, sessionId)
-        return c.json({ success: true, user: { id: user.id, email: user.email, name: user.name, tenantId: user.tenantId } })
+        setSessionCookie(c, loginResult.sessionId)
+        return c.json({ success: true, user: loginResult.user })
 
     } catch (error) {
         console.error('Login error:', error)
@@ -82,25 +62,15 @@ authRoutes.post('/api/auth/register', async (c) => {
             return c.json({ success: false, error }, 400)
         }
 
-        // Check if email exists
-        const existingUser = await findUserByEmail(c.env.DB, email)
-        if (existingUser) {
-            return c.json({ success: false, error: "Email já cadastrado" }, 409)
+        const authService = new AuthService(c.env.DB)
+        const registerResult = await authService.register(name, email, password)
+
+        if (!registerResult.success || !registerResult.user || !registerResult.sessionId) {
+            return c.json({ success: false, error: registerResult.error || "Registro falhou" }, 409)
         }
 
-        // Create tenant
-        const tenantId = await createTenant(c.env.DB, name, email)
-
-        // Create user
-        const passwordHash = await hashPassword(password)
-        const userId = await createUser(c.env.DB, tenantId, email, name, passwordHash)
-
-        // Create session
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        const sessionId = await createSession(c.env.DB, userId, tenantId, expiresAt)
-
-        setSessionCookie(c, sessionId)
-        return c.json({ success: true, user: { id: userId, email, name, tenantId } })
+        setSessionCookie(c, registerResult.sessionId)
+        return c.json({ success: true, user: registerResult.user })
 
     } catch (error) {
         console.error('Register error:', error)
@@ -112,7 +82,8 @@ authRoutes.post('/api/auth/register', async (c) => {
 authRoutes.post('/api/auth/logout', async (c) => {
     const sessionId = getCookie(c, 'session_id')
     if (sessionId) {
-        await deleteSession(c.env.DB, sessionId)
+        const authService = new AuthService(c.env.DB)
+        await authService.logout(sessionId)
     }
     clearSessionCookie(c)
     return c.json({ success: true })
@@ -138,15 +109,14 @@ authRoutes.post('/api/settings/profile', authMiddleware, async (c) => {
         return c.json({ success: false, error: 'Nome é obrigatório' }, 400)
     }
 
-    try {
-        await updateUser(c.env.DB, tenant.user.id, { name })
-        return c.json({ success: true })
-    } catch (error) {
-        return c.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Erro ao atualizar perfil'
-        }, 500)
+    const authService = new AuthService(c.env.DB)
+    const result = await authService.updateProfile(tenant.user.id, name)
+
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 500)
     }
+
+    return c.json({ success: true })
 })
 
 authRoutes.post('/api/settings/password', authMiddleware, async (c) => {
@@ -157,27 +127,14 @@ authRoutes.post('/api/settings/password', authMiddleware, async (c) => {
         return c.json({ success: false, error: 'As senhas são obrigatórias' }, 400)
     }
 
-    try {
-        const user = await findUserById(c.env.DB, tenant.user.id)
-        if (!user) {
-            return c.json({ success: false, error: 'Usuário não encontrado' }, 404)
-        }
+    const authService = new AuthService(c.env.DB)
+    const result = await authService.updatePassword(tenant.user.id, currentPassword, newPassword)
 
-        const isValid = await verifyPassword(currentPassword, user.passwordHash)
-        if (!isValid) {
-            return c.json({ success: false, error: 'Senha atual incorreta' }, 400)
-        }
-
-        const newHash = await hashPassword(newPassword)
-        await updatePassword(c.env.DB, user.id, newHash)
-
-        return c.json({ success: true })
-    } catch (error) {
-        return c.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Erro ao alterar senha'
-        }, 500)
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 400)
     }
+
+    return c.json({ success: true })
 })
 
 export { authRoutes }

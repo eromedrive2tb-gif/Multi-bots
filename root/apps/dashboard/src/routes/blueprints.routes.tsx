@@ -5,15 +5,11 @@
  */
 
 import { Hono } from 'hono'
-import type { Env, UniversalContext } from '../core/types'
+import type { Env } from '../core/types'
 import { blueprintSchema } from '../core/types'
 import { authMiddleware } from '../middleware/auth'
-import { dbGetBlueprints, dbGetBlueprintById } from '../lib/atoms/database'
-import { syncSaveBlueprint, syncDeleteBlueprint, fullSyncBlueprintsToKv } from '../lib/molecules/blueprint-sync'
-import { executeFromTrigger } from '../core/engine'
-
-// Pages
-import { BlueprintsPage } from '../pages/blueprints'
+import { FlowService } from '../lib/organisms/FlowService'
+import { BlueprintService } from '../lib/organisms/BlueprintService'
 
 const blueprintsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -24,47 +20,30 @@ const blueprintsRoutes = new Hono<{ Bindings: Env }>()
 // List all blueprints
 blueprintsRoutes.get('/api/blueprints', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
-    try {
-        const result = await dbGetBlueprints({
-            db: c.env.DB,
-            tenantId: tenant.tenantId
-        })
+    const blueprintService = new BlueprintService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId)
 
-        if (!result.success) {
-            return c.json({ success: false, error: result.error }, 500)
-        }
+    const result = await blueprintService.listBlueprints()
 
-        return c.json({ success: true, data: result.data })
-    } catch (error) {
-        return c.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Erro ao buscar blueprints'
-        }, 500)
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 500)
     }
+
+    return c.json({ success: true, data: result.data })
 })
 
 // Get single blueprint
 blueprintsRoutes.get('/api/blueprints/:id', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const id = c.req.param('id')
-    try {
-        const result = await dbGetBlueprintById({
-            db: c.env.DB,
-            tenantId: tenant.tenantId,
-            id
-        })
 
-        if (!result.success) {
-            return c.json({ success: false, error: result.error }, 404)
-        }
+    const blueprintService = new BlueprintService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId)
+    const result = await blueprintService.getBlueprint(id)
 
-        return c.json({ success: true, data: result.data })
-    } catch (error) {
-        return c.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Erro ao buscar blueprint'
-        }, 500)
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 404)
     }
+
+    return c.json({ success: true, data: result.data })
 })
 
 // Create new blueprint
@@ -83,12 +62,8 @@ blueprintsRoutes.post('/api/blueprints', authMiddleware, async (c) => {
             }, 400)
         }
 
-        const result = await syncSaveBlueprint({
-            db: c.env.DB,
-            kv: c.env.BLUEPRINTS_KV,
-            tenantId: tenant.tenantId,
-            blueprint: parsed.data,
-        })
+        const blueprintService = new BlueprintService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId)
+        const result = await blueprintService.saveBlueprint(parsed.data)
 
         if (!result.success) {
             return c.json({ success: false, error: result.error }, 500)
@@ -110,8 +85,6 @@ blueprintsRoutes.put('/api/blueprints/:id', authMiddleware, async (c) => {
 
     try {
         const body = await c.req.json()
-
-        // Ensure ID matches
         body.id = id
 
         // Validate blueprint
@@ -123,12 +96,8 @@ blueprintsRoutes.put('/api/blueprints/:id', authMiddleware, async (c) => {
             }, 400)
         }
 
-        const result = await syncSaveBlueprint({
-            db: c.env.DB,
-            kv: c.env.BLUEPRINTS_KV,
-            tenantId: tenant.tenantId,
-            blueprint: parsed.data,
-        })
+        const blueprintService = new BlueprintService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId)
+        const result = await blueprintService.saveBlueprint(parsed.data)
 
         if (!result.success) {
             return c.json({ success: false, error: result.error }, 500)
@@ -143,17 +112,13 @@ blueprintsRoutes.put('/api/blueprints/:id', authMiddleware, async (c) => {
     }
 })
 
-// Delete blueprint (DELETE method - for API clients)
+// Delete blueprint (DELETE method)
 blueprintsRoutes.delete('/api/blueprints/:id', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const id = c.req.param('id')
 
-    const result = await syncDeleteBlueprint({
-        db: c.env.DB,
-        kv: c.env.BLUEPRINTS_KV,
-        tenantId: tenant.tenantId,
-        blueprintId: id,
-    })
+    const blueprintService = new BlueprintService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId)
+    const result = await blueprintService.deleteBlueprint(id)
 
     if (!result.success) {
         return c.json({ success: false, error: result.error }, 500)
@@ -162,17 +127,13 @@ blueprintsRoutes.delete('/api/blueprints/:id', authMiddleware, async (c) => {
     return c.json({ success: true })
 })
 
-// Delete blueprint
+// Delete blueprint (POST method)
 blueprintsRoutes.post('/api/blueprints/:id/delete', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const id = c.req.param('id')
 
-    const result = await syncDeleteBlueprint({
-        db: c.env.DB,
-        kv: c.env.BLUEPRINTS_KV,
-        tenantId: tenant.tenantId,
-        blueprintId: id,
-    })
+    const blueprintService = new BlueprintService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId)
+    const result = await blueprintService.deleteBlueprint(id)
 
     if (!result.success) {
         return c.json({ success: false, error: result.error }, 500)
@@ -189,11 +150,8 @@ blueprintsRoutes.post('/api/blueprints/:id/delete', authMiddleware, async (c) =>
 blueprintsRoutes.post('/api/blueprints/sync', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
 
-    const result = await fullSyncBlueprintsToKv({
-        db: c.env.DB,
-        kv: c.env.BLUEPRINTS_KV,
-        tenantId: tenant.tenantId,
-    })
+    const blueprintService = new BlueprintService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId)
+    const result = await blueprintService.fullSyncToKv()
 
     if (!result.success) {
         return c.json({ success: false, error: result.error }, 500)
@@ -215,31 +173,8 @@ blueprintsRoutes.post('/api/debug/trigger', authMiddleware, async (c) => {
         const trigger = body.trigger || '/start'
         const userId = body.userId || 'debug_user_123'
 
-        // Build mock UniversalContext
-        const ctx: UniversalContext = {
-            provider: 'tg',
-            tenantId: tenant.tenantId,
-            userId,
-            chatId: userId,
-            botToken: 'debug_token',
-            botId: 'debug_bot_id',
-            metadata: {
-                userName: tenant.user.name,
-                lastInput: trigger,
-                command: trigger.startsWith('/') ? trigger.slice(1) : undefined,
-            },
-        }
-
-        console.log('[DEBUG] Testing trigger:', trigger, 'for tenant:', tenant.tenantId)
-
-        // Execute flow
-        const result = await executeFromTrigger(
-            {
-                blueprints: c.env.BLUEPRINTS_KV,
-                sessions: c.env.SESSIONS_KV,
-            },
-            ctx
-        )
+        const flowService = new FlowService(c.env, tenant.tenantId)
+        const result = await flowService.debugTrigger(trigger, userId, tenant.user.name)
 
         console.log('[DEBUG] Flow result:', JSON.stringify(result))
 

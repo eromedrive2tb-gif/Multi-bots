@@ -218,6 +218,15 @@ export const blueprintSchema = z.object({
 
 export type Blueprint = z.infer<typeof blueprintSchema>
 
+export interface BlueprintListItem {
+    id: string
+    name: string
+    trigger: string
+    version: string
+    isActive: boolean
+    updatedAt: string | Date
+}
+
 // ============================================
 // RESULT PATTERN
 // ============================================

@@ -3,7 +3,7 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
 import { StatsGrid } from '../components/organisms/StatsGrid'
-import { Card, CardHeader, CardBody } from '../components/atoms/Card'
+import { SystemActivity } from '../components/organisms/SystemActivity'
 import { useUser } from '../client/context/UserContext'
 import type { AnalyticsDashboardData } from '../lib/molecules/analytics-aggregator'
 
@@ -27,7 +27,11 @@ export const DashboardPage: React.FC = () => {
         totalBots: 0,
         activeBots: 0,
         totalFlowStarts: 0,
-        totalErrors: 0
+        totalFlowCompletions: 0,
+        totalErrors: 0,
+        completionRate: 0,
+        activeBlueprints: 0,
+        totalBlueprints: 0
     }
 
     const totalUsers = analyticsData?.bots?.reduce((sum, bot) => sum + (bot.totalUsers || 0), 0) || 0
@@ -76,47 +80,19 @@ export const DashboardPage: React.FC = () => {
             {isLoading ? (
                 <div className="p-8 text-center text-muted">Carregando métricas...</div>
             ) : (
-                <StatsGrid stats={stats} />
+                <>
+                    <StatsGrid stats={stats} />
+                    <div className="dashboard-section">
+                        <SystemActivity overview={overview} />
+                    </div>
+                </>
             )}
 
-            <div className="dashboard-section">
-                <Card>
-                    <CardHeader>
-                        <h3>Atividade do Sistema</h3>
-                    </CardHeader>
-                    <CardBody>
-                        <div className="activity-list">
-                            {overview.totalBots > 0 ? (
-                                <div className="activity-item">
-                                    <span className="activity-icon">🟢</span>
-                                    <span className="activity-text">
-                                        {overview.activeBots} de {overview.totalBots} bots estão ativos e processando mensagens
-                                    </span>
-                                </div>
-                            ) : (
-                                <div className="activity-item">
-                                    <span className="activity-icon">ℹ️</span>
-                                    <span className="activity-text">Nenhum bot configurado ainda. Vá para a aba "Gerenciar Bots".</span>
-                                </div>
-                            )}
-
-                            {overview.totalErrors > 0 && (
-                                <div className="activity-item">
-                                    <span className="activity-icon">⚠️</span>
-                                    <span className="activity-text">
-                                        {overview.totalErrors} erros detectados nas últimas execuções de fluxo.
-                                    </span>
-                                </div>
-                            )}
-
-                            <div className="activity-item">
-                                <span className="activity-icon">⚙️</span>
-                                <span className="activity-text">Integrações com Telegram/Discord funcionando normalmente</span>
-                            </div>
-                        </div>
-                    </CardBody>
-                </Card>
-            </div>
+            <style>{`
+                .dashboard-welcome { margin-bottom: 24px; }
+                .dashboard-welcome h2 { font-size: 1.75rem; margin-bottom: 4px; }
+                .dashboard-section { margin-top: 24px; }
+            `}</style>
         </DashboardLayout>
     )
 }

@@ -132,4 +132,69 @@ export class BotManagerService {
             bots.map(bot => healthCheckBot({ db: this.db, bot }))
         )
     }
+
+    /**
+     * Define o webhook de um bot específico
+     */
+    async setBotWebhook(id: string): Promise<{ success: boolean; webhookUrl?: string; error?: string }> {
+        const bot = await this.getBot(id)
+
+        if (!bot) {
+            return { success: false, error: 'Bot não encontrado' }
+        }
+
+        if (bot.provider === 'telegram') {
+            const tgCreds = bot.credentials as TelegramCredentials
+            const webhookUrl = `${this.baseWebhookUrl}/webhooks/telegram/${bot.id}`
+
+            try {
+                await tgSetWebhook({
+                    token: tgCreds.token,
+                    url: webhookUrl,
+                    secretToken: bot.webhookSecret || undefined,
+                })
+                return { success: true, webhookUrl }
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Erro ao configurar webhook'
+                }
+            }
+        }
+
+        return { success: false, error: 'Provider não suportado para webhook automático' }
+    }
+
+    /**
+     * Atualiza webhooks de todos os bots (útil após mudança de domínio)
+     */
+    async refreshAllWebhooks(): Promise<{ results: { botId: string; name: string; success: boolean; error?: string }[] }> {
+        const bots = await this.listBots()
+        const results = []
+
+        for (const bot of bots) {
+            if (bot.provider === 'telegram') {
+                const tgCreds = bot.credentials as TelegramCredentials
+                const webhookUrl = `${this.baseWebhookUrl}/webhooks/telegram/${bot.id}`
+
+                try {
+                    await tgSetWebhook({
+                        token: tgCreds.token,
+                        url: webhookUrl,
+                        secretToken: bot.webhookSecret || undefined,
+                    })
+                    results.push({ botId: bot.id, name: bot.name, success: true })
+                } catch (error) {
+                    results.push({
+                        botId: bot.id,
+                        name: bot.name,
+                        success: false,
+                        error: error instanceof Error ? error.message : 'Erro desconhecido'
+                    })
+                }
+            }
+        }
+
+        return { results }
+    }
 }

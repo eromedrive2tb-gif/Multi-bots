@@ -8,8 +8,9 @@ import { FilterBar } from '../components/organisms/FilterBar'
 import { MetricsSummary } from '../components/organisms/MetricsSummary'
 import { BlueprintMetricsTable } from '../components/organisms/BlueprintMetricsTable'
 import { BotStatusChart } from '../components/organisms/BotStatusChart'
+import { QuickInsights } from '../components/organisms/QuickInsights'
 import type { AnalyticsDashboardData } from '../lib/molecules/analytics-aggregator'
-import type { AnalyticsFilterParams, BlueprintMetric } from '../core/analytics-types'
+import type { AnalyticsFilterParams } from '../core/analytics-types'
 
 export const AnalyticsPage: React.FC = () => {
     const [searchParams] = useSearchParams()
@@ -111,71 +112,19 @@ export const AnalyticsPage: React.FC = () => {
                 </div>
 
                 {/* Quick Insights */}
-                {data.blueprints.length > 0 && (
-                    <Card className="analytics-card insights">
-                        <CardHeader>
-                            <h3>💡 Insights Rápidos</h3>
-                        </CardHeader>
-                        <CardBody>
-                            <div className="insights-grid">
-                                {/* Top Blueprint */}
-                                <div className="insight-item">
-                                    <span className="insight-icon">🏆</span>
-                                    <div className="insight-content">
-                                        <span className="insight-label">Blueprint mais usado</span>
-                                        <span className="insight-value">
-                                            {[...data.blueprints].sort((a: BlueprintMetric, b: BlueprintMetric) => b.flowStarts - a.flowStarts)[0]?.blueprintName || '-'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Best Conversion */}
-                                {data.blueprints.filter((b: BlueprintMetric) => b.flowStarts > 0).length > 0 && (
-                                    <div className="insight-item">
-                                        <span className="insight-icon">📈</span>
-                                        <div className="insight-content">
-                                            <span className="insight-label">Melhor conversão</span>
-                                            <span className="insight-value">
-                                                {data.blueprints
-                                                    .filter((b: BlueprintMetric) => b.flowStarts > 0)
-                                                    .sort((a: BlueprintMetric, b: BlueprintMetric) => b.completionRate - a.completionRate)[0]?.blueprintName || '-'}
-                                                {' '}
-                                                ({data.blueprints
-                                                    .filter((b: BlueprintMetric) => b.flowStarts > 0)
-                                                    .sort((a: BlueprintMetric, b: BlueprintMetric) => b.completionRate - a.completionRate)[0]?.completionRate || 0}%)
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Active Bots */}
-                                <div className="insight-item">
-                                    <span className="insight-icon">🟢</span>
-                                    <div className="insight-content">
-                                        <span className="insight-label">Bots ativos</span>
-                                        <span className="insight-value">
-                                            {data.overview.activeBots} de {data.overview.totalBots}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Error Alert */}
-                                {data.overview.totalErrors > 0 && (
-                                    <div className="insight-item alert">
-                                        <span className="insight-icon">⚠️</span>
-                                        <div className="insight-content">
-                                            <span className="insight-label">Erros detectados</span>
-                                            <span className="insight-value">
-                                                {data.overview.totalErrors} erros registrados
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </CardBody>
-                    </Card>
-                )}
+                <QuickInsights
+                    overview={data.overview}
+                    blueprints={data.blueprints}
+                />
             </div>
+
+            <style>{`
+                .analytics-page { display: flex; flex-direction: column; gap: 24px; }
+                .analytics-header { margin-bottom: 8px; }
+                .analytics-header h2 { font-size: 1.5rem; margin: 0 0 4px 0; }
+                .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+                @media (max-width: 1024px) { .analytics-grid { grid-template-columns: 1fr; } }
+            `}</style>
         </DashboardLayout>
     )
 }

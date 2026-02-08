@@ -9,8 +9,7 @@ import type { Context } from 'hono'
 import type { Env, BotProvider, TelegramCredentials, DiscordCredentials } from '../core/types'
 import { authMiddleware } from '../middleware/auth'
 import { BotManagerService } from '../lib/organisms/BotManagerService'
-import { dbGetBots, dbGetBotById } from '../lib/atoms/database'
-import { tgSetWebhook } from '../lib/atoms/telegram'
+// dbGetBots, dbGetBotById, tgSetWebhook removed as they are now used inside BotManagerService
 
 // Pages
 import { BotsPage } from '../pages/bots'
@@ -46,11 +45,11 @@ function getBaseUrl(c: Context<{ Bindings: Env }>): string {
 // List all bots
 botsRoutes.get('/api/bots', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
+    const origin = getBaseUrl(c) // Base URL needed for manager (even if not used for list)
+
     try {
-        const bots = await dbGetBots({
-            db: c.env.DB,
-            tenantId: tenant.tenantId
-        })
+        const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+        const bots = await botManager.listBots()
         return c.json({ success: true, data: bots })
     } catch (error) {
         return c.json({
@@ -136,74 +135,33 @@ botsRoutes.post('/api/bots/:id/webhook', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const botId = c.req.param('id')
 
-    const webhookBaseUrl = getBaseUrl(c)
-    const bot = await dbGetBotById({ db: c.env.DB, id: botId })
+    const origin = getBaseUrl(c)
+    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
 
-    if (!bot || bot.tenantId !== tenant.tenantId) {
-        return c.json({ success: false, error: 'Bot não encontrado' }, 404)
+    const result = await botManager.setBotWebhook(botId)
+
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, result.error === 'Bot não encontrado' ? 404 : 500)
     }
 
-    if (bot.provider === 'telegram') {
-        const tgCreds = bot.credentials as TelegramCredentials
-        const webhookUrl = `${webhookBaseUrl}/webhooks/telegram/${botId}`
-
-        try {
-            await tgSetWebhook({
-                token: tgCreds.token,
-                url: webhookUrl,
-                secretToken: bot.webhookSecret || undefined,
-            })
-
-            return c.json({
-                success: true,
-                message: `Webhook configurado para ${webhookUrl}`,
-                webhookUrl,
-            })
-        } catch (error) {
-            return c.json({
-                success: false,
-                error: error instanceof Error ? error.message : 'Erro ao configurar webhook'
-            }, 500)
-        }
-    }
-
-    return c.json({ success: false, error: 'Provider não suportado' }, 400)
+    return c.json({
+        success: true,
+        message: `Webhook configurado para ${result.webhookUrl}`,
+        webhookUrl: result.webhookUrl,
+    })
 })
 
 // Refresh ALL webhooks for tenant (useful after domain change)
 botsRoutes.post('/api/bots/webhooks/refresh', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
-    const webhookBaseUrl = getBaseUrl(c)
+    const origin = getBaseUrl(c)
 
-    const bots = await dbGetBots({ db: c.env.DB, tenantId: tenant.tenantId })
-    const results: { botId: string; name: string; success: boolean; webhookUrl?: string; error?: string }[] = []
-
-    for (const bot of bots) {
-        if (bot.provider === 'telegram') {
-            const tgCreds = bot.credentials as TelegramCredentials
-            const webhookUrl = `${webhookBaseUrl}/webhooks/telegram/${bot.id}`
-
-            try {
-                await tgSetWebhook({
-                    token: tgCreds.token,
-                    url: webhookUrl,
-                    secretToken: bot.webhookSecret || undefined,
-                })
-                results.push({ botId: bot.id, name: bot.name, success: true, webhookUrl })
-            } catch (error) {
-                results.push({
-                    botId: bot.id,
-                    name: bot.name,
-                    success: false,
-                    error: error instanceof Error ? error.message : 'Erro'
-                })
-            }
-        }
-    }
+    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+    const { results } = await botManager.refreshAllWebhooks()
 
     return c.json({
         success: true,
-        baseUrl: webhookBaseUrl,
+        baseUrl: origin,
         results,
     })
 })

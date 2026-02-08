@@ -2,7 +2,8 @@
 import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
-import { BotCard } from '../components/organisms/BotCard'
+import { BotGrid } from '../components/organisms/BotGrid'
+import { BotStats } from '../components/molecules/BotStats'
 import { AddBotForm } from '../components/organisms/AddBotForm'
 import { Alert } from '../components/atoms/Alert'
 import type { Bot } from '../core/types'
@@ -21,66 +22,48 @@ export const BotsPage: React.FC = () => {
     })
 
     const onlineBots = bots.filter(b => b.status === 'online').length
-    const totalBots = bots.length
 
     const refreshBots = () => {
         queryClient.invalidateQueries({ queryKey: ['bots'] })
     }
 
     return (
-        <DashboardLayout
-            title="Gerenciar Bots"
-            currentPath="/dashboard/bots"
-        >
-            {/* Error Alert */}
+        <DashboardLayout title="Gerenciar Bots" currentPath="/dashboard/bots">
             {error && (
-                <div className="error-alert-container">
+                <div style={{ marginBottom: '24px' }}>
                     <Alert type="error" message={(error as Error).message} />
                 </div>
             )}
 
-            <div className="bots-header">
-                <div className="bots-stats">
-                    <div className="stat-item">
-                        <span className="stat-value">{totalBots}</span>
-                        <span className="stat-label">Total de Bots</span>
-                    </div>
-                    <div className="stat-item">
-                        <span className="stat-value stat-online">{onlineBots}</span>
-                        <span className="stat-label">Online</span>
-                    </div>
-                    <div className="stat-item">
-                        <span className="stat-value stat-offline">{totalBots - onlineBots}</span>
-                        <span className="stat-label">Offline/Erro</span>
-                    </div>
-                </div>
-            </div>
+            <BotStats total={bots.length} online={onlineBots} />
 
             <div className="bots-content">
-                <div className="bots-grid">
-                    {isLoading ? (
-                        <div className="empty-state">Carregando bots...</div>
-                    ) : bots.length === 0 ? (
-                        <div className="empty-state">
-                            <span className="empty-icon">🤖</span>
-                            <h3>Nenhum bot configurado</h3>
-                            <p>Adicione seu primeiro bot para começar</p>
-                        </div>
-                    ) : (
-                        bots.map(bot => (
-                            <BotCard
-                                key={bot.id}
-                                bot={bot}
-                                onUpdate={refreshBots}
-                            />
-                        ))
-                    )}
+                <div className="bots-main">
+                    <BotGrid bots={bots} isLoading={isLoading} onUpdate={refreshBots} />
                 </div>
 
                 <div className="bots-sidebar">
                     <AddBotForm onSuccess={refreshBots} />
                 </div>
             </div>
+
+            <style>{`
+                .bots-content {
+                    display: grid;
+                    grid-template-columns: 1fr 350px;
+                    gap: 32px;
+                    align-items: start;
+                }
+                
+                @media (max-width: 1024px) {
+                    .bots-content {
+                        grid-template-columns: 1fr;
+                    }
+                    .bots-sidebar {
+                        order: -1;
+                    }
+                }
+            `}</style>
         </DashboardLayout>
     )
 }
