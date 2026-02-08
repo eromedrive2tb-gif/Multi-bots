@@ -127,6 +127,10 @@ interface StepExecutionResult {
 /**
  * Execute a single step from the blueprint
  */
+import { dbLogAnalyticsEvent } from '../lib/atoms/database/db-log-analytics'
+
+// ... existing imports ...
+
 async function executeStep(
     step: BlueprintStep,
     stepId: string,
@@ -136,8 +140,35 @@ async function executeStep(
     // Inject variables into params
     const resolvedParams = injectVariablesDeep(step.params, ctx, session)
 
+    // Create action context with metadata
+    const actionCtx: UniversalContext = {
+        ...ctx,
+        metadata: {
+            ...ctx.metadata,
+            currentStepId: stepId,
+            currentFlowId: session.currentFlowId
+        }
+    }
+
+    // DEBUG: Auto-log step enter if DB is available (Analytics)
+    if (ctx.db && session.currentFlowId) {
+        // We do this concurrently to not block execution
+        dbLogAnalyticsEvent({
+            db: ctx.db,
+            tenantId: ctx.tenantId,
+            botId: ctx.botId,
+            blueprintId: session.currentFlowId,
+            stepId: stepId,
+            userId: ctx.userId,
+            eventType: 'step_enter',
+            eventData: {
+                action: step.action
+            }
+        }).catch(err => console.error('Failed to log step_enter', err))
+    }
+
     // Execute the action via registry
-    const result = await executeAction(step.action, ctx, resolvedParams)
+    const result = await executeAction(step.action, actionCtx, resolvedParams)
 
     if (result.success) {
         return {
@@ -211,6 +242,22 @@ export async function executeFlow(
         const bpResult = await getBlueprintFromKv(kv.blueprints, ctx.tenantId, flowId)
         if (bpResult.success) {
             blueprint = bpResult.data
+
+            // Log flow_start (Analytics) - Explicit flowId means START
+            if (ctx.db && !session.currentFlowId && blueprint) {
+                dbLogAnalyticsEvent({
+                    db: ctx.db,
+                    tenantId: ctx.tenantId,
+                    botId: ctx.metadata.raw ? (ctx.metadata.raw as any).bot_id || 'unknown' : 'unknown',
+                    blueprintId: blueprint.id,
+                    stepId: 'flow_start',
+                    userId: ctx.userId,
+                    eventType: 'flow_start',
+                    eventData: {
+                        method: 'direct_execution'
+                    }
+                }).catch(err => console.error('Failed to log flow_start (direct)', err))
+            }
         } else {
             return { success: false, stepsExecuted: 0, error: bpResult.error }
         }
@@ -252,6 +299,22 @@ export async function executeFlow(
             // Important: Clear session current step to avoid "resuming" logic
             session.currentStepId = undefined
             session.currentFlowId = blueprint.id
+
+            // Log flow_start (Analytics) - Only here, on explicit start
+            if (ctx.db) {
+                dbLogAnalyticsEvent({
+                    db: ctx.db,
+                    tenantId: ctx.tenantId,
+                    botId: ctx.botId,
+                    blueprintId: blueprint.id,
+                    stepId: 'flow_start',
+                    userId: ctx.userId,
+                    eventType: 'flow_start',
+                    eventData: {
+                        trigger: trigger
+                    }
+                }).catch(err => console.error('Failed to log flow_start', err))
+            }
         }
     }
 
@@ -287,7 +350,23 @@ export async function executeFlow(
 
         // Handle success
         if (result.success) {
-            stepsExecuted++ // Only count successful executions? Or attempts? Let's count successes.
+            stepsExecuted++ // Only count successful executions
+
+            // Log step_complete
+            if (ctx.db && session.currentFlowId) {
+                dbLogAnalyticsEvent({
+                    db: ctx.db,
+                    tenantId: ctx.tenantId,
+                    botId: ctx.botId,
+                    blueprintId: session.currentFlowId,
+                    stepId: currentStepId!, // Use currentStepId from loop
+                    userId: ctx.userId,
+                    eventType: 'step_complete',
+                    eventData: {
+                        action: step.action
+                    }
+                }).catch(err => console.error('Failed to log step_complete', err))
+            }
 
             const resultData = result.data as any
             let nextId: string | null = step.next_step ?? null
@@ -359,6 +438,23 @@ export async function executeFlow(
         // ... (error handling logic remains similar)
 
         if (!result.success) {
+            // Log step_error
+            if (ctx.db && session.currentFlowId) {
+                dbLogAnalyticsEvent({
+                    db: ctx.db,
+                    tenantId: ctx.tenantId,
+                    botId: ctx.botId,
+                    blueprintId: session.currentFlowId,
+                    stepId: currentStepId || 'unknown',
+                    userId: ctx.userId,
+                    eventType: 'step_error',
+                    eventData: {
+                        action: step.action,
+                        error: result.error
+                    }
+                }).catch(err => console.error('Failed to log step_error', err))
+            }
+
             // Check for error_handler step in blueprint
             if (blueprint.steps['error_handler'] && currentStepId !== 'error_handler') {
                 currentStepId = 'error_handler'

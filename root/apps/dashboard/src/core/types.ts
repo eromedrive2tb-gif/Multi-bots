@@ -167,11 +167,15 @@ export interface UniversalContext {
     userId: string
     chatId: string
     botToken: string
+    botId: string // Database ID of the bot
+    db?: D1Database // Optional database access for atoms/actions
     metadata: {
         userName?: string
         lastInput?: string
         command?: string
         raw?: unknown
+        currentStepId?: string
+        currentFlowId?: string
     }
 }
 

@@ -5,8 +5,7 @@
  */
 
 import type { UniversalContext, Result } from './types'
-import { tgSendText } from '../lib/atoms/telegram'
-import { dcSendMessage } from '../lib/atoms/discord'
+
 import { setVariable } from '../lib/molecules/set-variable'
 import { condition } from '../lib/molecules/condition'
 import { collectInput } from '../lib/molecules/collect-input'
@@ -31,60 +30,8 @@ const ACTION_REGISTRY: Map<string, ActionFn> = new Map()
 // PROVIDER-SPECIFIC IMPLEMENTATIONS
 // ============================================
 
-/**
- * send_message - Universal message sending action
- * Dispatches to provider-specific atom based on ctx.provider
- */
-async function sendMessage(
-    ctx: UniversalContext,
-    params: Record<string, unknown>
-): Promise<Result<unknown>> {
-    const text = String(params.text ?? '')
-    const parseMode = params.parseMode as 'HTML' | 'Markdown' | 'MarkdownV2' | undefined
+import { sendMessage } from '../lib/molecules/send-message'
 
-    try {
-        switch (ctx.provider) {
-            case 'tg': {
-                const result = await tgSendText({
-                    token: ctx.botToken,
-                    chatId: ctx.chatId,
-                    text,
-                    parseMode: parseMode ?? 'HTML',
-                })
-                if (result.success) {
-                    return { success: true, data: { messageId: result.messageId } }
-                }
-                return { success: false, error: result.error ?? 'Failed to send message' }
-            }
-
-            case 'dc': {
-                const result = await dcSendMessage({
-                    token: ctx.botToken,
-                    channelId: ctx.chatId,
-                    content: text,
-                    embed: params.embed as { title?: string; description?: string; color?: number } | undefined,
-                })
-                if (result.success) {
-                    return { success: true, data: { messageId: result.messageId } }
-                }
-                return { success: false, error: result.error ?? 'Failed to send message' }
-            }
-
-            case 'wa': {
-                // WhatsApp implementation placeholder
-                return { success: false, error: 'WhatsApp provider not yet implemented' }
-            }
-
-            default:
-                return { success: false, error: `Unknown provider: ${ctx.provider}` }
-        }
-    } catch (error) {
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error in send_message',
-        }
-    }
-}
 
 /**
  * wait - Delays execution (useful for flow pacing)

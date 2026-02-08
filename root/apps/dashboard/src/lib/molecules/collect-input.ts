@@ -1,4 +1,5 @@
 import type { UniversalContext, Result } from '../../core/types'
+import { sendMessage } from './send-message'
 
 export async function collectInput(
     ctx: UniversalContext,
@@ -90,13 +91,22 @@ export async function collectInput(
         // If blueprint has retry logic?
 
         if (promptOnInvalid) {
-            // We should send the message.
-            // But actions shouldn't call other actions directly?
-            // We can return a specific structure for the engine to handle?
-            // Or just fail and let `error_handler` handle it?
+            // Invalid input: Send prompt and suspend again (retry)
+            await sendMessage(ctx, {
+                text: promptOnInvalid,
+                parse_mode: 'HTML' // Assume HTML for flexibility
+            })
 
-            // Allow retry: Return suspended again but with 'invalid' flag?
-            // Simple approach: Error.
+            return {
+                success: true,
+                data: {
+                    suspended: true,
+                    wait_for_input: true,
+                    validation_failed: true
+                }
+            }
+        } else {
+            // No prompt defined, fatal error
             return {
                 success: false,
                 error: `Input validation failed: ${validation}`
