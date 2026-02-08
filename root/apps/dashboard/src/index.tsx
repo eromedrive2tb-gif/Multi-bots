@@ -21,55 +21,13 @@ import { SettingsPage } from './pages/settings'
 const app = new Hono<{ Bindings: Env }>()
 
 // Apply renderer middleware
-app.use(renderer)
+app.use('*', renderer)
 
 // ============================================
-// REGISTER ALL ROUTES
+// REGISTER API ROUTES
 // ============================================
 
 registerRoutes(app)
-
-// ============================================
-// CORE PROTECTED ROUTES
-// ============================================
-
-// Home redirect
-app.get('/', async (c) => {
-  return c.redirect('/login')
-})
-
-// Dashboard
-app.get('/dashboard', authMiddleware, async (c) => {
-  const tenant = c.get('tenant')
-  return c.render(
-    <DashboardPage
-      user={tenant.user}
-      tenantId={tenant.tenantId}
-    />
-  )
-})
-
-// Settings
-app.get('/dashboard/settings', authMiddleware, async (c) => {
-  const tenant = c.get('tenant')
-  return c.render(
-    <SettingsPage
-      user={tenant.user}
-      tenantId={tenant.tenantId}
-    />
-  )
-})
-
-// ============================================
-// STATIC ASSETS
-// ============================================
-
-// Serve client-side JavaScript
-app.get('/assets/*', async (c) => {
-  // In production, assets would be served by Cloudflare's static assets
-  // For local dev, we rely on Vite
-  return c.text('Static asset', 200)
-})
 
 // ============================================
 // HEALTH CHECK
@@ -77,6 +35,21 @@ app.get('/assets/*', async (c) => {
 
 app.get('/health', async (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// ============================================
+// SPA CATCH-ALL
+// ============================================
+
+// Serves the base HTML for all other routes to allow React Router to take over
+app.get('*', async (c) => {
+  // If we are already in an API route but it wasn't matched, it should be a 404 JSON
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ success: false, error: 'API route not found' }, 404)
+  }
+
+  // Otherwise, serve the SPA shell
+  return c.render(<div id="root"></div>)
 })
 
 export default app

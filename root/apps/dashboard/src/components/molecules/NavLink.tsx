@@ -1,27 +1,29 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 interface NavLinkProps {
     href: string
     icon?: string
     active?: boolean
-    class?: string
-    children: any
+    className?: string
+    children: ReactNode
 }
 
 export const NavLink: FC<NavLinkProps> = ({
     href,
     icon,
     active = false,
-    class: className = '',
+    className = '',
     children,
 }) => {
     return (
-        <a
-            href={href}
-            class={`nav-link ${active ? 'nav-link-active' : ''} ${className}`}
+        <Link
+            to={href}
+            className={`nav-link ${active ? 'nav-link-active' : ''} ${className}`}
         >
-            {icon && <span class="nav-icon">{icon}</span>}
-            <span class="nav-text">{children}</span>
-        </a>
+            {icon && <span className="nav-icon">{icon}</span>}
+            <span className="nav-text">{children}</span>
+        </Link>
     )
 }

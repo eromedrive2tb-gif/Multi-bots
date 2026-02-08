@@ -40,49 +40,48 @@ function getBaseUrl(c: Context<{ Bindings: Env }>): string {
 }
 
 // ============================================
-// DASHBOARD PAGES
-// ============================================
-
-botsRoutes.get('/dashboard/bots', authMiddleware, async (c) => {
-    const tenant = c.get('tenant')
-    const origin = getBaseUrl(c)
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
-    const bots = await botManager.listBots()
-
-    return c.render(
-        <BotsPage
-            user={tenant.user}
-            bots={bots}
-        />
-    )
-})
-
-// ============================================
 // BOT API ENDPOINTS
 // ============================================
+
+// List all bots
+botsRoutes.get('/api/bots', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    try {
+        const bots = await dbGetBots({
+            db: c.env.DB,
+            tenantId: tenant.tenantId
+        })
+        return c.json({ success: true, data: bots })
+    } catch (error) {
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro ao buscar bots'
+        }, 500)
+    }
+})
 
 // Add Bot
 botsRoutes.post('/api/bots', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
-    const formData = await c.req.formData()
+    const body = await c.req.json()
 
-    const name = formData.get('name')?.toString() || ''
-    const provider = formData.get('provider')?.toString() as BotProvider
+    const name = body.name || ''
+    const provider = body.provider as BotProvider
 
     let credentials: TelegramCredentials | DiscordCredentials
 
     if (provider === 'telegram') {
         credentials = {
-            token: formData.get('telegram_token')?.toString() || '',
+            token: body.telegram_token || '',
         }
     } else if (provider === 'discord') {
         credentials = {
-            applicationId: formData.get('discord_application_id')?.toString() || '',
-            publicKey: formData.get('discord_public_key')?.toString() || '',
-            token: formData.get('discord_token')?.toString() || '',
+            applicationId: body.discord_application_id || '',
+            publicKey: body.discord_public_key || '',
+            token: body.discord_token || '',
         }
     } else {
-        return c.redirect('/dashboard/bots?error=Provider+inválido')
+        return c.json({ success: false, error: 'Provider inválido' }, 400)
     }
 
     const origin = getBaseUrl(c)
@@ -90,17 +89,10 @@ botsRoutes.post('/api/bots', authMiddleware, async (c) => {
     const result = await botManager.addBot(name, provider, credentials)
 
     if (!result.success) {
-        const bots = await botManager.listBots()
-        return c.render(
-            <BotsPage
-                user={tenant.user}
-                bots={bots}
-                error={result.error}
-            />
-        )
+        return c.json({ success: false, error: result.error }, 400)
     }
 
-    return c.redirect('/dashboard/bots')
+    return c.json({ success: true, data: result.bot })
 })
 
 // Check Bot Health
@@ -112,9 +104,8 @@ botsRoutes.post('/api/bots/:id/check', authMiddleware, async (c) => {
     const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
     const bot = await botManager.getBot(botId)
     const result = await botManager.checkBotHealth(botId)
-    const bots = await botManager.listBots()
 
-    // Create health check result for alert
+    // Create health check result
     const healthCheckResult = {
         botName: bot?.name || 'Bot',
         status: result.status as 'online' | 'offline' | 'error',
@@ -122,13 +113,10 @@ botsRoutes.post('/api/bots/:id/check', authMiddleware, async (c) => {
         timestamp: new Date().toLocaleString('pt-BR'),
     }
 
-    return c.render(
-        <BotsPage
-            user={tenant.user}
-            bots={bots}
-            healthCheckResult={healthCheckResult}
-        />
-    )
+    return c.json({
+        success: true,
+        healthCheckResult
+    })
 })
 
 // Delete Bot
@@ -140,7 +128,7 @@ botsRoutes.post('/api/bots/:id/delete', authMiddleware, async (c) => {
     const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
     await botManager.removeBot(botId)
 
-    return c.redirect('/dashboard/bots')
+    return c.json({ success: true })
 })
 
 // Reconfigure Webhook for a single bot

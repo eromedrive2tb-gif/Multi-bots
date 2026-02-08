@@ -1,4 +1,5 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC } from 'react'
 import { UserAvatar } from '../molecules/UserAvatar'
 
 interface HeaderProps {
@@ -11,11 +12,11 @@ interface HeaderProps {
 
 export const Header: FC<HeaderProps> = ({ title, user }) => {
     return (
-        <header class="header">
-            <div class="header-left">
-                <h1 class="header-title">{title}</h1>
+        <header className="header">
+            <div className="header-left">
+                <h1 className="header-title">{title}</h1>
             </div>
-            <div class="header-right">
+            <div className="header-right">
                 <UserAvatar name={user.name} size="sm" showDropdown />
             </div>
         </header>

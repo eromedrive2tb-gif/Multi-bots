@@ -1,4 +1,5 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import React from 'react'
 import { Card, CardBody } from '../atoms/Card'
 
 interface StatCardProps {
@@ -7,27 +8,27 @@ interface StatCardProps {
     icon?: string
     trend?: 'up' | 'down' | 'neutral'
     trendValue?: string
-    class?: string
+    className?: string
 }
 
-export const StatCard: FC<StatCardProps> = ({
+export const StatCard: React.FC<StatCardProps> = ({
     label,
     value,
     icon,
     trend,
     trendValue,
-    class: className = '',
+    className = '',
 }) => {
     return (
-        <Card class={`stat-card ${className}`}>
+        <Card className={`stat-card ${className}`}>
             <CardBody>
-                <div class="stat-card-content">
-                    {icon && <div class="stat-icon">{icon}</div>}
-                    <div class="stat-info">
-                        <span class="stat-label">{label}</span>
-                        <span class="stat-value">{value}</span>
+                <div className="stat-card-content">
+                    {icon && <div className="stat-icon">{icon}</div>}
+                    <div className="stat-info">
+                        <span className="stat-label">{label}</span>
+                        <span className="stat-value">{value}</span>
                         {trend && trendValue && (
-                            <span class={`stat-trend stat-trend-${trend}`}>
+                            <span className={`stat-trend stat-trend-${trend}`}>
                                 {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
                             </span>
                         )}

@@ -1,4 +1,6 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import React, { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { FormField } from '../molecules/FormField'
 import { Button } from '../atoms/Button'
 import { Card, CardHeader, CardBody } from '../atoms/Card'
@@ -7,25 +9,59 @@ interface LoginFormProps {
     error?: string
 }
 
-export const LoginForm: FC<LoginFormProps> = ({ error }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ error: initialError }) => {
+    const navigate = useNavigate()
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [error, setError] = useState(initialError || '')
+    const [loading, setLoading] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            })
+
+            const result = await response.json() as any
+
+            if (result.success) {
+                navigate('/dashboard')
+            } else {
+                setError(result.error || 'Erro ao fazer login')
+            }
+        } catch (err) {
+            setError('Erro de conexão. Tente novamente.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
-        <Card class="auth-card">
+        <Card className="auth-card">
             <CardHeader>
-                <h1 class="auth-title">Entrar</h1>
-                <p class="auth-subtitle">Acesse sua dashboard</p>
+                <h1 className="auth-title">Entrar</h1>
+                <p className="auth-subtitle">Acesse sua dashboard</p>
             </CardHeader>
             <CardBody>
                 {error && (
-                    <div class="alert alert-error">
+                    <div className="alert alert-error">
                         {error}
                     </div>
                 )}
-                <form method="post" action="/api/auth/login" class="auth-form">
+                <form onSubmit={handleSubmit} className="auth-form">
                     <FormField
                         label="Email"
                         name="email"
                         type="email"
                         placeholder="seu@email.com"
+                        value={email}
+                        onChange={(e: any) => setEmail(e.target.value)}
                         required
                     />
                     <FormField
@@ -33,16 +69,18 @@ export const LoginForm: FC<LoginFormProps> = ({ error }) => {
                         name="password"
                         type="password"
                         placeholder="••••••••"
+                        value={password}
+                        onChange={(e: any) => setPassword(e.target.value)}
                         required
                     />
-                    <Button type="submit" variant="primary" class="btn-block">
-                        Entrar
+                    <Button type="submit" variant="primary" className="btn-block" disabled={loading}>
+                        {loading ? 'Entrando...' : 'Entrar'}
                     </Button>
                 </form>
-                <div class="auth-footer">
+                <div className="auth-footer">
                     <p>
                         Não tem conta?{' '}
-                        <a href="/register" class="link">Criar conta</a>
+                        <Link to="/register" className="link">Criar conta</Link>
                     </p>
                 </div>
             </CardBody>

@@ -1,4 +1,5 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import React from 'react'
 import type { OverviewMetrics } from '../../core/analytics-types'
 import { StatsGrid } from './StatsGrid'
 
@@ -6,7 +7,7 @@ interface MetricsSummaryProps {
     metrics: OverviewMetrics
 }
 
-export const MetricsSummary: FC<MetricsSummaryProps> = ({ metrics }) => {
+export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ metrics }) => {
     const stats = [
         {
             label: 'Total Bots',
@@ -53,7 +54,7 @@ export const MetricsSummary: FC<MetricsSummaryProps> = ({ metrics }) => {
     ]
 
     return (
-        <div class="metrics-summary">
+        <div className="metrics-summary">
             <StatsGrid stats={stats} />
         </div>
     )

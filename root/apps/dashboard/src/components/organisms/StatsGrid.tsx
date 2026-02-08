@@ -1,4 +1,5 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import React from 'react'
 import { StatCard } from '../molecules/StatCard'
 
 interface Stat {
@@ -13,11 +14,12 @@ interface StatsGridProps {
     stats: Stat[]
 }
 
-export const StatsGrid: FC<StatsGridProps> = ({ stats }) => {
+export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
     return (
-        <div class="stats-grid">
-            {stats.map((stat) => (
+        <div className="stats-grid">
+            {stats.map((stat, index) => (
                 <StatCard
+                    key={index}
                     label={stat.label}
                     value={stat.value}
                     icon={stat.icon}

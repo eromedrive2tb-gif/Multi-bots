@@ -15,6 +15,7 @@ export const renderer = jsxRenderer(({ children }) => {
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <ViteClient />
         <Link href="/root/apps/dashboard/src/style.css" rel="stylesheet" />
+        <script type="module" src="/root/apps/dashboard/src/client/main.tsx"></script>
       </head>
       <body>{children}</body>
     </html>

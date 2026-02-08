@@ -1,4 +1,5 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, ChangeEvent } from 'react'
 
 interface InputProps {
     type?: 'text' | 'email' | 'password' | 'number'
@@ -9,7 +10,8 @@ interface InputProps {
     required?: boolean
     disabled?: boolean
     error?: string
-    class?: string
+    className?: string
+    onChange?: (e: ChangeEvent<HTMLInputElement>) => void
 }
 
 export const Input: FC<InputProps> = ({
@@ -21,7 +23,8 @@ export const Input: FC<InputProps> = ({
     required = false,
     disabled = false,
     error,
-    class: className = '',
+    className = '',
+    onChange
 }) => {
     return (
         <input
@@ -32,7 +35,8 @@ export const Input: FC<InputProps> = ({
             value={value}
             required={required}
             disabled={disabled}
-            class={`input ${error ? 'input-error' : ''} ${className}`}
+            className={`input ${error ? 'input-error' : ''} ${className}`}
+            onChange={onChange}
         />
     )
 }

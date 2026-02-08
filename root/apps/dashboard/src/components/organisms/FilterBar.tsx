@@ -1,7 +1,7 @@
-import type { FC } from 'hono/jsx'
-import type { AnalyticsFilterParams } from '../../core/analytics-types'
-import type { BlueprintMetric } from '../../core/analytics-types'
-import type { BotMetric } from '../../core/analytics-types'
+/** @jsxImportSource react */
+import React, { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import type { AnalyticsFilterParams, BlueprintMetric, BotMetric } from '../../core/analytics-types'
 import { ClearMetricsButton } from '../molecules/ClearMetricsButton'
 
 interface FilterBarProps {
@@ -10,75 +10,110 @@ interface FilterBarProps {
     currentFilters: AnalyticsFilterParams
 }
 
-export const FilterBar: FC<FilterBarProps> = ({ bots, blueprints, currentFilters }) => {
+export const FilterBar: React.FC<FilterBarProps> = ({ bots, blueprints, currentFilters }) => {
+    const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
+
+    const [botId, setBotId] = useState(currentFilters.botId || '')
+    const [blueprintId, setBlueprintId] = useState(currentFilters.blueprintId || '')
+    const [status, setStatus] = useState(currentFilters.status || 'all')
+    const [dateFrom, setDateFrom] = useState(currentFilters.dateFrom || '')
+    const [dateTo, setDateTo] = useState(currentFilters.dateTo || '')
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        const params = new URLSearchParams()
+        if (botId) params.set('botId', botId)
+        if (blueprintId) params.set('blueprintId', blueprintId)
+        if (status !== 'all') params.set('status', status)
+        if (dateFrom) params.set('dateFrom', dateFrom)
+        if (dateTo) params.set('dateTo', dateTo)
+
+        navigate(`/dashboard/analytics?${params.toString()}`)
+    }
+
     return (
-        <form method="get" action="/dashboard/analytics" class="filter-bar">
-            <div class="filter-group">
-                <label for="botId">Bot</label>
-                <select name="botId" id="botId" class="filter-select">
+        <form onSubmit={handleSubmit} className="filter-bar">
+            <div className="filter-group">
+                <label htmlFor="botId">Bot</label>
+                <select
+                    name="botId"
+                    id="botId"
+                    className="filter-select"
+                    value={botId}
+                    onChange={(e) => setBotId(e.target.value)}
+                >
                     <option value="">Todos os Bots</option>
                     {bots.map(bot => (
-                        <option
-                            value={bot.botId}
-                            selected={currentFilters.botId === bot.botId}
-                        >
+                        <option key={bot.botId} value={bot.botId}>
                             {bot.botName} ({bot.provider})
                         </option>
                     ))}
                 </select>
             </div>
 
-            <div class="filter-group">
-                <label for="blueprintId">Blueprint</label>
-                <select name="blueprintId" id="blueprintId" class="filter-select">
+            <div className="filter-group">
+                <label htmlFor="blueprintId">Blueprint</label>
+                <select
+                    name="blueprintId"
+                    id="blueprintId"
+                    className="filter-select"
+                    value={blueprintId}
+                    onChange={(e) => setBlueprintId(e.target.value)}
+                >
                     <option value="">Todas os Blueprints</option>
                     {blueprints.map(bp => (
-                        <option
-                            value={bp.blueprintId}
-                            selected={currentFilters.blueprintId === bp.blueprintId}
-                        >
+                        <option key={bp.blueprintId} value={bp.blueprintId}>
                             {bp.blueprintName} ({bp.trigger})
                         </option>
                     ))}
                 </select>
             </div>
 
-            <div class="filter-group">
-                <label for="status">Status</label>
-                <select name="status" id="status" class="filter-select">
-                    <option value="all" selected={currentFilters.status === 'all'}>Todos</option>
-                    <option value="active" selected={currentFilters.status === 'active'}>Ativos</option>
-                    <option value="inactive" selected={currentFilters.status === 'inactive'}>Inativos</option>
+            <div className="filter-group">
+                <label htmlFor="status">Status</label>
+                <select
+                    name="status"
+                    id="status"
+                    className="filter-select"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as any)}
+                >
+                    <option value="all">Todos</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
                 </select>
             </div>
 
-            <div class="filter-group">
-                <label for="dateFrom">De</label>
+            <div className="filter-group">
+                <label htmlFor="dateFrom">De</label>
                 <input
                     type="date"
                     name="dateFrom"
                     id="dateFrom"
-                    class="filter-input"
-                    value={currentFilters.dateFrom || ''}
+                    className="filter-input"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
                 />
             </div>
 
-            <div class="filter-group">
-                <label for="dateTo">Até</label>
+            <div className="filter-group">
+                <label htmlFor="dateTo">Até</label>
                 <input
                     type="date"
                     name="dateTo"
                     id="dateTo"
-                    class="filter-input"
-                    value={currentFilters.dateTo || ''}
+                    className="filter-input"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
                 />
             </div>
 
-            <button type="submit" class="btn btn-primary filter-btn">
+            <button type="submit" className="btn btn-primary filter-btn">
                 🔍 Filtrar
             </button>
 
-            <div class="filter-separator" style="border-left: 1px solid var(--color-border); height: 2rem; margin: 0 var(--space-sm);"></div>
+            <div className="filter-separator" style={{ borderLeft: '1px solid var(--color-border)', height: '2rem', margin: '0 var(--space-sm)' }}></div>
 
             <ClearMetricsButton />
         </form>

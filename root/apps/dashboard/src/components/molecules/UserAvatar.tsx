@@ -1,4 +1,5 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC } from 'react'
 
 interface UserAvatarProps {
     name: string
@@ -21,15 +22,15 @@ export const UserAvatar: FC<UserAvatarProps> = ({
         .slice(0, 2)
 
     return (
-        <div class={`user-avatar user-avatar-${size}`}>
-            <div class="avatar-circle">{initials}</div>
+        <div className={`user-avatar user-avatar-${size}`}>
+            <div className="avatar-circle">{initials}</div>
             {(name || email) && (
-                <div class="avatar-info">
-                    {name && <span class="avatar-name">{name}</span>}
-                    {email && <span class="avatar-email">{email}</span>}
+                <div className="avatar-info">
+                    {name && <span className="avatar-name">{name}</span>}
+                    {email && <span className="avatar-email">{email}</span>}
                 </div>
             )}
-            {showDropdown && <span class="avatar-dropdown">▼</span>}
+            {showDropdown && <span className="avatar-dropdown">▼</span>}
         </div>
     )
 }

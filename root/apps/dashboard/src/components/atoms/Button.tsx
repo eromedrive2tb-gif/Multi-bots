@@ -1,12 +1,14 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, ReactNode } from 'react'
 
 interface ButtonProps {
     type?: 'button' | 'submit' | 'reset'
     variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
     size?: 'sm' | 'md' | 'lg'
     disabled?: boolean
-    class?: string
-    children: any
+    className?: string
+    children: ReactNode
+    onClick?: () => void
 }
 
 export const Button: FC<ButtonProps> = ({
@@ -14,14 +16,16 @@ export const Button: FC<ButtonProps> = ({
     variant = 'primary',
     size = 'md',
     disabled = false,
-    class: className = '',
+    className = '',
     children,
+    onClick
 }) => {
     return (
         <button
             type={type}
             disabled={disabled}
-            class={`btn btn-${variant} btn-${size} ${className}`}
+            className={`btn btn-${variant} btn-${size} ${className}`}
+            onClick={onClick}
         >
             {children}
         </button>

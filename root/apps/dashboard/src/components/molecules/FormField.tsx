@@ -1,4 +1,5 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import React from 'react'
 import { Input } from '../atoms/Input'
 
 interface FormFieldProps {
@@ -9,9 +10,10 @@ interface FormFieldProps {
     value?: string
     required?: boolean
     error?: string
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
-export const FormField: FC<FormFieldProps> = ({
+export const FormField: React.FC<FormFieldProps> = ({
     label,
     name,
     type = 'text',
@@ -19,12 +21,13 @@ export const FormField: FC<FormFieldProps> = ({
     value,
     required = false,
     error,
+    onChange
 }) => {
     return (
-        <div class="form-field">
-            <label for={name} class="form-label">
+        <div className="form-field">
+            <label htmlFor={name} className="form-label">
                 {label}
-                {required && <span class="required">*</span>}
+                {required && <span className="required">*</span>}
             </label>
             <Input
                 type={type}
@@ -34,8 +37,9 @@ export const FormField: FC<FormFieldProps> = ({
                 value={value}
                 required={required}
                 error={error}
+                onChange={onChange}
             />
-            {error && <span class="form-error">{error}</span>}
+            {error && <span className="form-error">{error}</span>}
         </div>
     )
 }

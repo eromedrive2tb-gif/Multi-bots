@@ -18,106 +18,53 @@ import { BlueprintsPage } from '../pages/blueprints'
 const blueprintsRoutes = new Hono<{ Bindings: Env }>()
 
 // ============================================
-// DASHBOARD PAGES
-// ============================================
-
-blueprintsRoutes.get('/dashboard/blueprints', authMiddleware, async (c) => {
-    const tenant = c.get('tenant')
-
-    const result = await dbGetBlueprints({
-        db: c.env.DB,
-        tenantId: tenant.tenantId
-    })
-
-    return c.render(
-        <BlueprintsPage
-            user={tenant.user}
-            blueprints={result.success ? result.data : []}
-            error={result.success ? undefined : result.error}
-        />
-    )
-})
-
-blueprintsRoutes.get('/dashboard/blueprints/new', authMiddleware, async (c) => {
-    const tenant = c.get('tenant')
-
-    return c.render(
-        <BlueprintsPage
-            user={tenant.user}
-            blueprints={[]}
-        />
-    )
-})
-
-// ============================================
 // API ENDPOINTS
 // ============================================
 
-// List all blueprints for tenant
+// List all blueprints
 blueprintsRoutes.get('/api/blueprints', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
+    try {
+        const result = await dbGetBlueprints({
+            db: c.env.DB,
+            tenantId: tenant.tenantId
+        })
 
-    const result = await dbGetBlueprints({
-        db: c.env.DB,
-        tenantId: tenant.tenantId
-    })
+        if (!result.success) {
+            return c.json({ success: false, error: result.error }, 500)
+        }
 
-    if (!result.success) {
-        return c.json({ success: false, error: result.error }, 500)
+        return c.json({ success: true, data: result.data })
+    } catch (error) {
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro ao buscar blueprints'
+        }, 500)
     }
-
-    return c.json({ success: true, data: result.data })
 })
 
 // Get single blueprint
 blueprintsRoutes.get('/api/blueprints/:id', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const id = c.req.param('id')
+    try {
+        const result = await dbGetBlueprintById({
+            db: c.env.DB,
+            tenantId: tenant.tenantId,
+            id
+        })
 
-    const result = await dbGetBlueprintById({
-        db: c.env.DB,
-        tenantId: tenant.tenantId,
-        id
-    })
+        if (!result.success) {
+            return c.json({ success: false, error: result.error }, 404)
+        }
 
-    if (!result.success) {
-        return c.json({ success: false, error: result.error }, 500)
+        return c.json({ success: true, data: result.data })
+    } catch (error) {
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro ao buscar blueprint'
+        }, 500)
     }
-
-    if (!result.data) {
-        return c.json({ success: false, error: 'Blueprint não encontrado' }, 404)
-    }
-
-    return c.json({ success: true, data: result.data })
-})
-
-// Dashboard Editor Route
-blueprintsRoutes.get('/dashboard/blueprints/:id', authMiddleware, async (c) => {
-    const tenant = c.get('tenant')
-    const id = c.req.param('id')
-
-    const listResult = await dbGetBlueprints({
-        db: c.env.DB,
-        tenantId: tenant.tenantId
-    })
-
-    const result = await dbGetBlueprintById({
-        db: c.env.DB,
-        tenantId: tenant.tenantId,
-        id
-    })
-
-    if (!result.success || !result.data) {
-        return c.redirect('/dashboard/blueprints')
-    }
-
-    return c.render(
-        <BlueprintsPage
-            user={tenant.user}
-            blueprints={listResult.success ? listResult.data : []}
-            selectedBlueprint={JSON.stringify(result.data, null, 2)}
-        />
-    )
 })
 
 // Create new blueprint
@@ -215,7 +162,7 @@ blueprintsRoutes.delete('/api/blueprints/:id', authMiddleware, async (c) => {
     return c.json({ success: true })
 })
 
-// Delete blueprint (POST method - for HTML forms/dashboard)
+// Delete blueprint
 blueprintsRoutes.post('/api/blueprints/:id/delete', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const id = c.req.param('id')
@@ -231,13 +178,7 @@ blueprintsRoutes.post('/api/blueprints/:id/delete', authMiddleware, async (c) =>
         return c.json({ success: false, error: result.error }, 500)
     }
 
-    // Check if request wants JSON or redirect
-    const acceptHeader = c.req.header('Accept') || ''
-    if (acceptHeader.includes('application/json')) {
-        return c.json({ success: true })
-    }
-
-    return c.redirect('/dashboard/blueprints')
+    return c.json({ success: true })
 })
 
 // ============================================
@@ -281,6 +222,7 @@ blueprintsRoutes.post('/api/debug/trigger', authMiddleware, async (c) => {
             userId,
             chatId: userId,
             botToken: 'debug_token',
+            botId: 'debug_bot_id',
             metadata: {
                 userName: tenant.user.name,
                 lastInput: trigger,

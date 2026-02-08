@@ -1,9 +1,10 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, CSSProperties } from 'react'
 import type { BotStatus, BotProvider } from '../../core/types'
 
 interface StatusBadgeProps {
     status: BotStatus
-    class?: string
+    className?: string
 }
 
 const statusConfig: Record<BotStatus, { label: string; color: string; icon: string }> = {
@@ -24,23 +25,23 @@ const statusConfig: Record<BotStatus, { label: string; color: string; icon: stri
     },
 }
 
-export const StatusBadge: FC<StatusBadgeProps> = ({ status, class: className = '' }) => {
+export const StatusBadge: FC<StatusBadgeProps> = ({ status, className = '' }) => {
     const config = statusConfig[status]
 
     return (
         <span
-            class={`status-badge status-${status} ${className}`}
-            style={`--badge-color: ${config.color}`}
+            className={`status-badge status-${status} ${className}`}
+            style={{ '--badge-color': config.color } as CSSProperties}
         >
-            <span class="status-icon">{config.icon}</span>
-            <span class="status-label">{config.label}</span>
+            <span className="status-icon">{config.icon}</span>
+            <span className="status-label">{config.label}</span>
         </span>
     )
 }
 
 interface ProviderBadgeProps {
     provider: BotProvider
-    class?: string
+    className?: string
 }
 
 const providerConfig: Record<BotProvider, { label: string; icon: string }> = {
@@ -48,13 +49,13 @@ const providerConfig: Record<BotProvider, { label: string; icon: string }> = {
     discord: { label: 'Discord', icon: '🎮' },
 }
 
-export const ProviderBadge: FC<ProviderBadgeProps> = ({ provider, class: className = '' }) => {
+export const ProviderBadge: FC<ProviderBadgeProps> = ({ provider, className = '' }) => {
     const config = providerConfig[provider]
 
     return (
-        <span class={`provider-badge provider-${provider} ${className}`}>
-            <span class="provider-icon">{config.icon}</span>
-            <span class="provider-label">{config.label}</span>
+        <span className={`provider-badge provider-${provider} ${className}`}>
+            <span className="provider-icon">{config.icon}</span>
+            <span className="provider-label">{config.label}</span>
         </span>
     )
 }

@@ -13,12 +13,12 @@ import { analyticsFilterSchema, type AnalyticsFilterParams } from '../core/analy
 export const analyticsRoutes = new Hono<{ Bindings: Env }>()
 
 // Apply auth middleware
-analyticsRoutes.use('/dashboard/analytics', authMiddleware)
+analyticsRoutes.use('/api/analytics', authMiddleware)
 
-// GET /dashboard/analytics - Main analytics page
-analyticsRoutes.get('/dashboard/analytics', async (c) => {
+// GET /api/analytics - Analytics data for the dashboard
+analyticsRoutes.get('/api/analytics', async (c) => {
     const tenant = c.get('tenant')
-    const { tenantId, user } = tenant
+    const { tenantId } = tenant
 
     // Parse query params for filters
     const rawFilters = {
@@ -37,36 +37,10 @@ analyticsRoutes.get('/dashboard/analytics', async (c) => {
     const result = await getAnalyticsDashboard(c.env.DB, tenantId, filters)
 
     if (!result.success) {
-        // Return page with empty data on error
-        return c.render(
-            <AnalyticsPage
-                user={user}
-                data={{
-                    overview: {
-                        totalBots: 0,
-                        activeBots: 0,
-                        totalBlueprints: 0,
-                        activeBlueprints: 0,
-                        totalFlowStarts: 0,
-                        totalFlowCompletions: 0,
-                        completionRate: 0,
-                        totalErrors: 0,
-                    },
-                    blueprints: [],
-                    bots: [],
-                }}
-                filters={filters}
-            />
-        )
+        return c.json({ success: false, error: result.error || 'Erro ao carregar dados' }, 500)
     }
 
-    return c.render(
-        <AnalyticsPage
-            user={user}
-            data={result.data}
-            filters={filters}
-        />
-    )
+    return c.json({ success: true, data: result.data })
 })
 
 // DELETE /api/analytics - Clear all analytics data

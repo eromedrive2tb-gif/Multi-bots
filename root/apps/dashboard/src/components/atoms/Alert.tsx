@@ -1,10 +1,13 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, CSSProperties } from 'react'
+import { useState } from 'react'
 
 interface AlertProps {
     type: 'success' | 'error' | 'warning' | 'info'
     message: string
     details?: string
     dismissible?: boolean
+    onClose?: () => void
 }
 
 const typeConfig: Record<AlertProps['type'], { icon: string; bgColor: string; borderColor: string }> = {
@@ -30,24 +33,32 @@ const typeConfig: Record<AlertProps['type'], { icon: string; bgColor: string; bo
     },
 }
 
-export const Alert: FC<AlertProps> = ({ type, message, details, dismissible = true }) => {
+export const Alert: FC<AlertProps> = ({ type, message, details, dismissible = true, onClose }) => {
+    const [isVisible, setIsVisible] = useState(true)
     const config = typeConfig[type]
+
+    const handleDismiss = () => {
+        setIsVisible(false)
+        if (onClose) onClose()
+    }
+
+    if (!isVisible) return null
 
     return (
         <div
-            class={`alert-banner alert-${type}`}
-            style={`--alert-bg: ${config.bgColor}; --alert-border: ${config.borderColor}`}
+            className={`alert-banner alert-${type}`}
+            style={{ '--alert-bg': config.bgColor, '--alert-border': config.borderColor } as CSSProperties}
         >
-            <span class="alert-icon">{config.icon}</span>
-            <div class="alert-content">
-                <span class="alert-message">{message}</span>
-                {details && <span class="alert-details">{details}</span>}
+            <span className="alert-icon">{config.icon}</span>
+            <div className="alert-content">
+                <span className="alert-message">{message}</span>
+                {details && <span className="alert-details">{details}</span>}
             </div>
             {dismissible && (
                 <button
                     type="button"
-                    class="alert-dismiss"
-                    onclick="this.parentElement.remove()"
+                    className="alert-dismiss"
+                    onClick={handleDismiss}
                 >
                     ✕
                 </button>

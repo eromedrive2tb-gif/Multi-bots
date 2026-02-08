@@ -1,16 +1,17 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, ReactNode } from 'react'
 
 interface AuthLayoutProps {
-    children: any
+    children: ReactNode
 }
 
 export const AuthLayout: FC<AuthLayoutProps> = ({ children }) => {
     return (
-        <div class="auth-layout">
-            <div class="auth-background">
-                <div class="auth-gradient"></div>
+        <div className="auth-layout">
+            <div className="auth-background">
+                <div className="auth-gradient"></div>
             </div>
-            <main class="auth-container">
+            <main className="auth-container">
                 {children}
             </main>
         </div>

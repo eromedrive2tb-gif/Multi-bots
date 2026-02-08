@@ -1,15 +1,16 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, ReactNode } from 'react'
 
 interface BadgeProps {
     variant?: 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
-    class?: string
-    children: any
+    className?: string
+    children: ReactNode
 }
 
 export const Badge: FC<BadgeProps> = ({
     variant = 'neutral',
-    class: className = '',
+    className = '',
     children,
 }) => {
-    return <span class={`badge badge-${variant} ${className}`}>{children}</span>
+    return <span className={`badge badge-${variant} ${className}`}>{children}</span>
 }

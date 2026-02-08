@@ -85,3 +85,25 @@ export async function findValidSession(db: D1Database, sessionId: string): Promi
 export async function deleteSession(db: D1Database, sessionId: string): Promise<void> {
     await db.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run()
 }
+
+export async function updateUser(db: D1Database, userId: string, data: { name?: string, email?: string }): Promise<void> {
+    const sets = []
+    const params = []
+    if (data.name) {
+        sets.push('name = ?')
+        params.push(data.name)
+    }
+    if (data.email) {
+        sets.push('email = ?')
+        params.push(data.email)
+    }
+
+    if (sets.length === 0) return
+
+    params.push(userId)
+    await db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run()
+}
+
+export async function updatePassword(db: D1Database, userId: string, passwordHash: string): Promise<void> {
+    await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(passwordHash, userId).run()
+}

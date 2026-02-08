@@ -1,28 +1,29 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC, ReactNode } from 'react'
 
 interface CardProps {
-    class?: string
-    children: any
+    className?: string
+    children: ReactNode
 }
 
-export const Card: FC<CardProps> = ({ class: className = '', children }) => {
-    return <div class={`card ${className}`}>{children}</div>
+export const Card: FC<CardProps> = ({ className = '', children }) => {
+    return <div className={`card ${className}`}>{children}</div>
 }
 
 interface CardHeaderProps {
-    class?: string
-    children: any
+    className?: string
+    children: ReactNode
 }
 
-export const CardHeader: FC<CardHeaderProps> = ({ class: className = '', children }) => {
-    return <div class={`card-header ${className}`}>{children}</div>
+export const CardHeader: FC<CardHeaderProps> = ({ className = '', children }) => {
+    return <div className={`card-header ${className}`}>{children}</div>
 }
 
 interface CardBodyProps {
-    class?: string
-    children: any
+    className?: string
+    children: ReactNode
 }
 
-export const CardBody: FC<CardBodyProps> = ({ class: className = '', children }) => {
-    return <div class={`card-body ${className}`}>{children}</div>
+export const CardBody: FC<CardBodyProps> = ({ className = '', children }) => {
+    return <div className={`card-body ${className}`}>{children}</div>
 }

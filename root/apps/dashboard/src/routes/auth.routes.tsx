@@ -14,7 +14,10 @@ import {
     createTenant,
     createUser,
     createSession,
-    deleteSession
+    deleteSession,
+    findUserById,
+    updateUser,
+    updatePassword
 } from '../lib/auth'
 import { setSessionCookie, clearSessionCookie, authMiddleware } from '../middleware/auth'
 import { getCookie } from 'hono/cookie'
@@ -26,61 +29,31 @@ import { RegisterPage } from '../pages/register'
 const authRoutes = new Hono<{ Bindings: Env }>()
 
 // ============================================
-// PUBLIC PAGES
-// ============================================
-
-authRoutes.get('/login', async (c) => {
-    // Check if already logged in
-    const sessionId = getCookie(c, 'session_id')
-    if (sessionId) {
-        const { findValidSession } = await import('../lib/auth')
-        const session = await findValidSession(c.env.DB, sessionId)
-        if (session) {
-            return c.redirect('/dashboard')
-        }
-    }
-    return c.render(<LoginPage />)
-})
-
-authRoutes.get('/register', async (c) => {
-    const sessionId = getCookie(c, 'session_id')
-    if (sessionId) {
-        const { findValidSession } = await import('../lib/auth')
-        const session = await findValidSession(c.env.DB, sessionId)
-        if (session) {
-            return c.redirect('/dashboard')
-        }
-    }
-    return c.render(<RegisterPage />)
-})
-
-// ============================================
 // AUTH API
 // ============================================
 
 // Login
 authRoutes.post('/api/auth/login', async (c) => {
     try {
-        const formData = await c.req.formData()
-        const email = formData.get('email')?.toString() || ''
-        const password = formData.get('password')?.toString() || ''
+        const body = await c.req.json()
+        const { email, password } = body
 
         // Validate input
         const result = loginSchema.safeParse({ email, password })
         if (!result.success) {
-            return c.render(<LoginPage error="Email ou senha inválidos" />)
+            return c.json({ success: false, error: "Email ou senha inválidos" }, 400)
         }
 
         // Find user
         const user = await findUserByEmail(c.env.DB, email)
         if (!user) {
-            return c.render(<LoginPage error="Email ou senha inválidos" />)
+            return c.json({ success: false, error: "Email ou senha inválidos" }, 401)
         }
 
         // Verify password
         const valid = await verifyPassword(password, user.passwordHash)
         if (!valid) {
-            return c.render(<LoginPage error="Email ou senha inválidos" />)
+            return c.json({ success: false, error: "Email ou senha inválidos" }, 401)
         }
 
         // Create session
@@ -88,34 +61,31 @@ authRoutes.post('/api/auth/login', async (c) => {
         const sessionId = await createSession(c.env.DB, user.id, user.tenantId, expiresAt)
 
         setSessionCookie(c, sessionId)
-        return c.redirect('/dashboard')
+        return c.json({ success: true, user: { id: user.id, email: user.email, name: user.name, tenantId: user.tenantId } })
 
     } catch (error) {
         console.error('Login error:', error)
-        return c.render(<LoginPage error="Erro ao fazer login. Tente novamente." />)
+        return c.json({ success: false, error: "Erro ao fazer login. Tente novamente." }, 500)
     }
 })
 
 // Register
 authRoutes.post('/api/auth/register', async (c) => {
     try {
-        const formData = await c.req.formData()
-        const name = formData.get('name')?.toString() || ''
-        const email = formData.get('email')?.toString() || ''
-        const password = formData.get('password')?.toString() || ''
-        const confirmPassword = formData.get('confirmPassword')?.toString() || ''
+        const body = await c.req.json()
+        const { name, email, password, confirmPassword } = body
 
         // Validate input
         const result = registerSchema.safeParse({ name, email, password, confirmPassword })
         if (!result.success) {
             const error = result.error.errors[0]?.message || 'Dados inválidos'
-            return c.render(<RegisterPage error={error} />)
+            return c.json({ success: false, error }, 400)
         }
 
         // Check if email exists
         const existingUser = await findUserByEmail(c.env.DB, email)
         if (existingUser) {
-            return c.render(<RegisterPage error="Email já cadastrado" />)
+            return c.json({ success: false, error: "Email já cadastrado" }, 409)
         }
 
         // Create tenant
@@ -130,11 +100,11 @@ authRoutes.post('/api/auth/register', async (c) => {
         const sessionId = await createSession(c.env.DB, userId, tenantId, expiresAt)
 
         setSessionCookie(c, sessionId)
-        return c.redirect('/dashboard')
+        return c.json({ success: true, user: { id: userId, email, name, tenantId } })
 
     } catch (error) {
         console.error('Register error:', error)
-        return c.render(<RegisterPage error="Erro ao criar conta. Tente novamente." />)
+        return c.json({ success: false, error: "Erro ao criar conta. Tente novamente." }, 500)
     }
 })
 
@@ -145,7 +115,69 @@ authRoutes.post('/api/auth/logout', async (c) => {
         await deleteSession(c.env.DB, sessionId)
     }
     clearSessionCookie(c)
-    return c.redirect('/login')
+    return c.json({ success: true })
+})
+
+// Me (Get current user/tenant)
+authRoutes.get('/api/auth/me', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    return c.json({
+        success: true,
+        data: {
+            user: tenant.user,
+            tenantId: tenant.tenantId
+        }
+    })
+})
+
+authRoutes.post('/api/settings/profile', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const { name } = await c.req.json() as { name: string }
+
+    if (!name) {
+        return c.json({ success: false, error: 'Nome é obrigatório' }, 400)
+    }
+
+    try {
+        await updateUser(c.env.DB, tenant.user.id, { name })
+        return c.json({ success: true })
+    } catch (error) {
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro ao atualizar perfil'
+        }, 500)
+    }
+})
+
+authRoutes.post('/api/settings/password', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const { currentPassword, newPassword } = await c.req.json() as { currentPassword: string, newPassword: string }
+
+    if (!currentPassword || !newPassword) {
+        return c.json({ success: false, error: 'As senhas são obrigatórias' }, 400)
+    }
+
+    try {
+        const user = await findUserById(c.env.DB, tenant.user.id)
+        if (!user) {
+            return c.json({ success: false, error: 'Usuário não encontrado' }, 404)
+        }
+
+        const isValid = await verifyPassword(currentPassword, user.passwordHash)
+        if (!isValid) {
+            return c.json({ success: false, error: 'Senha atual incorreta' }, 400)
+        }
+
+        const newHash = await hashPassword(newPassword)
+        await updatePassword(c.env.DB, user.id, newHash)
+
+        return c.json({ success: true })
+    } catch (error) {
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro ao alterar senha'
+        }, 500)
+    }
 })
 
 export { authRoutes }

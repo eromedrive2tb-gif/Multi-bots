@@ -1,17 +1,15 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import React from 'react'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
 import { StatsGrid } from '../components/organisms/StatsGrid'
 import { Card, CardHeader, CardBody } from '../components/atoms/Card'
+import { useUser } from '../client/context/UserContext'
 
-interface DashboardPageProps {
-    user: {
-        name: string
-        email: string
-    }
-    tenantId: string
-}
+export const DashboardPage: React.FC = () => {
+    const { user, tenantId } = useUser()
+    const displayUser = user || { name: 'Usuário', email: '' }
+    const displayTenantId = tenantId || ''
 
-export const DashboardPage: FC<DashboardPageProps> = ({ user, tenantId }) => {
     const stats = [
         { label: 'Total Bots', value: 3, icon: '🤖', trend: 'up' as const, trendValue: '+2' },
         { label: 'Mensagens Hoje', value: 128, icon: '💬', trend: 'up' as const, trendValue: '+15%' },
@@ -23,36 +21,35 @@ export const DashboardPage: FC<DashboardPageProps> = ({ user, tenantId }) => {
         <DashboardLayout
             title="Dashboard"
             currentPath="/dashboard"
-            user={user}
         >
-            <div class="dashboard-welcome">
-                <h2>Bem-vindo, {user.name}! 👋</h2>
-                <p class="text-muted">Tenant ID: {tenantId}</p>
+            <div className="dashboard-welcome">
+                <h2>Bem-vindo, {displayUser.name}! 👋</h2>
+                <p className="text-muted">Tenant ID: {displayTenantId}</p>
             </div>
 
             <StatsGrid stats={stats} />
 
-            <div class="dashboard-section">
+            <div className="dashboard-section">
                 <Card>
                     <CardHeader>
                         <h3>Atividade Recente</h3>
                     </CardHeader>
                     <CardBody>
-                        <div class="activity-list">
-                            <div class="activity-item">
-                                <span class="activity-icon">🚀</span>
-                                <span class="activity-text">Bot "Atendimento" iniciado</span>
-                                <span class="activity-time">há 2 min</span>
+                        <div className="activity-list">
+                            <div className="activity-item">
+                                <span className="activity-icon">🚀</span>
+                                <span className="activity-text">Bot "Atendimento" iniciado</span>
+                                <span className="activity-time">há 2 min</span>
                             </div>
-                            <div class="activity-item">
-                                <span class="activity-icon">💬</span>
-                                <span class="activity-text">15 novas mensagens recebidas</span>
-                                <span class="activity-time">há 5 min</span>
+                            <div className="activity-item">
+                                <span className="activity-icon">💬</span>
+                                <span className="activity-text">15 novas mensagens recebidas</span>
+                                <span className="activity-time">há 5 min</span>
                             </div>
-                            <div class="activity-item">
-                                <span class="activity-icon">⚙️</span>
-                                <span class="activity-text">Configurações atualizadas</span>
-                                <span class="activity-time">há 1 hora</span>
+                            <div className="activity-item">
+                                <span className="activity-icon">⚙️</span>
+                                <span className="activity-text">Configurações atualizadas</span>
+                                <span className="activity-time">há 1 hora</span>
                             </div>
                         </div>
                     </CardBody>

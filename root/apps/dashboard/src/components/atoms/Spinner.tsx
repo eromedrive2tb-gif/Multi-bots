@@ -1,13 +1,14 @@
-import type { FC } from 'hono/jsx'
+/** @jsxImportSource react */
+import type { FC } from 'react'
 
 interface SpinnerProps {
     size?: 'sm' | 'md' | 'lg'
-    class?: string
+    className?: string
 }
 
 export const Spinner: FC<SpinnerProps> = ({
     size = 'md',
-    class: className = '',
+    className = '',
 }) => {
-    return <div class={`spinner spinner-${size} ${className}`}></div>
+    return <div className={`spinner spinner-${size} ${className}`}></div>
 }
