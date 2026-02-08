@@ -179,6 +179,11 @@ export async function handleTelegramWebhook(
             ctx
         )
 
+        // Update blueprintId from execution result if available
+        if (flowResult.blueprintId) {
+            blueprintId = flowResult.blueprintId
+        }
+
         // Log analytics events
         await logFlowAnalytics(
             context.env.DB,

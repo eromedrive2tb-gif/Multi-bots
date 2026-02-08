@@ -204,6 +204,7 @@ export interface FlowExecutionResult {
     lastStepId?: string
     error?: string
     data?: unknown
+    blueprintId?: string
 }
 
 /**
@@ -229,6 +230,7 @@ export async function executeFlow(
             success: false,
             stepsExecuted: 0,
             error: sessionResult.error,
+            blueprintId: undefined
         }
     }
 
@@ -283,6 +285,7 @@ export async function executeFlow(
             success: false,
             stepsExecuted: 0,
             error: 'No blueprint found for this trigger or session',
+            blueprintId: undefined
         }
     }
 
@@ -410,7 +413,8 @@ export async function executeFlow(
                     success: true,
                     stepsExecuted,
                     lastStepId: currentStepId,
-                    data: { suspended: true }
+                    data: { suspended: true },
+                    blueprintId: blueprint.id
                 }
             }
 
@@ -467,6 +471,7 @@ export async function executeFlow(
                 stepsExecuted,
                 lastStepId: currentStepId,
                 error: result.error,
+                blueprintId: blueprint.id
             }
         }
     }
@@ -477,6 +482,7 @@ export async function executeFlow(
             success: false,
             stepsExecuted,
             error: `Max steps (${MAX_STEPS_PER_EXECUTION}) exceeded - possible infinite loop`,
+            blueprintId: blueprint?.id
         }
     }
 
@@ -485,6 +491,7 @@ export async function executeFlow(
         stepsExecuted,
         lastStepId: currentStepId ?? undefined,
         data: lastResult,
+        blueprintId: blueprint?.id
     }
 }
 
