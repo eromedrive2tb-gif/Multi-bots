@@ -1,20 +1,66 @@
 /** @jsxImportSource react */
 import React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
 import { StatsGrid } from '../components/organisms/StatsGrid'
 import { Card, CardHeader, CardBody } from '../components/atoms/Card'
 import { useUser } from '../client/context/UserContext'
+import type { AnalyticsDashboardData } from '../lib/molecules/analytics-aggregator'
 
 export const DashboardPage: React.FC = () => {
     const { user, tenantId } = useUser()
     const displayUser = user || { name: 'Usuário', email: '' }
     const displayTenantId = tenantId || ''
 
+    // Fetch real analytics data
+    const { data: analyticsData, isLoading } = useQuery<AnalyticsDashboardData>({
+        queryKey: ['analytics', { status: 'all' }],
+        queryFn: async () => {
+            const response = await fetch('/api/analytics?status=all')
+            const result = await response.json() as any
+            if (!result.success) throw new Error(result.error)
+            return result.data
+        }
+    })
+
+    const overview = analyticsData?.overview || {
+        totalBots: 0,
+        activeBots: 0,
+        totalFlowStarts: 0,
+        totalErrors: 0
+    }
+
+    const totalUsers = analyticsData?.bots?.reduce((sum, bot) => sum + (bot.totalUsers || 0), 0) || 0
+
     const stats = [
-        { label: 'Total Bots', value: 3, icon: '🤖', trend: 'up' as const, trendValue: '+2' },
-        { label: 'Mensagens Hoje', value: 128, icon: '💬', trend: 'up' as const, trendValue: '+15%' },
-        { label: 'Usuários Ativos', value: 45, icon: '👥', trend: 'neutral' as const, trendValue: '0%' },
-        { label: 'Uptime', value: '99.9%', icon: '✅', trend: 'up' as const, trendValue: '+0.1%' },
+        {
+            label: 'Total Bots',
+            value: overview.totalBots,
+            icon: '🤖',
+            trend: (overview.activeBots > 0 ? 'up' : 'neutral') as 'up' | 'neutral' | 'down',
+            trendValue: `${overview.activeBots} ativos`
+        },
+        {
+            label: 'Fluxos Iniciados',
+            value: overview.totalFlowStarts,
+            icon: '💬',
+            trend: 'up' as const,
+            trendValue: 'Total'
+        },
+        {
+            label: 'Usuários Totais',
+            value: totalUsers,
+            icon: '👥',
+            trend: 'neutral' as const,
+            trendValue: 'Total'
+        },
+        {
+            label: 'Status Sistema',
+            value: (overview.totalErrors === 0 ? 'Estável' : 'Alerta') as string,
+            icon: overview.totalErrors === 0 ? '✅' : '⚠️',
+            trend: (overview.totalErrors === 0 ? 'up' : 'down') as 'up' | 'neutral' | 'down',
+            trendValue: `${overview.totalErrors} erros`
+        },
     ]
 
     return (
@@ -27,29 +73,45 @@ export const DashboardPage: React.FC = () => {
                 <p className="text-muted">Tenant ID: {displayTenantId}</p>
             </div>
 
-            <StatsGrid stats={stats} />
+            {isLoading ? (
+                <div className="p-8 text-center text-muted">Carregando métricas...</div>
+            ) : (
+                <StatsGrid stats={stats} />
+            )}
 
             <div className="dashboard-section">
                 <Card>
                     <CardHeader>
-                        <h3>Atividade Recente</h3>
+                        <h3>Atividade do Sistema</h3>
                     </CardHeader>
                     <CardBody>
                         <div className="activity-list">
-                            <div className="activity-item">
-                                <span className="activity-icon">🚀</span>
-                                <span className="activity-text">Bot "Atendimento" iniciado</span>
-                                <span className="activity-time">há 2 min</span>
-                            </div>
-                            <div className="activity-item">
-                                <span className="activity-icon">💬</span>
-                                <span className="activity-text">15 novas mensagens recebidas</span>
-                                <span className="activity-time">há 5 min</span>
-                            </div>
+                            {overview.totalBots > 0 ? (
+                                <div className="activity-item">
+                                    <span className="activity-icon">🟢</span>
+                                    <span className="activity-text">
+                                        {overview.activeBots} de {overview.totalBots} bots estão ativos e processando mensagens
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="activity-item">
+                                    <span className="activity-icon">ℹ️</span>
+                                    <span className="activity-text">Nenhum bot configurado ainda. Vá para a aba "Gerenciar Bots".</span>
+                                </div>
+                            )}
+
+                            {overview.totalErrors > 0 && (
+                                <div className="activity-item">
+                                    <span className="activity-icon">⚠️</span>
+                                    <span className="activity-text">
+                                        {overview.totalErrors} erros detectados nas últimas execuções de fluxo.
+                                    </span>
+                                </div>
+                            )}
+
                             <div className="activity-item">
                                 <span className="activity-icon">⚙️</span>
-                                <span className="activity-text">Configurações atualizadas</span>
-                                <span className="activity-time">há 1 hora</span>
+                                <span className="activity-text">Integrações com Telegram/Discord funcionando normalmente</span>
                             </div>
                         </div>
                     </CardBody>
