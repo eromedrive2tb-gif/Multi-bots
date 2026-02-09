@@ -4,7 +4,7 @@
  * Orquestra: Engine, Session, dc-handle-interaction, dc-verify-signature
  */
 
-import { dcHandleInteraction, InteractionType, type DiscordInteraction } from '../atoms/discord'
+import { dcHandleInteraction, InteractionType, type DiscordInteraction, dcSendMessage } from '../atoms/discord'
 import { dbGetBotById } from '../atoms/database'
 import { executeFromTrigger, type FlowExecutionResult } from '../../core/engine'
 import { getBlueprintByTriggerFromKv } from '../molecules/kv-blueprint-manager'
@@ -74,6 +74,12 @@ function buildUniversalContext(
 // MAIN WEBHOOK HANDLER
 // ============================================
 
+function logDebug(msg: string) {
+    // console.log('[DISCORD_DEBUG]', msg)
+    // Actually, let's make it super visible
+    console.log(`\n\n[DISCORD_DEBUG] ${new Date().toISOString()} ${msg}\n\n`)
+}
+
 /**
  * Handle incoming Discord webhook - Data-driven
  */
@@ -82,7 +88,14 @@ export async function handleDiscordWebhook(
     context: WebhookContext
 ): Promise<WebhookResult> {
     try {
-        console.log('[DEBUG] Discord Interaction:', JSON.stringify(interaction))
+        logDebug(`Received Interaction: Type=${interaction.type}`)
+
+        // ... rest of function ...
+
+        // Inside executionPromise:
+        // logDebug('Starting Engine execution...')
+        // const result = await executeFromTrigger(...)
+        // logDebug(`Engine finished: Success=${result.success} Steps=${result.stepsExecuted}`)
 
         // 1. Handle PING immediately (Discord requirement)
         if (interaction.type === InteractionType.PING) {
@@ -180,15 +193,45 @@ export async function handleDiscordWebhook(
         if (response && response.type !== 9) {
             executionPromise = (async () => {
                 try {
-                    return await executeFromTrigger(
+                    logDebug('Starting Engine execution...')
+
+                    // ACTIVE DEBUGGING
+                    await dcSendMessage({
+                        token,
+                        channelId: ctx!.chatId,
+                        content: '🐛 [DEBUG] Engine Starting...'
+                    })
+
+                    const result = await executeFromTrigger(
                         {
                             blueprints: context.env.BLUEPRINTS_KV,
                             sessions: context.env.SESSIONS_KV,
                         },
                         ctx
                     )
+
+                    logDebug(`Engine finished: Success=${result.success} Steps=${result.stepsExecuted} LastStep=${result.lastStepId}`)
+
+                    // ACTIVE DEBUGGING
+                    await dcSendMessage({
+                        token,
+                        channelId: ctx!.chatId,
+                        content: `🐛 [DEBUG] Engine Finished. Success=${result.success} Steps=${result.stepsExecuted}`
+                    })
+
+                    return result
                 } catch (e) {
+                    const errMsg = e instanceof Error ? e.message : String(e)
+                    logDebug(`Engine execution failed: ${errMsg}`)
                     console.error('[Discord Handler] Engine execution failed:', e)
+
+                    // ACTIVE DEBUGGING
+                    await dcSendMessage({
+                        token,
+                        channelId: ctx!.chatId,
+                        content: `🐛 [DEBUG] Engine Failed: ${errMsg}`
+                    })
+
                     return null
                 }
             })()

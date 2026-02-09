@@ -128,7 +128,37 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
         }
     })
     // Catch-all for other types to avoid 404
-    discord.modal('', (ctx) => ctx.resDefer())
+    // Catch-all for modals (User Input Submission)
+    discord.modal('', async (ctx) => {
+        try {
+            console.log('[DEBUG] Discord Modal Interaction:', JSON.stringify(ctx.interaction, null, 2))
+
+            const result = await handleDiscordWebhook(ctx.interaction as any, {
+                env: c.env,
+                botId: bot.id,
+                tenantId: bot.tenantId,
+                bot
+            })
+
+            if (result.executionPromise) {
+                c.executionCtx.waitUntil(result.executionPromise)
+            }
+
+            // For Modal Submit, we usually just Defer (Thinking...) or Update Payload
+            if (result.response) {
+                if (result.response.type === 5 || result.response.type === 6) {
+                    return ctx.resDefer()
+                }
+                return ctx.res(result.response.data || result.response)
+            }
+
+            return ctx.resDefer()
+        } catch (err) {
+            console.error('[Discord Modal Route Error]:', err)
+            return ctx.resDefer()
+        }
+    })
+
     discord.autocomplete('', (ctx) => ctx.resAutocomplete({ choices: [] } as any))
 
     // 4. Let discord-hono handle the request (including signature verification)
