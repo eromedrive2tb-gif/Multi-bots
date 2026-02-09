@@ -1,6 +1,8 @@
 import type { UniversalContext, Result } from '../../core/types'
 import { sendMessage } from './send-message'
 
+import { dcSendButtons } from '../atoms/discord/dc-send-buttons'
+
 export async function collectInput(
     ctx: UniversalContext,
     params: Record<string, unknown>
@@ -15,54 +17,35 @@ export async function collectInput(
     // The engine injects 'session' into params if we use {{session.xxx}}, but here we need internal state management.
     // However, the Context (UniversalContext) doesn't have the session state directly unless we pass it.
 
-    // WORKAROUND: The engine must inject the current step ID or "waiting" status into the context or params?
-    // Actually, in our engine architecture, we can check if the current input matches the EXPECTED input for this step.
+    const lastInput = ctx.metadata.lastInput
+    const isTrigger = !!ctx.metadata.command
+    const hasInput = lastInput !== undefined && lastInput !== null && lastInput !== ''
 
-    // But `collectInput` is called *after* the user sent a message.
-    // If the engine loop just arrived here, it means we need to SUSPEND.
-
-    // How do we distinguish "just arrived" vs "message received for this step"?
-    // We can use a special property in ctx called `_resuming`?
-    // OR we check if `session.currentStepId` == THIS_STEP_ID.
-
-    // Let's assume the engine handles the "wait" logic by checking the return value.
-    // If we return { suspended: true }, the engine stops and saves the step.
-    // NEXT time the engine runs for this user, if the currentStepId matches this step, 
-    // it means we are RESUMING.
-
-    // BUT `collectInput` function doesn't know if it's being called for the first time or resuming
-    // UNLESS we check the input.
-
-    // If `lastInput` exists, is it the input we want?
-    // If the flow was triggered by a command, `lastInput` is "/start".
-
-    // We can use a convention:
-    // If it's resuming, the Engine should pass a flag.
-    // OR we inspect `ctx.metadata.lastInput`.
-
-    // Let's implement this logic:
-    // 1. If we are just Arriving (how to know?), we suspend.
-    // 2. If we are Resuming, we validate `lastInput`.
-
-    // PROBLEM: Stateless functions don't know "just arriving".
-    // SOLUTION: The engine orchestrates this.
-    // But `collectInput` is just an action.
-
-    // ALTERNATIVE:
-    // `collectInput` ALWAYS checks `lastInput`.
-    // But if `lastInput` was the trigger command, we shouldn't consume it.
-
-    // Let's assume the engine will handle the "is this new input?" logic? No, engine is generic.
-
-    // Let's rely on a special param injected by the engine: `_is_resuming`.
-    // If not present, we assume first run -> Suspend.
-
-    const isResuming = !!params._is_resuming
+    // We are resuming if:
+    // 1. Explicitly flagged (future proofing)
+    // 2. OR We have input AND it's not the trigger command (e.g. /start)
+    let isResuming = !!params._is_resuming
+    if (!isResuming && !isTrigger && hasInput) {
+        isResuming = true
+    }
 
     if (!isResuming) {
         // First time reaching this step.
-        // We might want to send a prompt?
-        // Usually prompt is sent by previous step.
+
+        // DISCORD SPECIFIC: Webhook bots cannot receive text messages.
+        // We must send a button to trigger a Modal for input collection.
+        if (ctx.provider === 'dc') {
+            await dcSendButtons({
+                token: ctx.botToken,
+                channelId: ctx.chatId,
+                text: 'Clique abaixo para responder:',
+                buttons: [[{
+                    text: '📝 Responder',
+                    custom_id: `CIV_${variable}`, // Collect Input Value
+                    style: 1 // Primary
+                }]]
+            })
+        }
 
         // Return suspended state
         return {

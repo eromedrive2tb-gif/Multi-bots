@@ -112,14 +112,14 @@ export interface BotInfo {
 // ============================================
 
 export const telegramCredentialsSchema = z.object({
-    token: z.string().min(30, 'Token inválido'),
-})
+    token: z.string().trim().min(30, 'Token inválido'),
+}).strict()
 
 export const discordCredentialsSchema = z.object({
-    applicationId: z.string().min(10, 'Application ID inválido'),
-    publicKey: z.string().min(30, 'Public Key inválida'),
-    token: z.string().min(50, 'Token inválido'),
-})
+    applicationId: z.string().trim().min(10, 'Application ID inválido'),
+    publicKey: z.string().trim().min(30, 'Public Key inválida'),
+    token: z.string().trim().min(50, 'Token inválido'),
+}).strict()
 
 export const addBotSchema = z.object({
     name: z.string().min(2, 'Nome do bot deve ter no mínimo 2 caracteres'),

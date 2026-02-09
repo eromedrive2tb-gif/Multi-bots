@@ -64,24 +64,18 @@ botsRoutes.post('/api/bots', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const body = await c.req.json()
 
-    const name = body.name || ''
-    const provider = body.provider as BotProvider
+    // Validação usando o schema central do core/types.ts
+    const { addBotSchema } = await import('../core/types')
+    const parseResult = addBotSchema.safeParse(body)
 
-    let credentials: TelegramCredentials | DiscordCredentials
-
-    if (provider === 'telegram') {
-        credentials = {
-            token: body.telegram_token || '',
-        }
-    } else if (provider === 'discord') {
-        credentials = {
-            applicationId: body.discord_application_id || '',
-            publicKey: body.discord_public_key || '',
-            token: body.discord_token || '',
-        }
-    } else {
-        return c.json({ success: false, error: 'Provider inválido' }, 400)
+    if (!parseResult.success) {
+        return c.json({
+            success: false,
+            error: parseResult.error.errors.map(e => e.message).join(', ')
+        }, 400)
     }
+
+    const { name, provider, credentials } = parseResult.data
 
     const origin = getBaseUrl(c)
     const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
@@ -164,6 +158,21 @@ botsRoutes.post('/api/bots/webhooks/refresh', authMiddleware, async (c) => {
         baseUrl: origin,
         results,
     })
+})
+
+// Sync Discord Commands
+botsRoutes.post('/api/bots/:id/sync', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const botId = c.req.param('id')
+
+    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, '')
+    const result = await botManager.syncBotCommands(botId, c.env.BLUEPRINTS_KV)
+
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 500)
+    }
+
+    return c.json({ success: true, message: 'Comandos sincronizados com sucesso' })
 })
 
 export { botsRoutes }

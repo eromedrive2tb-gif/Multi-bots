@@ -1,6 +1,7 @@
 import type { UniversalContext, Result } from '../../core/types'
 import { tgSendText } from '../atoms/telegram'
 import { dcSendMessage } from '../atoms/discord'
+import { htmlToMarkdown } from '../shared/html-to-markdown'
 
 /**
  * send_message - Universal message sending action
@@ -29,10 +30,14 @@ export async function sendMessage(
             }
 
             case 'dc': {
+                // Determine if we should convert HTML to Markdown based on parseMode or default behavior
+                // The engine defaults to HTML, so we should convert
+                const content = (parseMode === 'HTML' || !parseMode) ? htmlToMarkdown(text) : text
+
                 const result = await dcSendMessage({
                     token: ctx.botToken,
                     channelId: ctx.chatId,
-                    content: text,
+                    content,
                     embed: params.embed as { title?: string; description?: string; color?: number } | undefined,
                 })
                 if (result.success) {

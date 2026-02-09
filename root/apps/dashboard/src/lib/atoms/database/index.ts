@@ -6,6 +6,7 @@ export { dbSaveBot, type DbSaveBotProps } from './db-save-bot'
 export { dbGetBots, dbGetBotById, type DbGetBotsProps } from './db-get-bots'
 export { dbUpdateBotStatus, type DbUpdateBotStatusProps } from './db-update-bot-status'
 export { dbDeleteBot, type DbDeleteBotProps } from './db-delete-bot'
+export { dbDeleteBotEvents, type DbDeleteBotEventsProps } from './db-delete-bot-events'
 
 // Blueprint atoms
 export { dbSaveBlueprint, type DbSaveBlueprintProps } from './db-save-blueprint'

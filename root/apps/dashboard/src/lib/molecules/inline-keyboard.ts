@@ -1,5 +1,7 @@
 import type { UniversalContext, Result } from '../../core/types'
 import { tgSendButtons } from '../atoms/telegram/tg-send-buttons'
+import { dcSendButtons } from '../atoms/discord'
+import { htmlToMarkdown } from '../shared/html-to-markdown'
 
 export async function inlineKeyboard(
     ctx: UniversalContext,
@@ -13,12 +15,7 @@ export async function inlineKeyboard(
         return { success: false, error: 'Buttons must be an array' }
     }
 
-    // Convert flat list to rows (default 1 per row or 2? Let's do 1 per row for now or check params)
-    // For simplicity, we stack them 1 per row unless 'layout' param exists?
-    // Let's assume 1 per row for now matching the example json logic structure implies 
-    // actually the example json has a flat list. 
-    // We can map 1 button per row.
-
+    // Convert flat list to rows (default 1 per row for simplicity)
     const rows = buttons.map(btn => [{ text: btn.text, callback_data: btn.callback }])
 
     try {
@@ -37,7 +34,25 @@ export async function inlineKeyboard(
                 }
                 return { success: false, error: result.error ?? 'Unknown Telegram error' }
             }
-            // Other providers...
+            case 'dc': {
+                const content = (parseMode === 'HTML' || !parseMode) ? htmlToMarkdown(text) : text
+
+                const result = await dcSendButtons({
+                    token: ctx.botToken,
+                    channelId: ctx.chatId,
+                    text: content,
+                    buttons: rows.map(row => row.map(btn => ({
+                        text: btn.text,
+                        custom_id: btn.callback_data, // Ensure callback_data is used as custom_id
+                        style: 1 // Default to Primary (blue)
+                    }))),
+                })
+
+                if (result.success) {
+                    return { success: true, data: { messageId: result.messageId } }
+                }
+                return { success: false, error: result.error ?? 'Unknown Discord error' }
+            }
             default:
                 return { success: false, error: `Provider ${ctx.provider} not supported for inline_keyboard` }
         }

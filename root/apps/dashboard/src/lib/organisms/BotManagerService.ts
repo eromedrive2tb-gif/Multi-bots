@@ -4,11 +4,13 @@
  * Orquestra: Molecules e Atoms de database
  */
 
-import { dbGetBots, dbGetBotById, dbDeleteBot } from '../atoms/database'
+import { dbGetBots, dbGetBotById, dbDeleteBot, dbDeleteBotEvents } from '../atoms/database'
 import { tgSetWebhook, tgDeleteWebhook } from '../atoms/telegram'
 import { validateAndSaveBot } from '../molecules'
 import { healthCheckBot } from '../molecules'
-import type { Bot, BotCredentials, BotProvider, TelegramCredentials } from '../../core/types'
+import { dcSyncCommands } from '../atoms/discord'
+import { kvList } from '../atoms/kv'
+import type { Bot, BotCredentials, BotProvider, TelegramCredentials, DiscordCredentials } from '../../core/types'
 
 export class BotManagerService {
     constructor(
@@ -81,26 +83,41 @@ export class BotManagerService {
      * Remove um bot (limpa webhook + deleta)
      */
     async removeBot(id: string): Promise<{ success: boolean; error?: string }> {
-        const bot = await this.getBot(id)
+        try {
+            const bot = await this.getBot(id)
 
-        if (!bot) {
-            return { success: false, error: 'Bot não encontrado' }
+            if (!bot) {
+                return { success: false, error: 'Bot não encontrado' }
+            }
+
+            // Remove webhook do Telegram
+            if (bot.provider === 'telegram') {
+                const tgCreds = bot.credentials as TelegramCredentials
+                await tgDeleteWebhook({ token: tgCreds.token })
+            }
+
+            // 1. Limpa analytics vinculados (FK constraint)
+            await dbDeleteBotEvents({
+                db: this.db,
+                botId: id,
+                tenantId: this.tenantId
+            })
+
+            // 2. Deleta do banco
+            const deleted = await dbDeleteBot({
+                db: this.db,
+                id,
+                tenantId: this.tenantId,
+            })
+
+            return { success: deleted }
+        } catch (error) {
+            console.error('[BotManagerService] Error removing bot:', error)
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Erro ao remover bot'
+            }
         }
-
-        // Remove webhook do Telegram
-        if (bot.provider === 'telegram') {
-            const tgCreds = bot.credentials as TelegramCredentials
-            await tgDeleteWebhook({ token: tgCreds.token })
-        }
-
-        // Deleta do banco
-        const deleted = await dbDeleteBot({
-            db: this.db,
-            id,
-            tenantId: this.tenantId,
-        })
-
-        return { success: deleted }
     }
 
     /**
@@ -162,7 +179,15 @@ export class BotManagerService {
             }
         }
 
+        if (bot.provider === 'discord') {
+            // Discord requires manual configuration in Developer Portal
+            // Return success with URL so user knows what to configure
+            const webhookUrl = `${this.baseWebhookUrl}/webhooks/discord/${bot.id}`
+            return { success: true, webhookUrl }
+        }
+
         return { success: false, error: 'Provider não suportado para webhook automático' }
+
     }
 
     /**
@@ -196,5 +221,51 @@ export class BotManagerService {
         }
 
         return { results }
+    }
+
+    /**
+     * Sincroniza comandos do bot com o provider (Discord Slash Commands)
+     */
+    async syncBotCommands(id: string, kv: KVNamespace): Promise<{ success: boolean; error?: string }> {
+        const bot = await this.getBot(id)
+
+        if (!bot) {
+            return { success: false, error: 'Bot não encontrado' }
+        }
+
+        if (bot.provider !== 'discord') {
+            return { success: false, error: 'Sincronização de comandos apenas para Discord' }
+        }
+
+        // 1. Busca todos os triggers ativos do tenant no D1 (Source of Truth)
+        const { dbGetBlueprints } = await import('../atoms/database/db-get-blueprints')
+        const blueprintsResult = await dbGetBlueprints({ db: this.db, tenantId: this.tenantId, activeOnly: true })
+
+        if (!blueprintsResult.success) {
+            return { success: false, error: blueprintsResult.error }
+        }
+
+        const triggers = blueprintsResult.data.map(bp => bp.trigger)
+
+        // 2. Transforma triggers em comandos Discord
+        const commands = triggers
+            .filter(t => t.startsWith('/'))
+            .map(t => ({
+                name: t.replace(/^\//, '').toLowerCase(),
+                description: `Aciona o fluxo ${t}`,
+                type: 1 // CHAT_INPUT
+            }))
+
+        if (commands.length === 0) {
+            return { success: true } // Nada a sincronizar
+        }
+
+        // 3. Envia para o Discord
+        const dcCreds = bot.credentials as DiscordCredentials
+        return dcSyncCommands({
+            applicationId: dcCreds.applicationId,
+            token: dcCreds.token,
+            commands
+        })
     }
 }

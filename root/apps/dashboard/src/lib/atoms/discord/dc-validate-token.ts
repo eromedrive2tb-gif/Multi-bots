@@ -43,7 +43,7 @@ export async function dcValidateToken({
         if (data.id !== applicationId) {
             return {
                 success: false,
-                error: 'Application ID não corresponde ao token',
+                error: `Application ID não corresponde ao token (ID da aplicação: ${applicationId}, ID do bot: ${data.id})`,
             }
         }
 

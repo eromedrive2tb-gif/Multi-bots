@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { Card, CardHeader, CardBody } from '../atoms/Card'
 import { Button } from '../atoms/Button'
 import { StatusBadge, ProviderBadge } from '../atoms/StatusBadge'
+import { BotBlueprintsModal } from '../organisms/BotBlueprintsModal'
 import type { Bot } from '../../core/types'
 
 interface BotCardProps {
@@ -12,12 +13,13 @@ interface BotCardProps {
 
 export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
     const [loading, setLoading] = useState(false)
+    const [showBlueprintsModal, setShowBlueprintsModal] = useState(false)
 
     const lastCheckFormatted = bot.lastCheck
         ? new Date(bot.lastCheck).toLocaleString('pt-BR')
         : 'Nunca verificado'
 
-    const handleAction = async (action: 'check' | 'delete') => {
+    const handleAction = async (action: 'check' | 'delete' | 'sync') => {
         if (action === 'delete' && !confirm('Tem certeza que deseja remover este bot?')) return
 
         setLoading(true)
@@ -27,7 +29,11 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
             })
             const result = await response.json() as any
             if (result.success) {
-                if (onUpdate) onUpdate()
+                if (action === 'sync') {
+                    alert('Comandos sincronizados com sucesso!')
+                } else if (onUpdate) {
+                    onUpdate()
+                }
             } else {
                 alert(result.error || `Erro ao ${action === 'check' ? 'verificar' : 'remover'} bot`)
             }
@@ -78,6 +84,18 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
                     >
                         🔄 {loading ? '...' : 'Verificar'}
                     </Button>
+
+                    {bot.provider === 'discord' && (
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => setShowBlueprintsModal(true)}
+                            disabled={loading}
+                        >
+                            ⚡ {loading ? '...' : 'Gerenciar Comandos'}
+                        </Button>
+                    )}
+
                     <Button
                         variant="danger"
                         size="sm"
@@ -88,6 +106,12 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
                     </Button>
                 </div>
             </CardBody>
+
+            <BotBlueprintsModal
+                isOpen={showBlueprintsModal}
+                onClose={() => setShowBlueprintsModal(false)}
+                bot={bot}
+            />
         </Card>
     )
 }
