@@ -97,16 +97,25 @@ export function dcHandleInteraction(interaction: DiscordInteraction): DcHandleIn
         const data = interaction.data as any
         let customId = data?.custom_id || data?.customId || (interaction as any).customId || ''
 
-        // Fallback: Scan entire object if not found (Ultra-robust)
-        if (!customId) {
-            try {
-                const raw = JSON.stringify(interaction)
-                const match = raw.match(/"custom_id":"([^"]+)"/)
-                if (match) {
-                    customId = match[1]
+        // FIX: If custom_id is missing (empty string), try to find it via component ID match
+        // The raw payload shows data.custom_id might be empty but data.id matches the component in the message.
+        if (!customId && data.id && (interaction as any).message?.components) {
+            const targetId = data.id
+            const rows = (interaction as any).message.components
+            // Traverse message components to find matching ID
+            for (const row of rows) {
+                if (row.components) {
+                    for (const component of row.components) {
+                        // Loose comparison just in case, but IDs are usually strings or numbers?
+                        // In JSON it was Int 2.
+                        // Let's compare ==
+                        if (component.id == targetId && component.custom_id) {
+                            customId = component.custom_id
+                            break
+                        }
+                    }
                 }
-            } catch (e) {
-                console.warn('[dcHandleInteraction] Failed to scan JSON for custom_id', e)
+                if (customId) break
             }
         }
 

@@ -13,10 +13,14 @@ import { registerRoutes } from './routes'
 // Dashboard Pages (protected routes only - auth handled in routes)
 import { DashboardPage } from './pages/dashboard'
 import { SettingsPage } from './pages/settings'
+import { setupRegistry } from './lib/registry-setup'
 
 // ============================================
 // APP INITIALIZATION
 // ============================================
+
+// Initialize Action Registry (DIP Composition Root)
+setupRegistry()
 
 const app = new Hono<{ Bindings: Env }>()
 
