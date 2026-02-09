@@ -175,4 +175,58 @@ botsRoutes.post('/api/bots/:id/sync', authMiddleware, async (c) => {
     return c.json({ success: true, message: 'Comandos sincronizados com sucesso' })
 })
 
+// List Blueprints with Activation Status for a Bot
+botsRoutes.get('/api/bots/:id/blueprints', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const botId = c.req.param('id')
+    const origin = getBaseUrl(c)
+
+    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+
+    // 1. Get all blueprints
+    const { dbGetBlueprints } = await import('../lib/atoms/database/db-get-blueprints')
+    const allBlueprintsResult = await dbGetBlueprints({ db: c.env.DB, tenantId: tenant.tenantId, includeContent: true })
+
+    if (!allBlueprintsResult.success) {
+        return c.json({ success: false, error: allBlueprintsResult.error }, 500)
+    }
+
+    // 2. Get active status for this bot
+    const botBlueprintsResult = await botManager.getBotBlueprints(botId)
+    const activeMap = new Set<string>()
+
+    if (botBlueprintsResult.success) {
+        botBlueprintsResult.data.forEach(bp => {
+            if (bp.isActive) activeMap.add(bp.blueprintId)
+        })
+    }
+
+    // 3. Merge
+    const data = allBlueprintsResult.data.map(bp => ({
+        ...bp,
+        isActive: activeMap.has(bp.id)
+    }))
+
+    return c.json({ success: true, data })
+})
+
+// Toggle Blueprint Activation for a Bot
+botsRoutes.post('/api/bots/:id/blueprints/:bpId/toggle', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const botId = c.req.param('id')
+    const blueprintId = c.req.param('bpId')
+    const { isActive } = await c.req.json()
+
+    const origin = getBaseUrl(c)
+    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+
+    const result = await botManager.toggleBotBlueprint(botId, blueprintId, Boolean(isActive))
+
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 500)
+    }
+
+    return c.json({ success: true })
+})
+
 export { botsRoutes }

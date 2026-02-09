@@ -85,16 +85,14 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
                         🔄 {loading ? '...' : 'Verificar'}
                     </Button>
 
-                    {bot.provider === 'discord' && (
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => setShowBlueprintsModal(true)}
-                            disabled={loading}
-                        >
-                            ⚡ {loading ? '...' : 'Gerenciar Comandos'}
-                        </Button>
-                    )}
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setShowBlueprintsModal(true)}
+                        disabled={loading}
+                    >
+                        ⚡ {loading ? '...' : 'Gerenciar Comandos'}
+                    </Button>
 
                     <Button
                         variant="danger"

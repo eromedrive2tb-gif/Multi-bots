@@ -40,16 +40,23 @@ export interface DbGetBlueprintsProps {
     db: D1Database
     tenantId: string
     activeOnly?: boolean
+    includeContent?: boolean
 }
 
 export async function dbGetBlueprints({
     db,
     tenantId,
     activeOnly = false,
-}: DbGetBlueprintsProps): Promise<Result<BlueprintListItem[]>> {
+    includeContent = false,
+}: DbGetBlueprintsProps): Promise<Result<(BlueprintListItem & Partial<Blueprint>)[]>> {
     try {
+        let fields = 'id, name, trigger, version, is_active, created_at, updated_at'
+        if (includeContent) {
+            fields += ', json_data'
+        }
+
         let query = `
-            SELECT id, name, trigger, version, is_active, created_at, updated_at
+            SELECT ${fields}
             FROM blueprints
             WHERE tenant_id = ?
         `
@@ -62,15 +69,27 @@ export async function dbGetBlueprints({
 
         const result = await db.prepare(query).bind(tenantId).all<BlueprintRow>()
 
-        const blueprints: BlueprintListItem[] = result.results.map(row => ({
-            id: row.id,
-            name: row.name,
-            trigger: row.trigger,
-            version: row.version,
-            isActive: row.is_active === 1,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-        }))
+        const blueprints = result.results.map(row => {
+            const base = {
+                id: row.id,
+                name: row.name,
+                trigger: row.trigger,
+                version: row.version,
+                isActive: row.is_active === 1,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at,
+            }
+
+            if (includeContent && row.json_data) {
+                try {
+                    const parsed = JSON.parse(row.json_data)
+                    return { ...base, ...parsed }
+                } catch (e) {
+                    return base
+                }
+            }
+            return base
+        })
 
         return { success: true, data: blueprints }
     } catch (error) {

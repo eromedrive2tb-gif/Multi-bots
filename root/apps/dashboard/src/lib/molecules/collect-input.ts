@@ -22,12 +22,9 @@ export async function collectInput(
     const hasInput = lastInput !== undefined && lastInput !== null && lastInput !== ''
 
     // We are resuming if:
-    // 1. Explicitly flagged (future proofing)
-    // 2. OR We have input AND it's not the trigger command (e.g. /start)
-    let isResuming = !!params._is_resuming
-    if (!isResuming && !isTrigger && hasInput) {
-        isResuming = true
-    }
+    // 1. Explicitly flagged by the engine (we were suspended on this step)
+    // 2. DO NOT use hasInput here blindly, or we loop consuming the same input for multiple steps.
+    const isResuming = !!params._is_resuming
 
     if (!isResuming) {
         // First time reaching this step.

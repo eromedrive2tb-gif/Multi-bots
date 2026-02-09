@@ -17,4 +17,5 @@ export {
     type DbGetBlueprintsProps,
     type BlueprintListItem
 } from './db-get-blueprints'
-export { dbDeleteBlueprint, dbDeactivateBlueprint, type DbDeleteBlueprintProps } from './db-delete-blueprint'
+// Bot-Blueprint Activation
+export { dbGetBotBlueprints, dbToggleBotBlueprint, type BotBlueprintStatus } from './db-bot-blueprints'

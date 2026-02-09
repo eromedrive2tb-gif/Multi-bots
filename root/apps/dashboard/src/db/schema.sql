@@ -82,3 +82,17 @@ CREATE INDEX IF NOT EXISTS idx_blueprints_tenant ON blueprints (tenant_id);
 CREATE INDEX IF NOT EXISTS idx_blueprints_trigger ON blueprints (tenant_id, trigger);
 
 CREATE INDEX IF NOT EXISTS idx_blueprints_active ON blueprints (tenant_id, is_active);
+
+-- Bot Blueprints activation table (Many-to-Many)
+CREATE TABLE IF NOT EXISTS bot_blueprints (
+    bot_id TEXT NOT NULL,
+    blueprint_id TEXT NOT NULL,
+    is_active INTEGER DEFAULT 0, -- Default INACTIVE for safety
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (bot_id) REFERENCES bots (id) ON DELETE CASCADE,
+    FOREIGN KEY (blueprint_id) REFERENCES blueprints (id) ON DELETE CASCADE,
+    PRIMARY KEY (bot_id, blueprint_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bot_blueprints_active ON bot_blueprints (bot_id, is_active);

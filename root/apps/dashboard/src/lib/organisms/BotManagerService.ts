@@ -5,6 +5,7 @@
  */
 
 import { dbGetBots, dbGetBotById, dbDeleteBot, dbDeleteBotEvents } from '../atoms/database'
+import { dbGetBotBlueprints, dbToggleBotBlueprint } from '../atoms/database/db-bot-blueprints'
 import { tgSetWebhook, tgDeleteWebhook } from '../atoms/telegram'
 import { validateAndSaveBot } from '../molecules'
 import { healthCheckBot } from '../molecules'
@@ -223,8 +224,21 @@ export class BotManagerService {
         return { results }
     }
 
+    // ============================================
+    // BLUEPRINT MANAGEMENT
+    // ============================================
+
+    async getBotBlueprints(botId: string) {
+        return dbGetBotBlueprints({ db: this.db, botId })
+    }
+
+    async toggleBotBlueprint(botId: string, blueprintId: string, isActive: boolean) {
+        return dbToggleBotBlueprint({ db: this.db, botId, blueprintId, isActive })
+    }
+
     /**
      * Sincroniza comandos do bot com o provider (Discord Slash Commands)
+     * APENAS blueprints ativos para este bot serão sincronizados!
      */
     async syncBotCommands(id: string, kv: KVNamespace): Promise<{ success: boolean; error?: string }> {
         const bot = await this.getBot(id)
@@ -245,9 +259,22 @@ export class BotManagerService {
             return { success: false, error: blueprintsResult.error }
         }
 
-        const triggers = blueprintsResult.data.map(bp => bp.trigger)
+        // 2. Busca ativação específica do bot
+        const botBlueprintsResult = await this.getBotBlueprints(id)
+        const activeBlueprintIds = new Set<string>()
 
-        // 2. Transforma triggers em comandos Discord
+        if (botBlueprintsResult.success) {
+            botBlueprintsResult.data.forEach(bp => {
+                if (bp.isActive) activeBlueprintIds.add(bp.blueprintId)
+            })
+        }
+
+        // 3. Filtra apenas blueprints ativos para ESTE bot
+        const triggers = blueprintsResult.data
+            .filter(bp => activeBlueprintIds.has(bp.id))
+            .map(bp => bp.trigger)
+
+        // 4. Transforma triggers em comandos Discord
         const commands = triggers
             .filter(t => t.startsWith('/'))
             .map(t => ({
@@ -256,11 +283,9 @@ export class BotManagerService {
                 type: 1 // CHAT_INPUT
             }))
 
-        if (commands.length === 0) {
-            return { success: true } // Nada a sincronizar
-        }
+        // MESMO SE TIVER 0 COMANDOS, TEM QUE ENVIAR ARRAY VAZIO PRA LIMPAR NO DISCORD
 
-        // 3. Envia para o Discord
+        // 5. Envia para o Discord
         const dcCreds = bot.credentials as DiscordCredentials
         return dcSyncCommands({
             applicationId: dcCreds.applicationId,
