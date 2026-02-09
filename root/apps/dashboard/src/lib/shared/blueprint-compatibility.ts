@@ -51,28 +51,35 @@ export function analyzeCompatibility(blueprint: Blueprint, provider: BotProvider
 
 function analyzeDiscordCompatibility(blueprint: Blueprint, issues: CompatibilityIssue[]) {
     // Check key: collect_input
-    // Discord Webhooks cannot receive text messages.
-    // We implemented a workaround (Button -> Modal), but this is a degraded UX compared to natural chat.
+    // Discord Webhooks cannot receive text messages naturally.
+    // We implemented a workaround (Button -> Modal).
 
-    // Steps is a Record<string, Step>, so we iterate entries to get ID
+    let hasCollectInput = false
+    const stepsWithLongTimeout: string[] = []
+
     const entries = Object.entries(blueprint.steps)
 
     for (const [id, step] of entries) {
         if (step.action === 'collect_input') {
-            issues.push({
-                level: 'warning',
-                message: 'Uses "collect_input": Requires Bot Button & Modal interaction (Natural chat not supported on Webhooks).',
-                stepId: id
-            })
+            hasCollectInput = true
         }
 
-        // Check key: timeout_seconds with wait
-        // Discord interactions have a 3s hard timeout for the initial response.
-        // Our engine handles this with deferred responses, but very long waits might be confusing if no intermediate msg is sent.
-        // This is a soft warning.
-        if (step.params && typeof step.params.timeout_seconds === 'number' && step.params.timeout_seconds > 60) {
-            // Not a critical issue with our deferred architecture, but good to know.
-            // Skipping for now to avoid noise, focusing on the input issue.
-        }
+        // Check for long timeouts (Discord interaction limit is 3s, but we use deferred)
+        // However, extremely long processing without updates might still be an issue conceptually
+        // Not a hard error, just a heads up.
+    }
+
+    if (hasCollectInput) {
+        issues.push({
+            level: 'warning',
+            message: '⚠️ Adaptação Automática: Este fluxo solicita texto do usuário via "collect_input". O Discord não permite isso nativamente em webhooks. O bot enviará um botão "Responder" que abre um formulário.'
+        })
+    }
+
+    if (stepsWithLongTimeout.length > 0) {
+        issues.push({
+            level: 'warning',
+            message: '⚠️ Latência: Alguns passos têm espera longa. O Discord exige resposta em 3s (o sistema tenta adiar, mas evite processamento pesado sem feedback).'
+        })
     }
 }

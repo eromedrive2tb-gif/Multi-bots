@@ -128,6 +128,7 @@ interface StepExecutionResult {
  * Execute a single step from the blueprint
  */
 import { dbLogAnalyticsEvent } from '../lib/atoms/database/db-log-analytics'
+import { dbCheckBlueprintActive } from '../lib/atoms/database'
 
 // ... existing imports ...
 
@@ -267,11 +268,38 @@ export async function executeFlow(
         // Trigger-based lookup (e.g., /start command)
         const trigger = `/${ctx.metadata.command}`
         const bpResult = await getBlueprintByTriggerFromKv(kv.blueprints, ctx.tenantId, trigger)
-        if (bpResult.success) {
-            blueprint = bpResult.data
-        } else {
+
+        if (!bpResult.success) {
             return { success: false, stepsExecuted: 0, error: bpResult.error }
         }
+
+        if (bpResult.data) {
+            // CHECK ACTIVATION if DB context is available (it should be for webhooks)
+            let isActive = true
+            if (ctx.db && ctx.botId) {
+                // If the check fails (e.g. DB error), consider it active or inactive?
+                // Let's be strict: If check explicitly returns false, then it is INACTIVE.
+                // The atom returns false if row missing or is_active=0.
+                isActive = await dbCheckBlueprintActive({
+                    db: ctx.db,
+                    botId: ctx.botId,
+                    blueprintId: bpResult.data.id
+                })
+            }
+
+            if (isActive) {
+                blueprint = bpResult.data
+            } else {
+                // Explicitly inactive for this bot
+                return {
+                    success: false,
+                    stepsExecuted: 0,
+                    error: `Command '${trigger}' is disabled for this bot.`,
+                    blueprintId: bpResult.data.id
+                }
+            }
+        }
+        // If data is null, fall through to default "No blueprint found" at end of function
     } else if (session.currentFlowId) {
         // Resume from session
         const bpResult = await getBlueprintFromKv(kv.blueprints, ctx.tenantId, session.currentFlowId)

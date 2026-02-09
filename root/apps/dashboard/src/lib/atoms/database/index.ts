@@ -19,3 +19,4 @@ export {
 } from './db-get-blueprints'
 // Bot-Blueprint Activation
 export { dbGetBotBlueprints, dbToggleBotBlueprint, type BotBlueprintStatus } from './db-bot-blueprints'
+export { dbCheckBlueprintActive, type DbCheckBlueprintActiveProps } from './db-check-blueprint-active'
