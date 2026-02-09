@@ -190,14 +190,16 @@ export async function handleDiscordWebhook(
         // 4. Determine Response Content (Immediate ACK to avoid 3s timeout)
         let response: any = { type: 5 } // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
 
+        // SILENT ACK for Modals to prevent "Bot is thinking..." spam
+        if (interaction.type === InteractionType.MODAL_SUBMIT) {
+            response = { type: 6 } // DEFERRED_UPDATE_MESSAGE
+        }
+
         if (interaction.type === InteractionType.APPLICATION_COMMAND) {
-            response = {
-                type: 4, // CHANNEL_MESSAGE_WITH_SOURCE
-                data: {
-                    content: '🔄 Processando...',
-                    flags: 64 // EPHEMERAL: Only the user who triggered sees this
-                }
-            }
+            // Use standard Defer (Thinking...). 
+            // NOTE: It will persist until timeout since we send NEW messages instead of Editing.
+            // But user finds "Processando..." text polluting.
+            response = { type: 5 }
         } else if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
             const data = interaction.data as any
             let customId = data?.custom_id || data?.customId || (interaction as any).customId || ''

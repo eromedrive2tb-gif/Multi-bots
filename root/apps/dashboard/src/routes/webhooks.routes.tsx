@@ -88,8 +88,8 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
             }
         })())
 
-        // Immediate ACK: Discord will show this message while we process
-        return ctx.res('🔄 Processando sua solicitação...')
+        // Immediate ACK: Defer (Thinking...) to avoid timeout, but no text message.
+        return ctx.resDefer()
     })
 
     // Catch-all for components (buttons, select menus)
@@ -114,9 +114,12 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
                     return ctx.resModal(result.response.data)
                 }
                 // Type 5: Deferred Channel Message (Thinking...)
-                // Type 6: Deferred Update Message (Silent / Stop loading)
-                if (result.response.type === 5 || result.response.type === 6) {
+                if (result.response.type === 5) {
                     return ctx.resDefer()
+                }
+                // Type 6: Deferred Update Message (Silent / Stop loading)
+                if (result.response.type === 6) {
+                    return ctx.res({ type: 6 })
                 }
                 return ctx.res(result.response.data || result.response)
             }
@@ -146,8 +149,11 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
 
             // For Modal Submit, we usually just Defer (Thinking...) or Update Payload
             if (result.response) {
-                if (result.response.type === 5 || result.response.type === 6) {
+                if (result.response.type === 5) {
                     return ctx.resDefer()
+                }
+                if (result.response.type === 6) {
+                    return ctx.res({ type: 6 })
                 }
                 return ctx.res(result.response.data || result.response)
             }
