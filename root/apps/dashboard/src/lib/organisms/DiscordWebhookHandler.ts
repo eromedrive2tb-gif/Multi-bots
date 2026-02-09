@@ -195,13 +195,6 @@ export async function handleDiscordWebhook(
                 try {
                     logDebug('Starting Engine execution...')
 
-                    // ACTIVE DEBUGGING
-                    await dcSendMessage({
-                        token,
-                        channelId: ctx!.chatId,
-                        content: '🐛 [DEBUG] Engine Starting...'
-                    })
-
                     const result = await executeFromTrigger(
                         {
                             blueprints: context.env.BLUEPRINTS_KV,
@@ -212,25 +205,11 @@ export async function handleDiscordWebhook(
 
                     logDebug(`Engine finished: Success=${result.success} Steps=${result.stepsExecuted} LastStep=${result.lastStepId}`)
 
-                    // ACTIVE DEBUGGING
-                    await dcSendMessage({
-                        token,
-                        channelId: ctx!.chatId,
-                        content: `🐛 [DEBUG] Engine Finished. Success=${result.success} Steps=${result.stepsExecuted}`
-                    })
-
                     return result
                 } catch (e) {
                     const errMsg = e instanceof Error ? e.message : String(e)
                     logDebug(`Engine execution failed: ${errMsg}`)
                     console.error('[Discord Handler] Engine execution failed:', e)
-
-                    // ACTIVE DEBUGGING
-                    await dcSendMessage({
-                        token,
-                        channelId: ctx!.chatId,
-                        content: `🐛 [DEBUG] Engine Failed: ${errMsg}`
-                    })
 
                     return null
                 }

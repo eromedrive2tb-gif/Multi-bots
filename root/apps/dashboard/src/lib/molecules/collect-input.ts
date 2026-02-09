@@ -31,7 +31,21 @@ export async function collectInput(
 
         // DISCORD SPECIFIC: Webhook bots cannot receive text messages.
         // We must send a button to trigger a Modal for input collection.
-        if (ctx.provider === 'dc') {
+        // BUT: If the step expects a button click (e.g. from previous inline_keyboard),
+        // we should NOT send the "Responder" button, as it's redundant/confusing.
+
+        // COMPATIBILITY HEURISTIC:
+        // - specific validation (email, phone) -> Needs Modal (Text)
+        // - explicit prompt_on_invalid -> Needs Modal (Text specific constraints)
+        // - validation='any' AND no prompt -> Assume Button Wait (Silent)
+
+        const hasSpecificValidation = validation !== 'any'
+        const hasExplicitPrompt = params.prompt_on_invalid !== undefined && params.prompt_on_invalid !== '' && params.prompt_on_invalid !== null
+        const shouldSendModal = hasSpecificValidation || hasExplicitPrompt
+
+        console.log(`[DEBUG] collect-input heuristic for ${variable}: validation=${validation}, hasPrompt=${hasExplicitPrompt}, SEND_MODAL=${shouldSendModal}`)
+
+        if (ctx.provider === 'dc' && shouldSendModal) {
             await dcSendButtons({
                 token: ctx.botToken,
                 channelId: ctx.chatId,

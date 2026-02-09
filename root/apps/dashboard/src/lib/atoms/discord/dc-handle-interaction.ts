@@ -93,8 +93,23 @@ export function dcHandleInteraction(interaction: DiscordInteraction): DcHandleIn
     }
 
     // Handle Buttons / Components
-    if (interaction.type === InteractionType.MESSAGE_COMPONENT && interaction.data) {
-        const customId = interaction.data.custom_id
+    if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+        const data = interaction.data as any
+        let customId = data?.custom_id || data?.customId || (interaction as any).customId || ''
+
+        // Fallback: Scan entire object if not found (Ultra-robust)
+        if (!customId) {
+            try {
+                const raw = JSON.stringify(interaction)
+                const match = raw.match(/"custom_id":"([^"]+)"/)
+                if (match) {
+                    customId = match[1]
+                }
+            } catch (e) {
+                console.warn('[dcHandleInteraction] Failed to scan JSON for custom_id', e)
+            }
+        }
+
         genericMessage.text = customId || '' // Treat customId as text for the engine
 
         return {
