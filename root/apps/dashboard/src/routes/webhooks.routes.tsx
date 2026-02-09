@@ -95,34 +95,7 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
     // Catch-all for components (buttons, select menus)
     discord.component('', async (ctx) => {
         try {
-            // Check if this is a "Collect Input" button click
-            if (ctx.interaction.data && 'custom_id' in ctx.interaction.data) {
-                const customId = ctx.interaction.data.custom_id
-                if (customId.startsWith('CIV_')) {
-                    const variableName = customId.replace('CIV_', '')
-                    return ctx.resModal({
-                        title: 'Responder',
-                        custom_id: `SUBMIT_${variableName}`,
-                        components: [
-                            {
-                                type: 1,
-                                components: [
-                                    {
-                                        type: 4,
-                                        custom_id: 'input_value',
-                                        label: 'Sua resposta:',
-                                        style: 1, // Short
-                                        min_length: 1,
-                                        max_length: 2000,
-                                        required: true,
-                                        placeholder: 'Digite sua resposta aqui...'
-                                    }
-                                ]
-                            }
-                        ]
-                    })
-                }
-            }
+            console.log('[DEBUG] Discord Component Interaction:', JSON.stringify(ctx.interaction, null, 2))
 
             const result = await handleDiscordWebhook(ctx.interaction as any, {
                 env: c.env,
@@ -136,6 +109,12 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
             }
 
             if (result.response) {
+                // Type 9: Modal
+                if (result.response.type === 9) {
+                    return ctx.resModal(result.response.data)
+                }
+                // Type 5: Deferred Channel Message (Thinking...)
+                // Type 6: Deferred Update Message (Silent / Stop loading)
                 if (result.response.type === 5 || result.response.type === 6) {
                     return ctx.resDefer()
                 }

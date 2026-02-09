@@ -82,6 +82,8 @@ export async function handleDiscordWebhook(
     context: WebhookContext
 ): Promise<WebhookResult> {
     try {
+        console.log('[DEBUG] Discord Interaction:', JSON.stringify(interaction))
+
         // 1. Handle PING immediately (Discord requirement)
         if (interaction.type === InteractionType.PING) {
             return {
@@ -125,24 +127,72 @@ export async function handleDiscordWebhook(
                 }
             }
         } else if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
-            response = { type: 6 } // DEFERRED_UPDATE_MESSAGE
+            const data = interaction.data as any
+            let customId = data?.custom_id || data?.customId || (interaction as any).customId || ''
+
+            // Fallback: Scan entire object if not found (Ultra-robust)
+            if (!customId || !customId.startsWith('CIV_')) {
+                const raw = JSON.stringify(interaction)
+                const match = raw.match(/"custom_id":"(CIV_[^"]+)"/)
+                if (match) {
+                    customId = match[1]
+                }
+            }
+
+            if (customId && customId.startsWith('CIV_')) {
+                // Handle "Collect Input" Button -> Open Modal
+                const variableName = customId.replace('CIV_', '')
+                response = {
+                    type: 9, // MODAL
+                    data: {
+                        title: 'Responder',
+                        custom_id: `SUBMIT_${variableName}`,
+                        components: [
+                            {
+                                type: 1, // Action Row
+                                components: [
+                                    {
+                                        type: 4, // Text Input
+                                        custom_id: 'input_value',
+                                        label: 'Sua resposta:',
+                                        style: 1, // Short
+                                        min_length: 1,
+                                        max_length: 2000,
+                                        required: true,
+                                        placeholder: 'Digite sua resposta aqui...'
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            } else {
+                response = { type: 6 } // DEFERRED_UPDATE_MESSAGE
+            }
         }
 
         // 5. Build Engine Execution Promise (Detached)
-        const executionPromise = (async () => {
-            try {
-                return await executeFromTrigger(
-                    {
-                        blueprints: context.env.BLUEPRINTS_KV,
-                        sessions: context.env.SESSIONS_KV,
-                    },
-                    ctx
-                )
-            } catch (e) {
-                console.error('[Discord Handler] Engine execution failed:', e)
-                return null
-            }
-        })()
+        // ONLY execute if it's NOT a modal (type 9)
+        // The modal button click is just UI, NOT engine input.
+        let executionPromise: Promise<any> | undefined
+
+        // FIX: Ensure we check response type properly
+        if (response && response.type !== 9) {
+            executionPromise = (async () => {
+                try {
+                    return await executeFromTrigger(
+                        {
+                            blueprints: context.env.BLUEPRINTS_KV,
+                            sessions: context.env.SESSIONS_KV,
+                        },
+                        ctx
+                    )
+                } catch (e) {
+                    console.error('[Discord Handler] Engine execution failed:', e)
+                    return null
+                }
+            })()
+        }
 
         return {
             handled: true,
