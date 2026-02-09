@@ -213,7 +213,7 @@ export const blueprintSchema = z.object({
     trigger: z.string().min(1),
     entry_step: z.string().min(1),
     steps: z.record(z.string(), blueprintStepSchema),
-    version: z.string().optional().default('1.0'),
+    version: z.string().default('1.0'),
 })
 
 export type Blueprint = z.infer<typeof blueprintSchema>

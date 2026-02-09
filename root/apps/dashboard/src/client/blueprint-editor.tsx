@@ -46,22 +46,7 @@ interface StepNodeData extends Record<string, unknown> {
 
 type StepNode = Node<StepNodeData, 'step'>
 
-interface BlueprintStep {
-    type: 'atom' | 'molecule' | 'organism'
-    action: string
-    params: Record<string, unknown>
-    next_step?: string | null
-    on_error?: string | null
-}
-
-interface Blueprint {
-    id: string
-    name?: string
-    trigger: string
-    entry_step: string
-    steps: Record<string, BlueprintStep>
-    version?: string
-}
+import type { Blueprint, BlueprintStep } from '../core/types'
 
 interface ApiResponse {
     success: boolean

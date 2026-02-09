@@ -1,97 +1,88 @@
 /** @jsxImportSource react */
-import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import React, { useEffect, useState } from 'react'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
 import { Alert } from '../components/atoms/Alert'
 import { Button } from '../components/atoms/Button'
 import { BlueprintEditor } from '../client/blueprint-editor'
 import { BlueprintTable } from '../components/organisms/BlueprintTable'
 import { BlueprintJsonModal } from '../components/organisms/BlueprintJsonModal'
-import type { Blueprint, BlueprintListItem } from '../core/types'
+import { useBlueprintsController } from '../client/hooks/useBlueprintsController'
+import { useBlueprintsUI } from '../client/hooks/useBlueprintsUI'
+import type { Blueprint } from '../core/types'
 
 export const BlueprintsPage: React.FC = () => {
-    const queryClient = useQueryClient()
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [editingBlueprint, setEditingBlueprint] = useState<Blueprint | null>(null)
-    const [selectedBlueprintId, setSelectedBlueprintId] = useState<string | null>(null)
+    // 1. Logic Controller (Data & API)
+    const {
+        blueprints,
+        isLoading,
+        error,
+        deleteBlueprint,
+        saveBlueprint,
+        fetchBlueprint,
+        isSaving
+    } = useBlueprintsController()
 
-    // Fetch blueprints
-    const { data: blueprintsData = [], isLoading, error: fetchError } = useQuery({
-        queryKey: ['blueprints'],
-        queryFn: async () => {
-            const response = await fetch('/api/blueprints')
-            const result = (await response.json()) as any
-            if (!result.success) throw new Error(result.error)
-            return result.data as BlueprintListItem[]
+    // 2. UI Controller (Local State)
+    const {
+        isJsonModalOpen,
+        editingBlueprint,
+        selectedBlueprintId,
+        isEditorActive,
+        openJsonModal,
+        closeJsonModal,
+        selectBlueprintForEditor,
+        setEditingBlueprint
+    } = useBlueprintsUI()
+
+    // Local state just for the loaded blueprint content in the visual editor
+    // We could move this to the UI hook but it might depend on the fetch logic
+    const [visualEditorBlueprint, setVisualEditorBlueprint] = useState<Blueprint | undefined>(undefined)
+    const [isLoadingEditor, setIsLoadingEditor] = useState(false)
+
+    // Effect to load blueprint data when selected
+    useEffect(() => {
+        if (selectedBlueprintId) {
+            setIsLoadingEditor(true)
+            fetchBlueprint(selectedBlueprintId)
+                .then(bp => {
+                    if (bp) setVisualEditorBlueprint(bp)
+                })
+                .finally(() => setIsLoadingEditor(false))
+        } else {
+            setVisualEditorBlueprint(undefined)
         }
-    })
+    }, [selectedBlueprintId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Selected blueprint for editor
-    const { data: selectedBlueprint, isLoading: isLoadingBlueprint } = useQuery({
-        queryKey: ['blueprint', selectedBlueprintId],
-        queryFn: async () => {
-            if (!selectedBlueprintId) return null
-            const response = await fetch(`/api/blueprints/${selectedBlueprintId}`)
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data as Blueprint
-        },
-        enabled: !!selectedBlueprintId
-    })
-
-    // Mutations
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const response = await fetch(`/api/blueprints/${id}/delete`, { method: 'POST' })
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['blueprints'] })
-            if (selectedBlueprintId === selectedBlueprintId) setSelectedBlueprintId(null)
-        }
-    })
-
-    const saveMutation = useMutation({
-        mutationFn: async (blueprint: any) => {
-            const isNew = !editingBlueprint && !blueprintsData?.find(b => b.id === blueprint.id)
-            const url = isNew ? '/api/blueprints' : `/api/blueprints/${blueprint.id}`
-            const method = isNew ? 'POST' : 'PUT'
-
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(blueprint),
-            })
-
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['blueprints'] })
-            setIsModalOpen(false)
-            setEditingBlueprint(null)
-        }
-    })
-
+    // Handlers mapped to Controller Actions
     const handleEditJson = async (id: string) => {
-        try {
-            const resp = await fetch(`/api/blueprints/${id}`)
-            const res = await resp.json() as any
-            if (res.success) {
-                setEditingBlueprint(res.data)
-                setIsModalOpen(true)
-            }
-        } catch (err) {
-            console.error('Error fetching blueprint:', err)
+        const bp = await fetchBlueprint(id)
+        if (bp) openJsonModal(bp)
+    }
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm('Tem certeza que deseja excluir este blueprint?')) {
+            await deleteBlueprint(id)
+            if (selectedBlueprintId === id) selectBlueprintForEditor(null)
         }
     }
 
-    const handleDelete = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este blueprint?')) {
-            deleteMutation.mutate(id)
+    const handleSave = async (blueprint: Blueprint) => {
+        try {
+            await saveBlueprint(blueprint)
+            closeJsonModal()
+            // If we are editing the same one in visual editor, update it
+            if (selectedBlueprintId === blueprint.id) {
+                setVisualEditorBlueprint(blueprint) // Optimistic update or re-fetch?
+            }
+        } catch (err) {
+            console.error('Save failed', err)
         }
+    }
+
+    const handleCreateNew = () => {
+        selectBlueprintForEditor(null)
+        setVisualEditorBlueprint(undefined)
+        // Optionally start with a default template here or just empty
     }
 
     return (
@@ -99,9 +90,8 @@ export const BlueprintsPage: React.FC = () => {
             <div className="blueprints-page-wrapper">
                 {/* Status Messages */}
                 <div className="alert-container">
-                    {fetchError && <Alert type="error" message={fetchError.message} />}
-                    {saveMutation.isSuccess && <Alert type="success" message="Blueprint salvo com sucesso!" />}
-                    {saveMutation.isError && <Alert type="error" message={saveMutation.error.message} />}
+                    {error && <Alert type="error" message={(error as Error).message} />}
+                    {/* Success message could be handled by a global toaster or local UI state if needed, omitting for simplicity/SRP */}
                 </div>
 
                 {/* List Section */}
@@ -109,19 +99,19 @@ export const BlueprintsPage: React.FC = () => {
                     <div className="section-header">
                         <h2>📋 Seus Blueprints</h2>
                         <div className="header-actions">
-                            <Button variant="secondary" onClick={() => setIsModalOpen(true)}>
+                            <Button variant="secondary" onClick={() => openJsonModal()}>
                                 📤 Upload JSON
                             </Button>
-                            <Button variant="primary" onClick={() => setSelectedBlueprintId(null)}>
+                            <Button variant="primary" onClick={handleCreateNew}>
                                 ➕ Novo Blueprint
                             </Button>
                         </div>
                     </div>
 
                     <BlueprintTable
-                        blueprints={blueprintsData}
+                        blueprints={blueprints}
                         isLoading={isLoading}
-                        onSelect={setSelectedBlueprintId}
+                        onSelect={selectBlueprintForEditor}
                         onEditJson={handleEditJson}
                         onDelete={handleDelete}
                     />
@@ -133,14 +123,12 @@ export const BlueprintsPage: React.FC = () => {
                         <h2>🎨 Editor Visual</h2>
                     </div>
                     <div className="editor-canvas-container">
-                        {isLoadingBlueprint ? (
+                        {isLoadingEditor ? (
                             <div className="editor-loading">Carregando editor...</div>
                         ) : (
                             <BlueprintEditor
-                                initialBlueprint={selectedBlueprint || undefined}
-                                onSave={async (bp) => {
-                                    saveMutation.mutate(bp)
-                                }}
+                                initialBlueprint={visualEditorBlueprint ? { ...visualEditorBlueprint, version: visualEditorBlueprint.version || '1.0' } : undefined}
+                                onSave={handleSave}
                             />
                         )}
                     </div>
@@ -148,14 +136,11 @@ export const BlueprintsPage: React.FC = () => {
             </div>
 
             <BlueprintJsonModal
-                isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false)
-                    setEditingBlueprint(null)
-                }}
-                onSave={(bp) => saveMutation.mutate(bp)}
+                isOpen={isJsonModalOpen}
+                onClose={closeJsonModal}
+                onSave={handleSave}
                 initialBlueprint={editingBlueprint}
-                isSaving={saveMutation.isPending}
+                isSaving={isSaving}
             />
 
             <style>{`
