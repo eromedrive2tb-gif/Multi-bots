@@ -43,7 +43,7 @@ export async function collectInput(
         const hasExplicitPrompt = params.prompt_on_invalid !== undefined && params.prompt_on_invalid !== '' && params.prompt_on_invalid !== null
         const shouldSendModal = hasSpecificValidation || hasExplicitPrompt
 
-        console.log(`[DEBUG] collect-input heuristic for ${variable}: validation=${validation}, hasPrompt=${hasExplicitPrompt}, SEND_MODAL=${shouldSendModal}`)
+
 
         if (ctx.provider === 'dc' && shouldSendModal) {
             await dcSendButtons({

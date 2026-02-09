@@ -95,7 +95,7 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
     // Catch-all for components (buttons, select menus)
     discord.component('', async (ctx) => {
         try {
-            console.log('[DEBUG] Discord Component Interaction:', JSON.stringify(ctx.interaction, null, 2))
+
 
             const result = await handleDiscordWebhook(ctx.interaction as any, {
                 env: c.env,
@@ -131,7 +131,7 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
     // Catch-all for modals (User Input Submission)
     discord.modal('', async (ctx) => {
         try {
-            console.log('[DEBUG] Discord Modal Interaction:', JSON.stringify(ctx.interaction, null, 2))
+
 
             const result = await handleDiscordWebhook(ctx.interaction as any, {
                 env: c.env,

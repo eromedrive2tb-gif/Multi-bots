@@ -6,6 +6,7 @@
 
 import { dcHandleInteraction, InteractionType, type DiscordInteraction, dcSendMessage } from '../atoms/discord'
 import { dbGetBotById } from '../atoms/database'
+import { dbLogAnalyticsEvent } from '../atoms/database/db-log-analytics' // NEW
 import { executeFromTrigger, type FlowExecutionResult } from '../../core/engine'
 import { getBlueprintByTriggerFromKv } from '../molecules/kv-blueprint-manager'
 import type {
@@ -13,6 +14,68 @@ import type {
     Env,
     DiscordCredentials
 } from '../../core/types'
+
+// ... (Context definitions) ...
+
+// ============================================
+// ANALYTICS LOGGING HELPER
+// ============================================
+
+/**
+ * Log analytics events after flow execution
+ */
+async function logFlowAnalytics(
+    db: D1Database,
+    tenantId: string,
+    botId: string,
+    blueprintId: string,
+    userId: string,
+    flowResult: FlowExecutionResult
+): Promise<void> {
+    try {
+        // Log flow_complete event
+        if (flowResult.success && flowResult.stepsExecuted > 0 && !flowResult.lastStepId) {
+            // Flow completed (reached null next_step)
+            await dbLogAnalyticsEvent({
+                db,
+                tenantId,
+                botId,
+                blueprintId,
+                stepId: 'flow_complete',
+                userId,
+                eventType: 'flow_complete',
+                eventData: {
+                    stepsExecuted: flowResult.stepsExecuted,
+                }
+            })
+        }
+
+        // Log flow error if present
+        if (flowResult.error) {
+            await dbLogAnalyticsEvent({
+                db,
+                tenantId,
+                botId,
+                blueprintId,
+                stepId: flowResult.lastStepId || 'unknown',
+                userId,
+                eventType: 'step_error',
+                eventData: {
+                    error: flowResult.error,
+                    stepsExecuted: flowResult.stepsExecuted,
+                }
+            })
+        }
+    } catch (error) {
+        // Don't fail the webhook if analytics logging fails
+        console.error('[Analytics] Error logging flow analytics:', error)
+    }
+}
+
+// ... (Context Builder) ...
+
+// Main Handler ...
+
 
 // ============================================
 // WEBHOOK CONTEXT
@@ -74,11 +137,7 @@ function buildUniversalContext(
 // MAIN WEBHOOK HANDLER
 // ============================================
 
-function logDebug(msg: string) {
-    // console.log('[DISCORD_DEBUG]', msg)
-    // Actually, let's make it super visible
-    console.log(`\n\n[DISCORD_DEBUG] ${new Date().toISOString()} ${msg}\n\n`)
-}
+
 
 /**
  * Handle incoming Discord webhook - Data-driven
@@ -88,7 +147,7 @@ export async function handleDiscordWebhook(
     context: WebhookContext
 ): Promise<WebhookResult> {
     try {
-        logDebug(`Received Interaction: Type=${interaction.type}`)
+
 
         // ... rest of function ...
 
@@ -193,7 +252,15 @@ export async function handleDiscordWebhook(
         if (response && response.type !== 9) {
             executionPromise = (async () => {
                 try {
-                    logDebug('Starting Engine execution...')
+                    // Try to get the blueprintId for analytics
+                    let blueprintId = 'unknown'
+                    if (ctx.metadata.command) {
+                        const trigger = `/${ctx.metadata.command}`
+                        const bpResult = await getBlueprintByTriggerFromKv(context.env.BLUEPRINTS_KV, context.tenantId, trigger)
+                        if (bpResult.success && bpResult.data) {
+                            blueprintId = bpResult.data.id
+                        }
+                    }
 
                     const result = await executeFromTrigger(
                         {
@@ -203,12 +270,25 @@ export async function handleDiscordWebhook(
                         ctx
                     )
 
-                    logDebug(`Engine finished: Success=${result.success} Steps=${result.stepsExecuted} LastStep=${result.lastStepId}`)
+                    // Update blueprintId from execution result if available
+                    if (result.blueprintId) {
+                        blueprintId = result.blueprintId
+                    }
+
+                    // Log analytics events
+                    await logFlowAnalytics(
+                        context.env.DB,
+                        context.tenantId,
+                        context.botId,
+                        blueprintId,
+                        String(ctx.userId),
+                        result
+                    )
 
                     return result
                 } catch (e) {
                     const errMsg = e instanceof Error ? e.message : String(e)
-                    logDebug(`Engine execution failed: ${errMsg}`)
+
                     console.error('[Discord Handler] Engine execution failed:', e)
 
                     return null
