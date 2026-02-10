@@ -13,6 +13,14 @@ export type AnalyticsEventType =
     | 'flow_abandon'
     | 'button_click'
 
+export enum ErrorSeverity {
+    LOW = 1,      // User Input / Config Errors (e.g. Mismatch)
+    MEDIUM = 2,   // Warnings / Recoverable
+    HIGH = 3,     // Standard Runtime Errors
+    CRITICAL = 4  // System Failures / Unknown Errors
+}
+
+
 export const analyticsEventTypeSchema = z.enum([
     'step_enter',
     'step_complete',

@@ -288,6 +288,17 @@ export async function executeFlow(
             }
 
             if (isActive) {
+                //STRICT VALIDATION: Ensure the blueprint's trigger actually matches the command
+                // This prevents "Ghost Triggers" (stale KV indices) from executing the wrong blueprint
+                if (bpResult.data.trigger !== trigger) {
+                    return {
+                        success: false,
+                        stepsExecuted: 0,
+                        error: `Command trigger mismatch: requested '${trigger}' but blueprint has '${bpResult.data.trigger}'`,
+                        blueprintId: bpResult.data.id
+                    }
+                }
+
                 blueprint = bpResult.data
             } else {
                 // Explicitly inactive for this bot

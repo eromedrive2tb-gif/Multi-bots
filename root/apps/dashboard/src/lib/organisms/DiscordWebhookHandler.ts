@@ -12,8 +12,9 @@ import { getBlueprintByTriggerFromKv } from '../molecules/kv-blueprint-manager'
 import type {
     UniversalContext,
     Env,
-    DiscordCredentials
+    DiscordCredentials, // Added comma just in case
 } from '../../core/types'
+import { ErrorSeverity } from '../../core/analytics-types'
 
 // ... (Context definitions) ...
 
@@ -52,6 +53,13 @@ async function logFlowAnalytics(
 
         // Log flow error if present
         if (flowResult.error) {
+            // Determine Severity
+            let severity = ErrorSeverity.CRITICAL // Default to Level 4 (Critical/Unknown)
+
+            if (typeof flowResult.error === 'string' && flowResult.error.includes('Command trigger mismatch')) {
+                severity = ErrorSeverity.LOW // Level 1 (User Error)
+            }
+
             await dbLogAnalyticsEvent({
                 db,
                 tenantId,
@@ -63,6 +71,7 @@ async function logFlowAnalytics(
                 eventData: {
                     error: flowResult.error,
                     stepsExecuted: flowResult.stepsExecuted,
+                    severity: severity
                 }
             })
         }
