@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BlueprintClientService } from '../services/BlueprintService'
-import type { Blueprint, BlueprintListItem } from '../../core/types'
+import type { Blueprint, BlueprintListItem } from '../../../../engine/src/core/types'
 
 // Singleton instance for the service (or inject via context if preferred)
 const blueprintService = new BlueprintClientService()

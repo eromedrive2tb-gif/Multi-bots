@@ -4,7 +4,7 @@ import { Card, CardHeader, CardBody } from '../atoms/Card'
 import { Button } from '../atoms/Button'
 import { StatusBadge, ProviderBadge } from '../atoms/StatusBadge'
 import { BotBlueprintsModal } from '../organisms/BotBlueprintsModal'
-import type { Bot } from '../../core/types'
+import type { Bot } from '../../../../engine/src/core/types'
 
 interface BotCardProps {
     bot: Bot

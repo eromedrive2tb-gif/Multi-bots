@@ -6,7 +6,7 @@ import { BotGrid } from '../components/organisms/BotGrid'
 import { BotStats } from '../components/molecules/BotStats'
 import { AddBotForm } from '../components/organisms/AddBotForm'
 import { Alert } from '../components/atoms/Alert'
-import type { Bot } from '../core/types'
+import type { Bot } from '../../../engine/src/core/types'
 
 export const BotsPage: React.FC = () => {
     const queryClient = useQueryClient()

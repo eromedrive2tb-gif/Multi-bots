@@ -29,11 +29,11 @@ import {
     getActionByKey,
     getCategoryColor,
     type ActionParam,
-} from './action-library'
+} from '../../../../engine/src/lib/shared/action-library'
 
-import type { Blueprint } from '../core/types'
-import { BlueprintNode, type StepNode, type StepNodeData } from '../components/atoms/BlueprintNode'
-import { BlueprintPropertyPanel } from '../components/organisms/BlueprintPropertyPanel'
+import type { Blueprint } from '../../../../engine/src/core/types'
+import { BlueprintNode, type StepNode, type StepNodeData } from '../atoms/BlueprintNode'
+import { BlueprintPropertyPanel } from './BlueprintPropertyPanel'
 
 interface ApiResponse {
     success: boolean

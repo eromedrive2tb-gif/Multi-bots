@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
 import { BotCard } from '../molecules/BotCard'
-import type { Bot } from '../../core/types'
+import type { Bot } from '../../../../engine/src/core/types'
 
 interface BotGridProps {
     bots: Bot[]

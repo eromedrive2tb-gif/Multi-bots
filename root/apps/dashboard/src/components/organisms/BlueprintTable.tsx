@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
 import { Button } from '../atoms/Button'
-import type { BlueprintListItem } from '../../core/types'
+import type { BlueprintListItem } from '../../../../engine/src/core/types'
 
 interface BlueprintTableProps {
     blueprints: BlueprintListItem[]

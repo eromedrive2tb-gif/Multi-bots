@@ -5,7 +5,7 @@ import { DashboardLayout } from '../components/templates/DashboardLayout'
 import { StatsGrid } from '../components/organisms/StatsGrid'
 import { SystemActivity } from '../components/organisms/SystemActivity'
 import { useUser } from '../client/context/UserContext'
-import type { AnalyticsDashboardData } from '../lib/molecules/analytics-aggregator'
+import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics-aggregator'
 
 export const DashboardPage: React.FC = () => {
     const { user, tenantId } = useUser()

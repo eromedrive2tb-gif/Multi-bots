@@ -1,5 +1,5 @@
-import type { IBlueprintService } from '../../core/contracts/BlueprintService'
-import type { Blueprint, BlueprintListItem, Result } from '../../core/types'
+import type { IBlueprintService } from '../../../../engine/src/core/contracts/BlueprintService'
+import type { Blueprint, BlueprintListItem, Result } from '../../../../engine/src/core/types'
 
 export class BlueprintClientService implements IBlueprintService {
     async listBlueprints(): Promise<Result<BlueprintListItem[]>> {

@@ -11,9 +11,7 @@ import { AuthService } from '../lib/organisms/AuthService'
 import { setSessionCookie, clearSessionCookie, authMiddleware } from '../middleware/auth'
 import { getCookie } from 'hono/cookie'
 
-// Pages
-import { LoginPage } from '../pages/login'
-import { RegisterPage } from '../pages/register'
+// Pages imports removed (unused and moved)
 
 const authRoutes = new Hono<{ Bindings: Env }>()
 

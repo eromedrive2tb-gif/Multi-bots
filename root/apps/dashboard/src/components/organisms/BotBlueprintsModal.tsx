@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react'
 import { Modal } from '../molecules/Modal'
 import { Button } from '../atoms/Button'
 import { useQuery } from '@tanstack/react-query'
-import type { Bot, Blueprint } from '../../core/types'
-import { analyzeCompatibility } from '../../lib/shared/blueprint-compatibility'
+import type { Bot, Blueprint } from '../../../../engine/src/core/types'
+import { analyzeCompatibility } from '../../../../engine/src/lib/shared/blueprint-compatibility'
 
 interface BotBlueprintsModalProps {
     isOpen: boolean

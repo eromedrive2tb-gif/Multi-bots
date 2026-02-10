@@ -6,14 +6,14 @@
 
 import { Hono } from 'hono'
 import { renderer } from './renderer'
-import type { Env } from './core/types'
-import { authMiddleware } from './middleware/auth'
-import { registerRoutes } from './routes'
+import type { Env } from '../../engine/src/core/types'
+import { authMiddleware } from '../../engine/src/middleware/auth'
+import { registerRoutes } from '../../engine/src/routes'
 
 // Dashboard Pages (protected routes only - auth handled in routes)
 import { DashboardPage } from './pages/dashboard'
 import { SettingsPage } from './pages/settings'
-import { setupRegistry } from './lib/registry-setup'
+import { setupRegistry } from '../../engine/src/lib/registry-setup'
 
 // ============================================
 // APP INITIALIZATION

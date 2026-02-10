@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import React, { type ChangeEvent } from 'react'
-import { ACTION_CATEGORIES, ACTION_LIBRARY, getActionByKey } from '../../client/action-library'
+import { ACTION_CATEGORIES, ACTION_LIBRARY, getActionByKey } from '../../../../engine/src/lib/shared/action-library'
 import { BlueprintPropertyField } from '../molecules/BlueprintPropertyField'
 import type { StepNode, StepNodeData } from '../atoms/BlueprintNode'
 

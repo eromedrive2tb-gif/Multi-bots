@@ -9,8 +9,8 @@ import { MetricsSummary } from '../components/organisms/MetricsSummary'
 import { BlueprintMetricsTable } from '../components/organisms/BlueprintMetricsTable'
 import { BotStatusChart } from '../components/organisms/BotStatusChart'
 import { QuickInsights } from '../components/organisms/QuickInsights'
-import type { AnalyticsDashboardData } from '../lib/molecules/analytics-aggregator'
-import type { AnalyticsFilterParams } from '../core/analytics-types'
+import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics-aggregator'
+import type { AnalyticsFilterParams } from '../../../engine/src/core/analytics-types'
 
 export const AnalyticsPage: React.FC = () => {
     const [searchParams] = useSearchParams()

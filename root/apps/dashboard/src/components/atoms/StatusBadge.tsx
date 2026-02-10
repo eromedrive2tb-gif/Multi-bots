@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import type { FC, CSSProperties } from 'react'
-import type { BotStatus, BotProvider } from '../../core/types'
+import type { BotStatus, BotProvider } from '../../../../engine/src/core/types'
 
 interface StatusBadgeProps {
     status: BotStatus

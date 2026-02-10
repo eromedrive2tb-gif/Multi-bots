@@ -11,8 +11,7 @@ import { authMiddleware } from '../middleware/auth'
 import { BotManagerService } from '../lib/organisms/BotManagerService'
 // dbGetBots, dbGetBotById, tgSetWebhook removed as they are now used inside BotManagerService
 
-// Pages
-import { BotsPage } from '../pages/bots'
+// Pages imports removed (unused and moved)
 
 const botsRoutes = new Hono<{ Bindings: Env }>()
 

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '../atoms/Button'
-import type { Blueprint } from '../../core/types'
+import type { Blueprint } from '../../../../engine/src/core/types'
 
 interface BlueprintJsonModalProps {
     isOpen: boolean
