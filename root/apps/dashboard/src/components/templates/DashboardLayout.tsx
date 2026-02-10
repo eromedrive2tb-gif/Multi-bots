@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import type { FC, ReactNode } from 'react'
-import { Sidebar } from '../organisms/Sidebar'
-import { Header } from '../organisms/Header'
+import { Sidebar } from '../organisms/general/Sidebar'
+import { Header } from '../organisms/general/Header'
 import { useUser } from '../../client/context/UserContext'
 
 interface DashboardLayoutProps {

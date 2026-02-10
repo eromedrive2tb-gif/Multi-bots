@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
-import { AuthLayout } from '../components/templates/AuthLayout'
-import { RegisterForm } from '../components/organisms/RegisterForm'
+import { AuthLayout } from '../components/templates'
+import { RegisterForm } from '../components/organisms'
 
 interface RegisterPageProps {
     error?: string

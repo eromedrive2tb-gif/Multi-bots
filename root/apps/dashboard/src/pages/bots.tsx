@@ -1,11 +1,11 @@
 /** @jsxImportSource react */
 import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { DashboardLayout } from '../components/templates/DashboardLayout'
-import { BotGrid } from '../components/organisms/BotGrid'
-import { BotStats } from '../components/molecules/BotStats'
-import { AddBotForm } from '../components/organisms/AddBotForm'
-import { Alert } from '../components/atoms/Alert'
+import { DashboardLayout } from '../components/templates'
+import { BotGrid } from '../components/organisms'
+import { BotStats } from '../components/molecules'
+import { AddBotForm } from '../components/organisms'
+import { Alert } from '../components/atoms'
 import type { Bot } from '../../../engine/src/core/types'
 
 export const BotsPage: React.FC = () => {

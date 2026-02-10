@@ -1,9 +1,9 @@
 /** @jsxImportSource react */
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { DashboardLayout } from '../components/templates/DashboardLayout'
-import { StatsGrid } from '../components/organisms/StatsGrid'
-import { SystemActivity } from '../components/organisms/SystemActivity'
+import { DashboardLayout } from '../components/templates'
+import { StatsGrid } from '../components/organisms'
+import { SystemActivity } from '../components/organisms'
 import { useUser } from '../client/context/UserContext'
 import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics-aggregator'
 

@@ -1,11 +1,11 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
-import { DashboardLayout } from '../components/templates/DashboardLayout'
-import { Card, CardHeader, CardBody } from '../components/atoms/Card'
-import { Alert } from '../components/atoms/Alert'
-import { TenantInfoBox } from '../components/molecules/TenantInfoBox'
-import { ProfileForm } from '../components/organisms/ProfileForm'
-import { PasswordForm } from '../components/organisms/PasswordForm'
+import { DashboardLayout } from '../components/templates'
+import { Card, CardHeader, CardBody } from '../components/atoms'
+import { Alert } from '../components/atoms'
+import { TenantInfoBox } from '../components/molecules'
+import { ProfileForm } from '../components/organisms'
+import { PasswordForm } from '../components/organisms'
 import { useUser } from '../client/context/UserContext'
 
 export const SettingsPage: React.FC = () => {

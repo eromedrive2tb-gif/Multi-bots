@@ -1,14 +1,14 @@
 /** @jsxImportSource react */
 import React, { useEffect, useState } from 'react'
-import { Alert } from '../components/atoms/Alert'
-import { Button } from '../components/atoms/Button'
-import { BlueprintEditor } from '../components/organisms/BlueprintEditor'
-import { BlueprintTable } from '../components/organisms/BlueprintTable'
-import { BlueprintJsonModal } from '../components/organisms/BlueprintJsonModal'
+import { Alert } from '../components/atoms'
+import { Button } from '../components/atoms'
+import { BlueprintEditor } from '../components/organisms'
+import { BlueprintTable } from '../components/organisms'
+import { BlueprintJsonModal } from '../components/organisms'
 import { useBlueprintsController } from '../client/hooks/useBlueprintsController'
 import { useBlueprintsUI } from '../client/hooks/useBlueprintsUI'
 import type { Blueprint } from '../../../engine/src/core/types'
-import { BlueprintsTemplate } from '../components/templates/BlueprintsTemplate'
+import { BlueprintsTemplate } from '../components/templates'
 
 export const BlueprintsPage: React.FC = () => {
     // 1. Logic Controller (Data & API)
