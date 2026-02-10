@@ -4,7 +4,7 @@
  * Follows DIP: High-level modules (Engine) depend on Abstractions (Registry), not Concretions.
  */
 
-import { registerAction } from '../core/registry'
+import { registerAction } from './molecules/action-registry'
 
 // Import Concrete Implementations (Molecules)
 import { sendMessage } from './molecules/send-message'

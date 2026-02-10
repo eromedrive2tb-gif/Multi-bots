@@ -1,8 +1,8 @@
 
 import { describe, it, expect, mock, beforeAll } from "bun:test";
 import { executeFlow } from "./engine";
-import type { UniversalContext, Blueprint, SessionData } from "./types";
-import { registerAction } from "./registry";
+import type { UniversalContext, Blueprint, SessionData } from "../../core/types";
+import { registerAction } from "../molecules/action-registry";
 
 // Mock KV
 class MockKV {
@@ -45,6 +45,7 @@ describe("Engine Ghost Trigger Reproduction", () => {
                 step_1: {
                     type: "atom",
                     action: "test_action",
+                    params: {},
                     next_step: null
                 }
             }

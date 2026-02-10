@@ -4,7 +4,7 @@
  * Implements the Action Proxy pattern for provider dispatch
  */
 
-import type { UniversalContext, Result } from './types'
+import type { UniversalContext, Result } from '../../core/types'
 
 // ============================================
 // ACTION FUNCTION SIGNATURE

@@ -9,7 +9,7 @@
 import { tgHandleUpdate, type TelegramUpdate } from '../atoms/telegram'
 import { dbGetBotById } from '../atoms/database'
 import { dbLogAnalyticsEvent } from '../atoms/database/db-log-analytics'
-import { executeFromTrigger, type FlowExecutionResult } from '../../core/engine'
+import { executeFromTrigger, type FlowExecutionResult } from './engine'
 import { getBlueprintByTriggerFromKv, getBlueprintFromKv } from '../molecules/kv-blueprint-manager'
 import type {
     TelegramCredentials,

@@ -5,7 +5,7 @@
  */
 
 import type { UniversalContext } from '../../core/types'
-import { executeFromTrigger } from '../../core/engine'
+import { executeFromTrigger } from './engine'
 
 export class FlowService {
     constructor(

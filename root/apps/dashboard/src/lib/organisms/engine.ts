@@ -10,108 +10,20 @@ import type {
     BlueprintStep,
     SessionData,
     Result
-} from './types'
-import { executeAction } from './registry'
-import { getBlueprintByTriggerFromKv, getBlueprintFromKv } from '../lib/molecules/kv-blueprint-manager'
-import { getOrCreateSessionAt, updateSessionAt } from '../lib/molecules/kv-session-manager'
+} from '../../core/types'
+import { blueprintSchema } from '../../core/types'
+import { executeAction } from '../molecules/action-registry'
+import { injectVariablesDeep } from '../molecules/variable-injector'
+import { getBlueprintByTriggerFromKv, getBlueprintFromKv } from '../molecules/kv-blueprint-manager'
+import { getOrCreateSessionAt, updateSessionAt } from '../molecules/kv-session-manager'
+import { dbLogAnalyticsEvent } from '../atoms/database/db-log-analytics'
+import { dbCheckBlueprintActive } from '../atoms/database'
 
 // ============================================
 // CONSTANTS
 // ============================================
 
 const MAX_STEPS_PER_EXECUTION = 100 // Prevent infinite loops
-
-// ============================================
-// VARIABLE INJECTION
-// ============================================
-
-/**
- * Injects variables into a string template
- * Supports: {{user_name}}, {{last_input}}, {{session.field}}, {{ctx.field}}
- */
-function injectVariables(
-    template: string,
-    ctx: UniversalContext,
-    session: SessionData
-): string {
-    return template.replace(/\{\{(\w+(?:\.\w+)?)\}\}/g, (match, key: string) => {
-        // Handle dot notation for nested values
-        const parts = key.split('.')
-
-        if (parts[0] === 'session') {
-            if (parts[1]) {
-                // Try to get from collectedData first (common case)
-                let value = session.collectedData[parts[1]]
-
-                // If not found, try root properties (e.g. currentStepId, currentFlowId)
-                if (value === undefined && parts[1] in session) {
-                    value = (session as any)[parts[1]]
-                }
-
-                return value !== undefined ? String(value) : ''
-            }
-        }
-
-        if (parts[0] === 'ctx' && parts[1]) {
-            // Access known ctx properties safely
-            const ctxKey = parts[1] as keyof UniversalContext
-            if (ctxKey in ctx) {
-                const ctxValue = ctx[ctxKey]
-                return ctxValue !== undefined ? String(ctxValue) : ''
-            }
-            return ''
-        }
-
-        // Direct variable shortcuts
-        switch (key) {
-            case 'user_name':
-                return ctx.metadata.userName ?? 'User'
-            case 'last_input':
-                return ctx.metadata.lastInput ?? ''
-            case 'user_id':
-                return ctx.userId
-            case 'chat_id':
-                return ctx.chatId
-            case 'tenant_id':
-                return ctx.tenantId
-            case 'provider':
-                return ctx.provider
-            default:
-                // Check session data as fallback
-                const sessionValue = session.collectedData[key]
-                return sessionValue !== undefined ? String(sessionValue) : match
-        }
-    })
-}
-
-/**
- * Recursively inject variables into all string values of an object
- */
-function injectVariablesDeep(
-    params: Record<string, unknown>,
-    ctx: UniversalContext,
-    session: SessionData
-): Record<string, unknown> {
-    const result: Record<string, unknown> = {}
-
-    for (const [key, value] of Object.entries(params)) {
-        if (typeof value === 'string') {
-            result[key] = injectVariables(value, ctx, session)
-        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-            result[key] = injectVariablesDeep(value as Record<string, unknown>, ctx, session)
-        } else if (Array.isArray(value)) {
-            result[key] = value.map(item =>
-                typeof item === 'string'
-                    ? injectVariables(item, ctx, session)
-                    : item
-            )
-        } else {
-            result[key] = value
-        }
-    }
-
-    return result
-}
 
 // ============================================
 // STEP EXECUTION
@@ -127,11 +39,6 @@ interface StepExecutionResult {
 /**
  * Execute a single step from the blueprint
  */
-import { dbLogAnalyticsEvent } from '../lib/atoms/database/db-log-analytics'
-import { dbCheckBlueprintActive } from '../lib/atoms/database'
-
-// ... existing imports ...
-
 async function executeStep(
     step: BlueprintStep,
     stepId: string,
@@ -244,14 +151,19 @@ export async function executeFlow(
         // Direct flow ID provided
         const bpResult = await getBlueprintFromKv(kv.blueprints, ctx.tenantId, flowId)
         if (bpResult.success) {
-            blueprint = bpResult.data
+            // VALIDATE Blueprint structure
+            const validation = blueprintSchema.safeParse(bpResult.data)
+            if (!validation.success) {
+                return { success: false, stepsExecuted: 0, error: `Invalid blueprint structure: ${validation.error.message}` }
+            }
+            blueprint = validation.data
 
             // Log flow_start (Analytics) - Explicit flowId means START
             if (ctx.db && !session.currentFlowId && blueprint) {
                 dbLogAnalyticsEvent({
                     db: ctx.db,
                     tenantId: ctx.tenantId,
-                    botId: ctx.metadata.raw ? (ctx.metadata.raw as any).bot_id || 'unknown' : 'unknown',
+                    botId: ctx.botId || 'unknown',
                     blueprintId: blueprint.id,
                     stepId: 'flow_start',
                     userId: ctx.userId,
@@ -274,48 +186,54 @@ export async function executeFlow(
         }
 
         if (bpResult.data) {
+            // VALIDATE Blueprint structure
+            const validation = blueprintSchema.safeParse(bpResult.data)
+            if (!validation.success) {
+                return { success: false, stepsExecuted: 0, error: `Invalid blueprint structure (trigger): ${validation.error.message}` }
+            }
+            const validatedBlueprint = validation.data
+
             // CHECK ACTIVATION if DB context is available (it should be for webhooks)
             let isActive = true
             if (ctx.db && ctx.botId) {
-                // If the check fails (e.g. DB error), consider it active or inactive?
-                // Let's be strict: If check explicitly returns false, then it is INACTIVE.
-                // The atom returns false if row missing or is_active=0.
                 isActive = await dbCheckBlueprintActive({
                     db: ctx.db,
                     botId: ctx.botId,
-                    blueprintId: bpResult.data.id
+                    blueprintId: validatedBlueprint.id
                 })
             }
 
             if (isActive) {
                 //STRICT VALIDATION: Ensure the blueprint's trigger actually matches the command
-                // This prevents "Ghost Triggers" (stale KV indices) from executing the wrong blueprint
-                if (bpResult.data.trigger !== trigger) {
+                if (validatedBlueprint.trigger !== trigger) {
                     return {
                         success: false,
                         stepsExecuted: 0,
-                        error: `Command trigger mismatch: requested '${trigger}' but blueprint has '${bpResult.data.trigger}'`,
-                        blueprintId: bpResult.data.id
+                        error: `Command trigger mismatch: requested '${trigger}' but blueprint has '${validatedBlueprint.trigger}'`,
+                        blueprintId: validatedBlueprint.id
                     }
                 }
 
-                blueprint = bpResult.data
+                blueprint = validatedBlueprint
             } else {
-                // Explicitly inactive for this bot
                 return {
                     success: false,
                     stepsExecuted: 0,
                     error: `Command '${trigger}' is disabled for this bot.`,
-                    blueprintId: bpResult.data.id
+                    blueprintId: validatedBlueprint.id
                 }
             }
         }
-        // If data is null, fall through to default "No blueprint found" at end of function
     } else if (session.currentFlowId) {
         // Resume from session
         const bpResult = await getBlueprintFromKv(kv.blueprints, ctx.tenantId, session.currentFlowId)
         if (bpResult.success) {
-            blueprint = bpResult.data
+            // VALIDATE Blueprint structure
+            const validation = blueprintSchema.safeParse(bpResult.data)
+            if (!validation.success) {
+                return { success: false, stepsExecuted: 0, error: `Invalid blueprint structure (session): ${validation.error.message}` }
+            }
+            blueprint = validation.data
         }
     }
 
@@ -478,8 +396,6 @@ export async function executeFlow(
         }
 
         // Handle Error
-        // ... (error handling logic remains similar)
-
         if (!result.success) {
             // Log step_error
             if (ctx.db && session.currentFlowId) {
