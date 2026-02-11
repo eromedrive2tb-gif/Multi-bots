@@ -7,10 +7,10 @@
 import { Hono } from 'hono'
 import { DiscordHono } from 'discord-hono'
 import type { Env, DiscordCredentials } from '../core/types'
-import { WebhookService } from '../lib/organisms/WebhookService'
-import { dbGetBotById } from '../lib/atoms/database'
-import { handleDiscordWebhook } from '../lib/organisms/DiscordWebhookHandler'
-import type { TelegramUpdate } from '../lib/atoms/telegram'
+import { WebhookService } from '../lib/organisms'
+import { dbGetBotById } from '../lib/atoms'
+import { handleDiscordWebhook } from '../lib/organisms'
+import type { TelegramUpdate } from '../lib/atoms'
 
 const webhooksRoutes = new Hono<{ Bindings: Env }>()
 

@@ -29,7 +29,7 @@ import {
     getActionByKey,
     getCategoryColor,
     type ActionParam,
-} from '../../../../../engine/src/lib/shared/action-library'
+} from '../../../../../engine/src/lib/shared'
 
 import type { Blueprint } from '../../../../../engine/src/core/types'
 import { BlueprintNode, type StepNode, type StepNodeData } from '../../atoms/blueprints/BlueprintNode'

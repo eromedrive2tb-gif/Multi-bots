@@ -4,7 +4,7 @@ import { Modal } from '../../molecules/ui/Modal'
 import { Button } from '../../atoms/ui/Button'
 import { useQuery } from '@tanstack/react-query'
 import type { Bot, Blueprint } from '../../../../../engine/src/core/types'
-import { analyzeCompatibility } from '../../../../../engine/src/lib/shared/blueprint-compatibility'
+import { analyzeCompatibility } from '../../../../../engine/src/lib/shared'
 
 interface BotBlueprintsModalProps {
     isOpen: boolean

@@ -13,7 +13,7 @@ import { registerRoutes } from '../../engine/src/routes'
 // Dashboard Pages (protected routes only - auth handled in routes)
 import { DashboardPage } from './pages/dashboard'
 import { SettingsPage } from './pages/settings'
-import { setupRegistry } from '../../engine/src/lib/registry-setup'
+import { setupRegistry } from '../../engine/src/lib/molecules'
 
 // ============================================
 // APP INITIALIZATION

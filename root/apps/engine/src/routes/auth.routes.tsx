@@ -7,7 +7,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../core/types'
 import { loginSchema, registerSchema } from '../core/types'
-import { AuthService } from '../lib/organisms/AuthService'
+import { AuthService } from '../lib/organisms'
 import { setSessionCookie, clearSessionCookie, authMiddleware } from '../middleware/auth'
 import { getCookie } from 'hono/cookie'
 

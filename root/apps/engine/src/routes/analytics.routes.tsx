@@ -6,7 +6,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../core/types'
 import { authMiddleware } from '../middleware/auth'
-import { AnalyticsService } from '../lib/organisms/AnalyticsService'
+import { AnalyticsService } from '../lib/organisms'
 
 export const analyticsRoutes = new Hono<{ Bindings: Env }>()
 

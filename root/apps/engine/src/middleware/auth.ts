@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory'
 import type { Context, Next } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
-import { findValidSession, findUserById } from '../lib/auth'
+import { findValidSession, findUserById } from '../lib/atoms'
 import type { TenantContext, Env } from '../core/types'
 
 // Session cookie name

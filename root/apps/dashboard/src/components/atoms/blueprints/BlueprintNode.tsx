@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
-import { getActionByKey, getCategoryColor } from '../../../../../engine/src/lib/shared/action-library'
+import { getActionByKey, getCategoryColor } from '../../../../../engine/src/lib/shared'
 
 export interface StepNodeData extends Record<string, unknown> {
     label: string

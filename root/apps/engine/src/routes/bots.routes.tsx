@@ -8,7 +8,7 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import type { Env, BotProvider, TelegramCredentials, DiscordCredentials } from '../core/types'
 import { authMiddleware } from '../middleware/auth'
-import { BotManagerService } from '../lib/organisms/BotManagerService'
+import { BotManagerService } from '../lib/organisms'
 // dbGetBots, dbGetBotById, tgSetWebhook removed as they are now used inside BotManagerService
 
 // Pages imports removed (unused and moved)

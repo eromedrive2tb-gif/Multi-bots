@@ -8,8 +8,8 @@ import { Hono } from 'hono'
 import type { Env } from '../core/types'
 import { blueprintSchema } from '../core/types'
 import { authMiddleware } from '../middleware/auth'
-import { FlowService } from '../lib/organisms/FlowService'
-import { BlueprintService } from '../lib/organisms/BlueprintService'
+import { FlowService } from '../lib/organisms'
+import { BlueprintService } from '../lib/organisms'
 
 const blueprintsRoutes = new Hono<{ Bindings: Env }>()
 

@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import React from 'react'
-import type { ActionParam } from '../../../../../engine/src/lib/shared/action-library'
+import type { ActionParam } from '../../../../../engine/src/lib/shared'
 
 interface BlueprintPropertyFieldProps {
     param: ActionParam
