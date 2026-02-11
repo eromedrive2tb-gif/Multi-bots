@@ -10,6 +10,7 @@ export { dbDeleteBotEvents, type DbDeleteBotEventsProps } from './db-delete-bot-
 
 // Blueprint atoms
 export { dbSaveBlueprint, type DbSaveBlueprintProps } from './db-save-blueprint'
+export { dbDeleteBlueprint, type DbDeleteBlueprintProps } from './db-delete-blueprint'
 export {
     dbGetBlueprints,
     dbGetBlueprintById,

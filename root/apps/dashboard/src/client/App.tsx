@@ -10,6 +10,8 @@ import { RegisterPage } from '../pages/register'
 import { BotsPage } from '../pages/bots'
 import { SettingsPage } from '../pages/settings'
 import { AnalyticsPage } from '../pages/analytics'
+import { WebAppsPage } from './pages/WebAppsPage'
+import { WebAppEditorPage } from './pages/WebAppEditorPage'
 
 const queryClient = new QueryClient()
 
@@ -26,6 +28,8 @@ export const App = () => {
                         <Route path="/dashboard/bots" element={<BotsPage />} />
                         <Route path="/dashboard/settings" element={<SettingsPage />} />
                         <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
+                        <Route path="/dashboard/webapps" element={<WebAppsPage />} />
+                        <Route path="/dashboard/webapps/:id" element={<WebAppEditorPage />} />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                 </BrowserRouter>

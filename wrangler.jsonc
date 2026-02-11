@@ -21,6 +21,10 @@
     {
       "binding": "SESSIONS_KV",
       "id": "68de345f1b5442b185ff91e6b258b053"
+    },
+    {
+      "binding": "PAGES_KV",
+      "id": "local"
     }
   ]
 }

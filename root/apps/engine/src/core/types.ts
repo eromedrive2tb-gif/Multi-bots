@@ -228,6 +228,20 @@ export interface BlueprintListItem {
 }
 
 // ============================================
+// WEBAPP PAGES
+// ============================================
+
+export interface WebAppPage {
+    id: string
+    name: string
+    html: string
+    css: string
+    js: string
+    tenantId: string
+    updatedAt: number
+}
+
+// ============================================
 // RESULT PATTERN
 // ============================================
 
@@ -251,6 +265,7 @@ export interface Env {
     DB: D1Database
     BLUEPRINTS_KV: KVNamespace
     SESSIONS_KV: KVNamespace
+    PAGES_KV: KVNamespace
     AUTH_SECRET: string
     WEBHOOK_BASE_URL?: string  // Override webhook URL for production
 }
