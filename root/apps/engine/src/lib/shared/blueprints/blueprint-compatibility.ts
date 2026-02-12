@@ -55,6 +55,7 @@ function analyzeDiscordCompatibility(blueprint: Blueprint, issues: Compatibility
     // We implemented a workaround (Button -> Modal).
 
     let hasCollectInput = false
+    let hasSendWebApp = false
     const stepsWithLongTimeout: string[] = []
 
     const entries = Object.entries(blueprint.steps)
@@ -62,6 +63,9 @@ function analyzeDiscordCompatibility(blueprint: Blueprint, issues: Compatibility
     for (const [id, step] of entries) {
         if (step.action === 'collect_input') {
             hasCollectInput = true
+        }
+        if (step.action === 'send_webapp') {
+            hasSendWebApp = true
         }
 
         // Check for long timeouts (Discord interaction limit is 3s, but we use deferred)
@@ -73,6 +77,13 @@ function analyzeDiscordCompatibility(blueprint: Blueprint, issues: Compatibility
         issues.push({
             level: 'warning',
             message: '⚠️ Adaptação Automática: Este fluxo solicita texto do usuário via "collect_input". O Discord não permite isso nativamente em webhooks. O bot enviará um botão "Responder" que abre um formulário.'
+        })
+    }
+
+    if (hasSendWebApp) {
+        issues.push({
+            level: 'warning',
+            message: '⚠️ Adaptação Automática: Este fluxo utiliza "send_webapp". O Discord não suporta Mini-Apps nativamente. O bot enviará automaticamente um botão de redirecionamento (Link) como alternativa.'
         })
     }
 
