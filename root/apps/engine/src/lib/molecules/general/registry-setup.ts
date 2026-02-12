@@ -14,7 +14,7 @@ import { setVariable } from '../flow/set-variable'
 import { condition } from '../flow/condition'
 import { collectInput } from '../flow/collect-input'
 import { inlineKeyboard } from './inline-keyboard'
-import { tgSendWebApp } from '../../atoms/telegram/tg-send-webapp'
+import { sendWebApp } from './send-webapp'
 
 // Register Actions to the Core Engine
 export function setupRegistry() {
@@ -25,7 +25,7 @@ export function setupRegistry() {
     registerAction('condition', condition)
     registerAction('collect_input', collectInput)
     registerAction('inline_keyboard', inlineKeyboard)
-    registerAction('send_webapp', tgSendWebApp)
+    registerAction('send_webapp', sendWebApp)
 
     console.log('[Registry] Actions registered successfully.')
 }

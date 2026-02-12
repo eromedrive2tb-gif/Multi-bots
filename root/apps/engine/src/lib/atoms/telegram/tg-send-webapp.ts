@@ -12,6 +12,7 @@ const paramsSchema = z.object({
     text: z.string(),
     button_text: z.string(),
     page_id: z.string(),
+    parse_mode: z.enum(['HTML', 'Markdown', 'MarkdownV2']).optional(),
 })
 
 export async function tgSendWebApp(
@@ -19,7 +20,7 @@ export async function tgSendWebApp(
     params: Record<string, unknown>
 ): Promise<Result<unknown>> {
     try {
-        const { text, button_text, page_id } = paramsSchema.parse(params)
+        const { text, button_text, page_id, parse_mode } = paramsSchema.parse(params)
 
         if (ctx.provider !== 'tg') {
             return { success: false, error: 'Provider must be telegram' }
@@ -59,6 +60,7 @@ export async function tgSendWebApp(
 
         await bot.api.sendMessage(ctx.chatId, text, {
             reply_markup: keyboard,
+            parse_mode: parse_mode as any
         })
 
         return { success: true, data: { sent: true, url: webAppUrl } }

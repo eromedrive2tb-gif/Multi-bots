@@ -8,3 +8,4 @@ export { dcSendButtons, type DcSendButtonsProps, type DcSendButtonsResult } from
 export { dcVerifySignature, type DcVerifySignatureProps } from './dc-verify-signature'
 export { dcHandleInteraction, type DiscordInteraction, type DcHandleInteractionResult, InteractionType } from './dc-handle-interaction'
 export { dcSyncCommands, type DcSyncCommandsProps, type DcSyncCommandsResult } from './dc-sync-commands'
+export { dcSendLinkButton, type DcSendLinkButtonProps, type DcSendLinkButtonResult } from './dc-send-link-button'

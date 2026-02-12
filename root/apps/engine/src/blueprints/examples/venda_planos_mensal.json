@@ -310,9 +310,11 @@
         },
         "send_payment_link": {
             "type": "molecule",
-            "action": "send_message",
+            "action": "send_webapp",
             "params": {
-                "text": "🎉 <b>Excelente escolha, {{session.customer_name}}!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n💳 <b>LINK DE PAGAMENTO</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n📦 Plano: <b>{{session.plan_name}}</b>\n💰 Valor: <b>R$ {{session.plan_price}}/mês</b>\n\n👇 Clique no botão abaixo para pagar:\n\n🔗 <a href=\"https://seusite.com/checkout?plan={{session.selected_plan}}&email={{session.customer_email}}\">PAGAR AQUI</a>\n\n━━━━━━━━━━━━━━━━━━━━━\n\n⏰ Este link expira em <b>30 minutos</b>.\n📧 Após o pagamento, você receberá a confirmação no email informado.\n\n💬 Qualquer dúvida, digite /ajuda",
+                "text": "🎉 <b>Excelente escolha, {{session.customer_name}}!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n💳 <b>PAGAMENTO</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n📦 Plano: <b>{{session.plan_name}}</b>\n💰 Valor: <b>R$ {{session.plan_price}}/mês</b>\n\nClique no botão abaixo para concluir o pagamento com segurança:\n\n━━━━━━━━━━━━━━━━━━━━━\n\n⏰ Este link expira em <b>30 minutos</b>.\n📧 Após o pagamento, você receberá a confirmação no email informado.",
+                "button_text": "💳 PAGAR AGORA",
+                "page_id": "pagamento-exemplo",
                 "parse_mode": "HTML"
             },
             "next_step": "final_log"

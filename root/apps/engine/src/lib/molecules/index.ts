@@ -25,4 +25,5 @@ export { registerAction, executeAction, resolveAction, listActions } from './gen
 export * from './general/inline-keyboard'
 export * from './general/log'
 export * from './general/send-message'
+export * from './general/send-webapp'
 export * from './general/registry-setup'
