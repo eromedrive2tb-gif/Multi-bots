@@ -1,7 +1,7 @@
 /**
  * ORGANISM: TelegramWebhookHandler
  * Responsabilidade: Processa webhooks do Telegram via Engine data-driven
- * Orquestra: Engine, Session, tg-handle-update, Analytics
+ * Orquestra: Engine, Session, tg-handle-update, Analytics, CRM
  * 
  * REFACTORED: All command logic moved to Blueprint JSONs
  */
@@ -11,6 +11,7 @@ import { dbGetBotById } from '../../atoms'
 import { dbLogAnalyticsEvent } from '../../atoms'
 import { executeFromTrigger, type FlowExecutionResult } from '../'
 import { getBlueprintByTriggerFromKv, getBlueprintFromKv } from '../../molecules'
+import { upsertCustomer } from '../../molecules'  // Import CRM molecule
 import type {
     TelegramCredentials,
     UniversalContext,
@@ -80,6 +81,7 @@ export interface WebhookContext {
     env: Env
     botId: string
     tenantId: string
+    waitUntil: (promise: Promise<any>) => void
 }
 
 export interface WebhookResult {
@@ -155,6 +157,10 @@ export async function handleTelegramWebhook(
         if (!ctx) {
             return { handled: false }
         }
+
+        // 2.1 CRM: Upsert Customer (Background)
+        // Fire and forget, no await
+        context.waitUntil(upsertCustomer(ctx, context.env))
 
         // 3. Try to get the blueprintId for analytics (before execution for starting flows)
         let blueprintId = 'unknown'

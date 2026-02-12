@@ -12,6 +12,7 @@ import { SettingsPage } from '../pages/settings'
 import { AnalyticsPage } from '../pages/analytics'
 import { WebAppsPage } from './pages/WebAppsPage'
 import { WebAppEditorPage } from './pages/WebAppEditorPage'
+import { CustomersPage } from './pages/CustomersPage'
 
 const queryClient = new QueryClient()
 
@@ -30,6 +31,7 @@ export const App = () => {
                         <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
                         <Route path="/dashboard/webapps" element={<WebAppsPage />} />
                         <Route path="/dashboard/webapps/:id" element={<WebAppEditorPage />} />
+                        <Route path="/dashboard/customers" element={<CustomersPage />} />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                 </BrowserRouter>

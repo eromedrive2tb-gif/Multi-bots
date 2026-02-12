@@ -18,6 +18,7 @@ export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
         { href: '/dashboard', icon: '📊', label: 'Dashboard' },
         { href: '/dashboard/analytics', icon: '📈', label: 'Analytics' },
         { href: '/dashboard/bots', icon: '🤖', label: 'Gerenciar Bots' },
+        { href: '/dashboard/customers', icon: '👥', label: 'Audiência' },
         { href: '/dashboard/webapps', icon: '📱', label: 'WebApps' },
         { href: '/dashboard/blueprints', icon: '📋', label: 'Blueprints' },
         { href: '/dashboard/settings', icon: '⚙️', label: 'Configurações' },

@@ -11,6 +11,7 @@ import { botsRoutes } from './bots.routes'
 import { blueprintsRoutes } from './blueprints.routes'
 import { webhooksRoutes } from './webhooks.routes'
 import { analyticsRoutes } from './analytics.routes'
+import { customersRoutes } from './customers.routes'
 
 /**
  * Registers all route modules on the main app
@@ -23,7 +24,8 @@ export function registerRoutes(app: Hono<{ Bindings: Env }>) {
     app.route('/', blueprintsRoutes)
     app.route('/', webhooksRoutes)
     app.route('/', analyticsRoutes)
+    app.route('/', customersRoutes)
 }
 
 // Export individual routes for testing
-export { authRoutes, botsRoutes, blueprintsRoutes, webhooksRoutes, analyticsRoutes }
+export { authRoutes, botsRoutes, blueprintsRoutes, webhooksRoutes, analyticsRoutes, customersRoutes }

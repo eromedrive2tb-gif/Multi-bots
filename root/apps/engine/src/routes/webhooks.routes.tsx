@@ -26,7 +26,12 @@ webhooksRoutes.post('/webhooks/telegram/:botId', async (c) => {
         const update = await c.req.json<TelegramUpdate>()
         const webhookService = new WebhookService(c.env.DB, c.env)
 
-        const result = await webhookService.processTelegramWebhook(botId, webhookSecret, update)
+        const result = await webhookService.processTelegramWebhook(
+            botId,
+            webhookSecret,
+            update,
+            c.executionCtx.waitUntil.bind(c.executionCtx)
+        )
 
         if (!result.success) {
             return c.json({ error: result.error }, result.status as any)
@@ -66,9 +71,6 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
     // 3. Define handlers that delegate to our DiscordWebhookHandler
     // discord-hono will handle the signature verification and PING/PONG automatically
 
-    // 3. Define handlers that delegate to our DiscordWebhookHandler
-    // discord-hono will handle the signature verification and PING/PONG automatically
-
     // Catch-all for commands - Guaranteed fast response
     discord.command('', async (ctx) => {
         // Schedule heavy processing for AFTER the response is sent
@@ -78,7 +80,8 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
                     env: c.env,
                     botId: bot.id,
                     tenantId: bot.tenantId,
-                    bot
+                    bot,
+                    waitUntil: c.executionCtx.waitUntil.bind(c.executionCtx)
                 })
                 if (result.executionPromise) {
                     await result.executionPromise
@@ -95,13 +98,12 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
     // Catch-all for components (buttons, select menus)
     discord.component('', async (ctx) => {
         try {
-
-
             const result = await handleDiscordWebhook(ctx.interaction as any, {
                 env: c.env,
                 botId: bot.id,
                 tenantId: bot.tenantId,
-                bot
+                bot,
+                waitUntil: c.executionCtx.waitUntil.bind(c.executionCtx)
             })
 
             if (result.executionPromise) {
@@ -130,17 +132,16 @@ webhooksRoutes.post('/webhooks/discord/:botId', async (c) => {
             return ctx.resDefer()
         }
     })
-    // Catch-all for other types to avoid 404
+
     // Catch-all for modals (User Input Submission)
     discord.modal('', async (ctx) => {
         try {
-
-
             const result = await handleDiscordWebhook(ctx.interaction as any, {
                 env: c.env,
                 botId: bot.id,
                 tenantId: bot.tenantId,
-                bot
+                bot,
+                waitUntil: c.executionCtx.waitUntil.bind(c.executionCtx)
             })
 
             if (result.executionPromise) {

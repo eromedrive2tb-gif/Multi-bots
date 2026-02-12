@@ -15,6 +15,7 @@ import type {
     DiscordCredentials,
 } from '../../../core/types'
 import { ErrorSeverity } from '../../../core/analytics-types'
+import { upsertCustomer } from '../../molecules'
 
 // ============================================
 // ANALYTICS LOGGING HELPER
@@ -87,6 +88,7 @@ export interface DiscordWebhookContext {
     botId: string
     tenantId: string
     bot?: any
+    waitUntil: (promise: Promise<any>) => void
 }
 
 export interface DiscordWebhookResult {
@@ -177,6 +179,10 @@ export async function handleDiscordWebhook(
         if (!ctx) {
             return { handled: false }
         }
+
+        // 3.1 CRM: Upsert Customer (Background)
+        // Fire and forget, no await
+        context.waitUntil(upsertCustomer(ctx, context.env))
 
         // 4. Determine Response Content
         let response: any = { type: 5 } // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE

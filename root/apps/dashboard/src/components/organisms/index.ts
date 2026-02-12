@@ -30,3 +30,4 @@ export * from './analytics/ErrorLogModalComponent'
 // Organisms - Profile
 export * from './profile/PasswordForm'
 export * from './profile/ProfileForm'
+export * from './customers/CustomerDetailsModal'

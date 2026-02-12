@@ -95,4 +95,23 @@ CREATE TABLE IF NOT EXISTS bot_blueprints (
     PRIMARY KEY (bot_id, blueprint_id)
 );
 
+
 CREATE INDEX IF NOT EXISTS idx_bot_blueprints_active ON bot_blueprints (bot_id, is_active);
+
+-- Customers table for CRM (Persistindo sessões)
+CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    external_id TEXT NOT NULL, -- Telegram ID or Discord User ID
+    provider TEXT NOT NULL CHECK (provider IN ('tg', 'dc')),
+    name TEXT,
+    username TEXT,
+    metadata TEXT DEFAULT '{}', -- JSON com variaveis capturadas
+    last_interaction TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (tenant_id) REFERENCES tenants (id),
+    UNIQUE (tenant_id, provider, external_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_customers_lookup ON customers (tenant_id, provider, external_id);
+CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers (tenant_id);

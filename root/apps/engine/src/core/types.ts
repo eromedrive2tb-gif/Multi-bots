@@ -4,6 +4,20 @@ import { z } from 'zod'
 // ENTITIES
 // ============================================
 
+export interface Customer {
+    id: string
+    tenantId: string
+    externalId: string
+    provider: 'tg' | 'dc'
+    name: string | null
+    username: string | null
+    metadata: Record<string, any>
+    lastInteraction: string
+    createdAt: string
+}
+
+export type CustomerProvider = 'tg' | 'dc'
+
 export interface Tenant {
     id: string
     name: string
