@@ -115,3 +115,18 @@ CREATE TABLE IF NOT EXISTS customers (
 
 CREATE INDEX IF NOT EXISTS idx_customers_lookup ON customers (tenant_id, provider, external_id);
 CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers (tenant_id);
+
+-- Customer History (Snapshots)
+CREATE TABLE IF NOT EXISTS customer_history (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    tenant_id TEXT NOT NULL,
+    metadata TEXT NOT NULL, 
+    last_flow_id TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE,
+    FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_history_lookup ON customer_history (customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_history_tenant ON customer_history (tenant_id);

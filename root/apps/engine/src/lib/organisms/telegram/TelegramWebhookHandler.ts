@@ -138,6 +138,7 @@ export async function handleTelegramWebhook(
     update: TelegramUpdate,
     context: WebhookContext
 ): Promise<WebhookResult> {
+    console.log('[Telegram Debug] Incoming Webhook Update:', JSON.stringify(update))
     try {
         // 1. Get bot credentials
         const bot = await dbGetBotById({ db: context.env.DB, id: context.botId })
