@@ -29,3 +29,12 @@ export * from './auth'
 export * from './db-log-analytics'
 export * from './db-get-analytics'
 export * from './db-clear-analytics'
+
+// CRM (Customer) atoms
+export * from './db-upsert-customer'
+export * from './db-get-customers'
+export * from './db-get-customer-by-id'
+export * from './db-delete-customer'
+export * from './db-clear-customers'
+export * from './db-log-customer-history'
+export * from './db-get-customer-history'

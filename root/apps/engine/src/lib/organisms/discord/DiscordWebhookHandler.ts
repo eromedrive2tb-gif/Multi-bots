@@ -261,6 +261,21 @@ export async function handleDiscordWebhook(
                         result
                     )
 
+                    // 5.1 CRM: Log history snapshot if flow completed successfully
+                    if (result.success && !result.lastStepId) {
+                        const { logCustomerSnapshot, getOrCreateSessionAt } = await import('../../molecules')
+                        const sessionRes = await getOrCreateSessionAt(context.env.SESSIONS_KV, context.tenantId, ctx.provider, String(ctx.userId))
+
+                        if (sessionRes.success) {
+                            context.waitUntil(logCustomerSnapshot(
+                                ctx,
+                                context.env,
+                                blueprintId,
+                                sessionRes.data.collectedData
+                            ))
+                        }
+                    }
+
                     return result
                 } catch (e) {
                     console.error('[Discord Handler] Engine execution failed:', e)

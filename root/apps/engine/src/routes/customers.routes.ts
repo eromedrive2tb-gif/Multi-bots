@@ -7,7 +7,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../core/types'
 import { authMiddleware } from '../middleware/auth'
-import { dbGetCustomers, dbGetCustomerById, dbDeleteCustomer } from '../lib/atoms'
+import { dbGetCustomers, dbGetCustomerById, dbDeleteCustomer, dbClearCustomers, dbGetCustomerHistory } from '../lib/atoms'
 
 const customersRoutes = new Hono<{ Bindings: Env }>()
 
@@ -61,6 +61,24 @@ customersRoutes.get('/api/customers/:id', authMiddleware, async (c) => {
     return c.json({ success: true, data: result.data })
 })
 
+// Get customer history
+customersRoutes.get('/api/customers/:id/history', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const id = c.req.param('id')
+
+    const result = await dbGetCustomerHistory({
+        db: c.env.DB,
+        tenantId: tenant.tenantId,
+        customerId: id
+    })
+
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 500)
+    }
+
+    return c.json({ success: true, data: result.data })
+})
+
 // Delete customer
 customersRoutes.delete('/api/customers/:id', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
@@ -81,6 +99,22 @@ customersRoutes.delete('/api/customers/:id', authMiddleware, async (c) => {
         db: c.env.DB,
         tenantId: tenant.tenantId,
         id
+    })
+
+    if (!result.success) {
+        return c.json({ success: false, error: result.error }, 500)
+    }
+
+    return c.json({ success: true })
+})
+
+// Clear all customers
+customersRoutes.delete('/api/customers', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+
+    const result = await dbClearCustomers({
+        db: c.env.DB,
+        tenantId: tenant.tenantId
     })
 
     if (!result.success) {

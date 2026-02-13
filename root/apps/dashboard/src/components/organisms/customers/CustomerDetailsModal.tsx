@@ -3,6 +3,7 @@ import React from 'react'
 import { Modal } from '../../molecules/ui/Modal'
 import { Button } from '../../atoms/ui/Button'
 import type { Customer } from '../../../../engine/src/core/types'
+import { useQuery } from '@tanstack/react-query'
 
 interface CustomerDetailsModalProps {
     customer: Customer | null
@@ -10,6 +11,22 @@ interface CustomerDetailsModalProps {
 }
 
 export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({ customer, onClose }) => {
+    // Fetch History
+    const { data: history, isLoading: isLoadingHistory } = useQuery({
+        queryKey: ['customer-history', customer?.id],
+        queryFn: async () => {
+            if (!customer) return []
+            const response = await fetch(`/api/customers/${customer.id}/history`)
+            const result = await response.json() as any
+            if (!result.success) throw new Error(result.error)
+            return result.data as any[]
+        },
+        enabled: !!customer,
+        staleTime: 1000 * 60 * 5, // 5 minutes cache
+        retry: 1, // Only retry once on failure
+        refetchOnWindowFocus: false // Don't refetch on window focus
+    })
+
     if (!customer) return null
 
     return (
@@ -132,6 +149,35 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({ cust
                                     <span className="metadata-value">{String(value)}</span>
                                 </div>
                             ))
+                        )}
+                    </div>
+                </div>
+
+                {/* History snapshots */}
+                <div className="metadata-section" style={{ marginTop: 'var(--space-lg)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-md)' }}>
+                    <h3 className="metadata-header">Histórico de Sessões</h3>
+                    <div className="metadata-list">
+                        {isLoadingHistory ? (
+                            <div className="empty-metadata">Carregando histórico...</div>
+                        ) : history && history.length > 0 ? (
+                            history.map((item: any, idx: number) => (
+                                <div key={item.id} style={{ marginBottom: 'var(--space-md)', padding: 'var(--space-sm)', background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-xs)', display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Fluxo: {item.lastFlowId || 'Geral'}</span>
+                                        <span>{new Date(item.createdAt).toLocaleString('pt-BR')}</span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 'var(--space-xs)' }}>
+                                        {Object.entries(item.metadata).map(([k, v]) => (
+                                            <div key={k} style={{ fontSize: '0.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                <span style={{ color: 'var(--color-text-muted)' }}>{k}: </span>
+                                                <span style={{ fontWeight: 500 }}>{String(v)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="empty-metadata">Nenhum histórico disponível.</div>
                         )}
                     </div>
                 </div>

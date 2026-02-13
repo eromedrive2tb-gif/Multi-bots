@@ -260,6 +260,20 @@ export async function executeFlow(
             session.currentStepId = undefined
             session.currentFlowId = blueprint.id
 
+            // NEW: Clear collected data on fresh trigger to avoid "ghost data" from previous runs
+            session.collectedData = {}
+
+            // Update session in KV immediately
+            const saveResult = await updateSessionAt(
+                kv.sessions,
+                ctx.tenantId,
+                ctx.provider,
+                ctx.userId,
+                {}, // No partial data, we already cleared session.collectedData in memory
+                { flowId: blueprint.id, stepId: undefined }
+            )
+            if (saveResult.success) session = saveResult.data
+
             // Log flow_start (Analytics) - Only here, on explicit start
             if (ctx.db) {
                 dbLogAnalyticsEvent({

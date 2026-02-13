@@ -11,7 +11,7 @@ import { dbGetBotById } from '../../atoms'
 import { dbLogAnalyticsEvent } from '../../atoms'
 import { executeFromTrigger, type FlowExecutionResult } from '../'
 import { getBlueprintByTriggerFromKv, getBlueprintFromKv } from '../../molecules'
-import { upsertCustomer } from '../../molecules'  // Import CRM molecule
+import { upsertCustomer, logCustomerSnapshot } from '../../molecules'  // Import CRM molecule
 import type {
     TelegramCredentials,
     UniversalContext,
@@ -196,6 +196,22 @@ export async function handleTelegramWebhook(
                 String(ctx.userId),
                 result
             )
+
+            // 5.1 CRM: Log history snapshot if flow completed successfully
+            if (result.success && !result.lastStepId) {
+                // Fetch latest session data again to ensure we have all vars
+                const { getOrCreateSessionAt } = await import('../../molecules')
+                const sessionRes = await getOrCreateSessionAt(context.env.SESSIONS_KV, context.tenantId, ctx.provider, String(ctx.userId))
+
+                if (sessionRes.success) {
+                    context.waitUntil(logCustomerSnapshot(
+                        ctx,
+                        context.env,
+                        blueprintId,
+                        sessionRes.data.collectedData
+                    ))
+                }
+            }
         }
 
         return {
