@@ -12,6 +12,10 @@ import { blueprintsRoutes } from './blueprints.routes'
 import { webhooksRoutes } from './webhooks.routes'
 import { analyticsRoutes } from './analytics.routes'
 import { customersRoutes } from './customers.routes'
+import { paymentsRoutes } from './payments.routes'
+import { paymentWebhooksRoutes } from './webhooks-payment.routes'
+import { broadcastRoutes } from './broadcasts.routes'
+import { redirectRoutes } from './redirects.routes'
 
 /**
  * Registers all route modules on the main app
@@ -25,7 +29,11 @@ export function registerRoutes(app: Hono<{ Bindings: Env }>) {
     app.route('/', webhooksRoutes)
     app.route('/', analyticsRoutes)
     app.route('/', customersRoutes)
+    app.route('/', paymentsRoutes)
+    app.route('/', paymentWebhooksRoutes)
+    app.route('/', broadcastRoutes)
+    app.route('/', redirectRoutes)
 }
 
 // Export individual routes for testing
-export { authRoutes, botsRoutes, blueprintsRoutes, webhooksRoutes, analyticsRoutes, customersRoutes }
+export { authRoutes, botsRoutes, blueprintsRoutes, webhooksRoutes, analyticsRoutes, customersRoutes, paymentsRoutes, paymentWebhooksRoutes, broadcastRoutes, redirectRoutes }

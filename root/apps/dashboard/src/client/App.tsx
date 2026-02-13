@@ -13,6 +13,11 @@ import { AnalyticsPage } from '../pages/analytics'
 import { WebAppsPage } from './pages/WebAppsPage'
 import { WebAppEditorPage } from './pages/WebAppEditorPage'
 import { CustomersPage } from './pages/CustomersPage'
+import { FinanceiroPage } from '../pages/financeiro'
+import { PostagensPage } from '../pages/postagens'
+import { RemarketingPage } from '../pages/remarketing'
+import { RedirecionadoresPage } from '../pages/redirecionadores'
+import { GatewaysPage } from '../pages/gateways'
 
 const queryClient = new QueryClient()
 
@@ -32,6 +37,11 @@ export const App = () => {
                         <Route path="/dashboard/webapps" element={<WebAppsPage />} />
                         <Route path="/dashboard/webapps/:id" element={<WebAppEditorPage />} />
                         <Route path="/dashboard/customers" element={<CustomersPage />} />
+                        <Route path="/dashboard/financeiro" element={<FinanceiroPage />} />
+                        <Route path="/dashboard/postagens" element={<PostagensPage />} />
+                        <Route path="/dashboard/remarketing" element={<RemarketingPage />} />
+                        <Route path="/dashboard/redirecionadores" element={<RedirecionadoresPage />} />
+                        <Route path="/dashboard/gateways" element={<GatewaysPage />} />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                 </BrowserRouter>

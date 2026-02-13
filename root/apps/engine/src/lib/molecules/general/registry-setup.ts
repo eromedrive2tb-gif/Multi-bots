@@ -16,6 +16,10 @@ import { collectInput } from '../flow/collect-input'
 import { inlineKeyboard } from './inline-keyboard'
 import { sendWebApp } from './send-webapp'
 
+// Payment Actions
+import { sendPlans } from '../payments/send-plans'
+import { generatePixAction } from '../payments/generate-pix-action'
+
 // Register Actions to the Core Engine
 export function setupRegistry() {
     registerAction('send_message', sendMessage)
@@ -26,6 +30,10 @@ export function setupRegistry() {
     registerAction('collect_input', collectInput)
     registerAction('inline_keyboard', inlineKeyboard)
     registerAction('send_webapp', sendWebApp)
+
+    // Payment Actions
+    registerAction('send_plans', sendPlans)
+    registerAction('generate_pix', generatePixAction)
 
     console.log('[Registry] Actions registered successfully.')
 }

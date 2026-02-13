@@ -28,3 +28,9 @@ export * from './general/send-message'
 export * from './general/send-webapp'
 export * from './general/registry-setup'
 export * from './crm'
+
+// Payments
+export * from './payments'
+
+// Broadcast
+export * from './broadcast'
