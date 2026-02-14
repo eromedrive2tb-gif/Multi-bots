@@ -47,7 +47,7 @@ botsRoutes.get('/api/bots', authMiddleware, async (c) => {
     const origin = getBaseUrl(c) // Base URL needed for manager (even if not used for list)
 
     try {
-        const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+        const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
         const bots = await botManager.listBots()
         return c.json({ success: true, data: bots })
     } catch (error) {
@@ -68,23 +68,32 @@ botsRoutes.post('/api/bots', authMiddleware, async (c) => {
     const parseResult = addBotSchema.safeParse(body)
 
     if (!parseResult.success) {
+        const issues = parseResult.error.issues || (parseResult.error as any).errors || []
         return c.json({
             success: false,
-            error: parseResult.error.errors.map(e => e.message).join(', ')
+            error: issues.map((e: any) => e.message).join(', ')
         }, 400)
     }
 
     const { name, provider, credentials } = parseResult.data
 
-    const origin = getBaseUrl(c)
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
-    const result = await botManager.addBot(name, provider, credentials)
+    try {
+        const origin = getBaseUrl(c)
+        const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
+        const result = await botManager.addBot(name, provider, credentials)
 
-    if (!result.success) {
-        return c.json({ success: false, error: result.error }, 400)
+        if (!result.success) {
+            return c.json({ success: false, error: result.error }, 400)
+        }
+
+        return c.json({ success: true, data: result.bot })
+    } catch (error) {
+        console.error('Add Bot error:', error)
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro ao adicionar bot'
+        }, 500)
     }
-
-    return c.json({ success: true, data: result.bot })
 })
 
 // Check Bot Health
@@ -93,7 +102,7 @@ botsRoutes.post('/api/bots/:id/check', authMiddleware, async (c) => {
     const botId = c.req.param('id')
 
     const origin = getBaseUrl(c)
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+    const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
     const bot = await botManager.getBot(botId)
     const result = await botManager.checkBotHealth(botId)
 
@@ -117,7 +126,7 @@ botsRoutes.post('/api/bots/:id/delete', authMiddleware, async (c) => {
     const botId = c.req.param('id')
 
     const origin = getBaseUrl(c)
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+    const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
     await botManager.removeBot(botId)
 
     return c.json({ success: true })
@@ -129,7 +138,7 @@ botsRoutes.post('/api/bots/:id/webhook', authMiddleware, async (c) => {
     const botId = c.req.param('id')
 
     const origin = getBaseUrl(c)
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+    const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
 
     const result = await botManager.setBotWebhook(botId)
 
@@ -149,7 +158,7 @@ botsRoutes.post('/api/bots/webhooks/refresh', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const origin = getBaseUrl(c)
 
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+    const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
     const { results } = await botManager.refreshAllWebhooks()
 
     return c.json({
@@ -164,7 +173,7 @@ botsRoutes.post('/api/bots/:id/sync', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const botId = c.req.param('id')
 
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, '')
+    const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, '')
     const result = await botManager.syncBotCommands(botId, c.env.BLUEPRINTS_KV)
 
     if (!result.success) {
@@ -180,7 +189,7 @@ botsRoutes.get('/api/bots/:id/blueprints', authMiddleware, async (c) => {
     const botId = c.req.param('id')
     const origin = getBaseUrl(c)
 
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+    const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
 
     // 1. Get all blueprints
     const { dbGetBlueprints } = await import('../lib/atoms/database/db-get-blueprints')
@@ -217,7 +226,7 @@ botsRoutes.post('/api/bots/:id/blueprints/:bpId/toggle', authMiddleware, async (
     const { isActive } = await c.req.json()
 
     const origin = getBaseUrl(c)
-    const botManager = new BotManagerService(c.env.DB, tenant.tenantId, origin)
+    const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
 
     const result = await botManager.toggleBotBlueprint(botId, blueprintId, Boolean(isActive))
 

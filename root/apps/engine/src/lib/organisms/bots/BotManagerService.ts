@@ -11,6 +11,7 @@ import { validateAndSaveBot } from '../../molecules'
 import { healthCheckBot } from '../../molecules'
 import { dcSyncCommands } from '../../atoms'
 import { kvList } from '../../atoms'
+import { TelegramProvider } from '../telegram/TelegramProvider'
 import type { Bot, BotCredentials, BotProvider, TelegramCredentials, DiscordCredentials } from '../../../core/types'
 
 export class BotManagerService {
@@ -49,35 +50,44 @@ export class BotManagerService {
         provider: BotProvider,
         credentials: BotCredentials
     ): Promise<{ success: boolean; bot?: Bot; error?: string }> {
-        const result = await validateAndSaveBot({
-            db: this.db,
-            tenantId: this.tenantId,
-            name,
-            provider,
-            credentials,
-            baseWebhookUrl: this.baseWebhookUrl,
-        })
+        try {
+            // Sanitize credentials to avoid common copy-paste errors
+            const sanitizedCredentials = { ...credentials }
+            if ('token' in sanitizedCredentials && typeof sanitizedCredentials.token === 'string') {
+                sanitizedCredentials.token = sanitizedCredentials.token.trim()
+            }
+            if ('publicKey' in sanitizedCredentials && typeof sanitizedCredentials.publicKey === 'string') {
+                sanitizedCredentials.publicKey = sanitizedCredentials.publicKey.trim()
+            }
+            if ('applicationId' in sanitizedCredentials && typeof sanitizedCredentials.applicationId === 'string') {
+                sanitizedCredentials.applicationId = sanitizedCredentials.applicationId.trim()
+            }
 
-        if (!result.success || !result.bot) {
-            return { success: false, error: result.error }
-        }
-
-        // Configura webhook para Telegram
-        if (provider === 'telegram') {
-            const tgCreds = credentials as TelegramCredentials
-            const webhookUrl = `${this.baseWebhookUrl}/webhooks/telegram/${result.bot.id}`
-
-            await tgSetWebhook({
-                token: tgCreds.token,
-                url: webhookUrl,
-                secretToken: result.bot.webhookSecret,
+            // Delegate completely to the molecule which handles:
+            // 1. Validation (tgGetMe / dcValidateToken)
+            // 2. DB Saving
+            // 3. Webhook Setup
+            const result = await validateAndSaveBot({
+                db: this.db,
+                tenantId: this.tenantId,
+                name,
+                provider,
+                credentials: sanitizedCredentials,
+                baseWebhookUrl: this.baseWebhookUrl,
             })
+
+            if (!result.success || !result.bot) {
+                return { success: false, error: result.error || 'Erro desconhecido na criação do bot' }
+            }
+
+            // Initial health check
+            await this.checkBotHealth(result.bot.id)
+
+            return { success: true, bot: result.bot }
+        } catch (error) {
+            console.error('BotManager addBot error:', error)
+            return { success: false, error: error instanceof Error ? error.message : 'Erro ao criar bot' }
         }
-
-        // Faz health check inicial
-        await this.checkBotHealth(result.bot.id)
-
-        return { success: true, bot: result.bot }
     }
 
     /**

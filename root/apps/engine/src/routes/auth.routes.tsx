@@ -56,7 +56,7 @@ authRoutes.post('/api/auth/register', async (c) => {
         // Validate input
         const result = registerSchema.safeParse({ name, email, password, confirmPassword })
         if (!result.success) {
-            const error = result.error.errors[0]?.message || 'Dados inválidos'
+            const error = result.error?.errors?.[0]?.message || 'Dados inválidos'
             return c.json({ success: false, error }, 400)
         }
 

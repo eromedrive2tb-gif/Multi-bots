@@ -34,7 +34,7 @@ export async function tgGetMe({ token }: TgGetMeProps): Promise<TgGetMeResult> {
     } catch (error) {
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Token inválido',
+            error: error instanceof Error ? `Telegram Error: ${error.message}` : 'Token inválido',
         }
     }
 }
