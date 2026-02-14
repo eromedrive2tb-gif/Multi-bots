@@ -46,11 +46,23 @@ botsRoutes.get('/api/bots', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const origin = getBaseUrl(c) // Base URL needed for manager (even if not used for list)
 
+    console.log('[DEBUG] GET /api/bots')
+    console.log('[DEBUG] Tenant:', tenant.tenantId)
+    console.log('[DEBUG] Bindings check:', {
+        hasDB: !!c.env.DB,
+        hasBlueprintsKV: !!c.env.BLUEPRINTS_KV,
+        hasSessionsKV: !!c.env.SESSIONS_KV
+    })
+
     try {
         const botManager = new BotManagerService(c.env.DB, c.env.BLUEPRINTS_KV, tenant.tenantId, origin)
         const bots = await botManager.listBots()
         return c.json({ success: true, data: bots })
     } catch (error) {
+        console.error('[ERROR] /api/bots failed:', error)
+        if (error instanceof Error) {
+            console.error('[ERROR] Stack:', error.stack)
+        }
         return c.json({
             success: false,
             error: error instanceof Error ? error.message : 'Erro ao buscar bots'

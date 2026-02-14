@@ -74,7 +74,11 @@ broadcastRoutes.post('/api/broadcasts/:id/delete', authMiddleware, async (c) => 
 // REMARKETING CAMPAIGN ENDPOINTS
 // ============================================
 
-broadcastRoutes.get('/api/remarketing', authMiddleware, async (c) => {
+// ============================================
+// REMARKETING CAMPAIGN ENDPOINTS
+// ============================================
+
+broadcastRoutes.get('/api/broadcasts/campaigns', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const status = c.req.query('status') as any
 
@@ -87,10 +91,12 @@ broadcastRoutes.get('/api/remarketing', authMiddleware, async (c) => {
     }
 })
 
-broadcastRoutes.post('/api/remarketing', authMiddleware, async (c) => {
+broadcastRoutes.post('/api/broadcasts/campaigns', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const body = await c.req.json()
 
+    // Validação usando o schema central do core/types.ts (Importado no topo, mas verificando broadcast-types)
+    // O schema createCampaignSchema deve estar correto
     const parseResult = createCampaignSchema.safeParse(body)
     if (!parseResult.success) {
         return c.json({
@@ -106,7 +112,7 @@ broadcastRoutes.post('/api/remarketing', authMiddleware, async (c) => {
     return c.json({ success: true, data: result.data })
 })
 
-broadcastRoutes.post('/api/remarketing/:id/activate', authMiddleware, async (c) => {
+broadcastRoutes.post('/api/broadcasts/campaigns/:id/activate', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const service = new BroadcastService(c.env.DB, tenant.tenantId)
     const result = await service.activateCampaign(c.req.param('id'))
@@ -114,7 +120,7 @@ broadcastRoutes.post('/api/remarketing/:id/activate', authMiddleware, async (c) 
     return c.json({ success: true })
 })
 
-broadcastRoutes.post('/api/remarketing/:id/pause', authMiddleware, async (c) => {
+broadcastRoutes.post('/api/broadcasts/campaigns/:id/pause', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const service = new BroadcastService(c.env.DB, tenant.tenantId)
     const result = await service.pauseCampaign(c.req.param('id'))
@@ -122,7 +128,7 @@ broadcastRoutes.post('/api/remarketing/:id/pause', authMiddleware, async (c) => 
     return c.json({ success: true })
 })
 
-broadcastRoutes.post('/api/remarketing/:id/delete', authMiddleware, async (c) => {
+broadcastRoutes.post('/api/broadcasts/campaigns/:id/delete', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const service = new BroadcastService(c.env.DB, tenant.tenantId)
     const result = await service.deleteCampaign(c.req.param('id'))

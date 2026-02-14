@@ -17,6 +17,7 @@ import type { Bot, BotCredentials, BotProvider, TelegramCredentials, DiscordCred
 export class BotManagerService {
     constructor(
         private db: D1Database,
+        private blueprintsKv: KVNamespace,
         private tenantId: string,
         private baseWebhookUrl: string
     ) { }
@@ -243,7 +244,32 @@ export class BotManagerService {
     }
 
     async toggleBotBlueprint(botId: string, blueprintId: string, isActive: boolean) {
-        return dbToggleBotBlueprint({ db: this.db, botId, blueprintId, isActive })
+        // 1. Update in DB (Source of Truth for persistence)
+        const result = await dbToggleBotBlueprint({ db: this.db, botId, blueprintId, isActive })
+
+        if (!result.success) return result
+
+        // 2. Sync to KV (Engine Cache)
+        if (isActive) {
+            // Fetch full blueprint
+            const { dbGetBlueprintById } = await import('../../atoms/database/db-get-blueprints')
+            const { saveBlueprintToKv } = await import('../../molecules/kv/kv-blueprint-manager')
+
+            const bpResult = await dbGetBlueprintById({ db: this.db, tenantId: this.tenantId, id: blueprintId })
+
+            if (bpResult.success && bpResult.data) {
+                await saveBlueprintToKv(this.blueprintsKv, this.tenantId, bpResult.data)
+                console.log(`[BotManager] Synced blueprint ${blueprintId} to KV for tenant ${this.tenantId}`)
+            } else {
+                console.error(`[BotManager] Failed to fetch blueprint ${blueprintId} for KV sync`)
+            }
+        } else {
+            // TODO: Remove from KV or Trigger Index?
+            // Currently kv-blueprint-manager doesn't support delete, but Engine checks DB active status too.
+            // So leaving it in KV is fine, Engine will block execution if DB says inactive.
+        }
+
+        return result
     }
 
     /**
