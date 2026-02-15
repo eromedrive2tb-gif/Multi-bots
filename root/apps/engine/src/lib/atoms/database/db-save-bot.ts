@@ -11,6 +11,7 @@ export interface DbSaveBotProps {
     id: string
     tenantId: string
     name: string
+    username?: string
     provider: BotProvider
     credentials: BotCredentials
     webhookSecret?: string
@@ -21,6 +22,7 @@ export async function dbSaveBot({
     id,
     tenantId,
     name,
+    username,
     provider,
     credentials,
     webhookSecret,
@@ -28,12 +30,13 @@ export async function dbSaveBot({
     const now = new Date().toISOString()
 
     await db.prepare(`
-        INSERT INTO bots (id, tenant_id, name, provider, credentials, webhook_secret, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'offline', ?, ?)
+        INSERT INTO bots (id, tenant_id, name, username, provider, credentials, webhook_secret, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'offline', ?, ?)
     `).bind(
         id,
         tenantId,
         name,
+        username || null,
         provider,
         JSON.stringify(credentials),
         webhookSecret || null,
@@ -45,6 +48,7 @@ export async function dbSaveBot({
         id,
         tenantId,
         name,
+        username,
         provider,
         credentials,
         webhookSecret,

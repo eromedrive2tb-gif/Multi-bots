@@ -58,18 +58,24 @@ export const RedirecionadoresPage: React.FC = () => {
         },
     })
 
+    // Query to fetch blueprints for selected bot
+    const { data: blueprints, isLoading: isLoadingBlueprints } = useQuery({
+        queryKey: ['bot-blueprints', form.botId],
+        queryFn: async () => {
+            if (!form.botId) return []
+            const res = await fetch(`/api/bots/${form.botId}/blueprints`)
+            const r = await res.json() as any
+            if (!r.success) throw new Error(r.error)
+            return r.data || []
+        },
+        enabled: !!form.botId
+    })
+
     const createMut = useMutation({
         mutationFn: async () => {
             const body: any = {
                 slug: form.slugType === 'random' ? crypto.randomUUID().slice(0, 8) : form.slug,
-                destinationUrl: form.destinationType === 'url' ? form.destinationUrl : '', // Bot destination handled by backend logic or below
-                // If bot, we send destinationUrl as empty? Or maybe as a fallback?
-                // Backend expects destinationUrl. If type is bot, we can put the generated link if we want, or just empty.
-                // Let's put a placeholder or the flow link if available.
-                // Backend logic: "If destinationUrl is populated... use it".
-                // So for bot, we can send `https://t.me/...` constructed here or leave it to backend.
-                // Backend implementation uses `redirect.destinationUrl` if `destinationType === 'bot'` unless we change it.
-                // Let's construct it here for simplicity:
+                destinationUrl: form.destinationType === 'url' ? form.destinationUrl : '',
                 destinationType: form.destinationType,
                 botId: form.botId,
                 flowId: form.flowId,
@@ -78,22 +84,16 @@ export const RedirecionadoresPage: React.FC = () => {
                 cloakerMethod: form.cloakerMethod,
                 cloakerSafeUrl: form.cloakerSafeUrl || undefined,
             }
+
             if (form.destinationType === 'bot') {
-                // Try to find bot username in bots list to construct URL?
                 const selectedBot = bots?.find((b: any) => b.id === form.botId)
-                // If we have username, construct it. Else we might need backend to do it.
-                // Let's set destinationUrl to t.me/bot if possible.
-                // For now, let's send it as empty or a placeholder to pass validation. 
-                // Schema checks `destinationUrl: z.string().url()`. So we MUST send a valid URL.
-                // If we don't know the username yet, we can send `https://t.me/unknown`.
-                // Backend: "If destinationUrl is populated... use it".
-                // Let's try to get username from `selectedBot`.
-                // `bots` endpoint returns `data: bots`. Bot interface has `name`, `status`. Does it have username?
-                // `BotInfo` interface has `username`. `Bot` interface in `types.ts` does NOT have username explicitly, but `credentials` has it?
-                // `credentials` is JSON.
-                // Let's just put `https://t.me/bot` as placeholder if we can't find it.
-                body.destinationUrl = `https://t.me/bot?start=${form.flowId || 'start'}`
+                const botUsername = selectedBot?.username || 'bot'
+                // Generate Deep Link with trigger
+                // If flowId (trigger) starts with /, remove it for the URL param
+                const trigger = form.flowId.startsWith('/') ? form.flowId.substring(1) : form.flowId
+                body.destinationUrl = `https://t.me/${botUsername}?start=${trigger}`
             }
+
             const res = await fetch('/api/redirects', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
             })
@@ -523,8 +523,29 @@ export const RedirecionadoresPage: React.FC = () => {
                                             ))}
                                         </select>
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <Input name="flow" placeholder="ID do Fluxo (opcional)" value={form.flowId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, flowId: e.target.value }))} />
+                                    <div className="flex flex-col gap-2">
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>TRIGGER / FLUXO</label>
+                                        {isLoadingBlueprints ? (
+                                            <div className="text-sm text-slate-500">Carregando fluxos...</div>
+                                        ) : (
+                                            <select
+                                                className="redir-dest-select"
+                                                value={form.flowId}
+                                                onChange={e => setForm({ ...form, flowId: e.target.value })}
+                                            >
+                                                <option value="">Selecione um fluxo...</option>
+                                                {blueprints?.map((bp: any) => (
+                                                    <option key={bp.id} value={bp.trigger}>
+                                                        {bp.name} ({bp.trigger})
+                                                    </option>
+                                                ))}
+                                                {/* Fallback for manual entry or if no blueprints */}
+                                                <option value="start">Início (/start)</option>
+                                            </select>
+                                        )}
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                            Fluxo iniciado ao clicar no link
+                                        </p>
                                     </div>
                                 </div>
                             )}

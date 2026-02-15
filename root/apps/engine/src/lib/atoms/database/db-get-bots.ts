@@ -15,6 +15,7 @@ interface BotRow {
     id: string
     tenant_id: string
     name: string
+    username: string | null
     provider: string
     credentials: string
     status: string
@@ -27,7 +28,7 @@ interface BotRow {
 
 export async function dbGetBots({ db, tenantId }: DbGetBotsProps): Promise<Bot[]> {
     const result = await db.prepare(`
-        SELECT id, tenant_id, name, provider, credentials, status, status_message, 
+        SELECT id, tenant_id, name, username, provider, credentials, status, status_message, 
                last_check, webhook_secret, created_at, updated_at
         FROM bots 
         WHERE tenant_id = ?
@@ -38,6 +39,7 @@ export async function dbGetBots({ db, tenantId }: DbGetBotsProps): Promise<Bot[]
         id: row.id,
         tenantId: row.tenant_id,
         name: row.name,
+        username: row.username || undefined,
         provider: row.provider as BotProvider,
         credentials: JSON.parse(row.credentials) as BotCredentials,
         status: row.status as BotStatus,
@@ -51,7 +53,7 @@ export async function dbGetBots({ db, tenantId }: DbGetBotsProps): Promise<Bot[]
 
 export async function dbGetBotById({ db, id }: { db: D1Database; id: string }): Promise<Bot | null> {
     const row = await db.prepare(`
-        SELECT id, tenant_id, name, provider, credentials, status, status_message, 
+        SELECT id, tenant_id, name, username, provider, credentials, status, status_message, 
                last_check, webhook_secret, created_at, updated_at
         FROM bots 
         WHERE id = ?
@@ -63,6 +65,7 @@ export async function dbGetBotById({ db, id }: { db: D1Database; id: string }): 
         id: row.id,
         tenantId: row.tenant_id,
         name: row.name,
+        username: row.username || undefined,
         provider: row.provider as BotProvider,
         credentials: JSON.parse(row.credentials) as BotCredentials,
         status: row.status as BotStatus,

@@ -166,7 +166,33 @@ export async function handleTelegramWebhook(
         // 3. Try to get the blueprintId for analytics (before execution for starting flows)
         let blueprintId = 'unknown'
         if (ctx.metadata.command) {
-            const trigger = `/${ctx.metadata.command}`
+            let trigger = `/${ctx.metadata.command}`
+
+            // FIX: Deep Linking Support
+            // If command is /start and has arguments, specifically check if those arguments match a trigger
+            // e.g. t.me/Bot?start=promo -> /start promo -> trigger: /promo
+            if (ctx.metadata.command === 'start' && ctx.metadata.lastInput) {
+                const parts = ctx.metadata.lastInput.trim().split(/\s+/)
+                if (parts.length >= 2) {
+                    const payload = parts[1]
+                    // If payload starts with / use it, else prepend /
+                    const potentialTrigger = payload.startsWith('/') ? payload : `/${payload}`
+
+                    // Check if this specific trigger exists
+                    const bpResult = await getBlueprintByTriggerFromKv(context.env.BLUEPRINTS_KV, context.tenantId, potentialTrigger)
+                    if (bpResult.success && bpResult.data) {
+                        trigger = potentialTrigger
+                        // Update context command to match the deep link trigger so engine executes it
+                        // We need to hack the context logic slightly or just rely on executeFromTrigger handling it?
+                        // executeFromTrigger uses ctx.metadata.command usually... or it uses the trigger passed to it?
+                        // Actually executeFromTrigger calculates trigger internally from ctx.metadata.command.
+                        // We might need to update ctx.metadata.command to the new command.
+                        ctx.metadata.command = potentialTrigger.replace('/', '')
+                        ctx.metadata.lastInput = potentialTrigger // Pretend user typed /promo
+                    }
+                }
+            }
+
             const bpResult = await getBlueprintByTriggerFromKv(context.env.BLUEPRINTS_KV, context.tenantId, trigger)
             if (bpResult.success && bpResult.data) {
                 blueprintId = bpResult.data.id

@@ -104,6 +104,7 @@ export interface Bot {
     id: string
     tenantId: string
     name: string
+    username?: string
     provider: BotProvider
     credentials: BotCredentials
     status: BotStatus
