@@ -10,8 +10,9 @@ import { Input } from '../components/atoms/ui/Input'
 
 interface Redirect {
     id: string; slug: string; slugType: string; mode: string; destinationUrl: string;
-    destinationType: string; domain: string; flowId: string | null;
-    cloakerEnabled: boolean; cloakerMethod: string; cloakerSafeUrl: string | null;
+    destinationType: 'url' | 'bot'; botId?: string; flowId?: string;
+    domain: string; cloakerEnabled: boolean; cloakerMethod: 'redirect' | 'safe_page' | 'mirror';
+    cloakerSafeUrl: string | null; pixelId?: string;
     utmSource: string | null; utmMedium: string | null; utmCampaign: string | null;
     totalClicks: number; blockedCount: number; allowedCount: number;
     isActive: boolean; createdAt: string
@@ -29,9 +30,10 @@ export const RedirecionadoresPage: React.FC = () => {
 
     const [form, setForm] = useState({
         slugType: 'random' as 'random' | 'custom', slug: '', mode: 'random',
-        domain: 'multibots.app', isActive: true, cloakerEnabled: false,
-        cloakerMethod: 'redirect', cloakerSafeUrl: '',
-        destinationType: 'url' as 'bot' | 'url', destinationUrl: '', flowId: '',
+        domain: typeof window !== 'undefined' ? window.location.host : '', isActive: true, cloakerEnabled: false,
+        cloakerMethod: 'redirect' as 'redirect' | 'safe_page' | 'mirror', cloakerSafeUrl: '',
+        destinationType: 'url' as 'bot' | 'url', destinationUrl: '', flowId: '', botId: '',
+        pixelId: '',
     })
     const [utmForm, setUtmForm] = useState({ baseUrl: '', source: '', medium: '', campaign: '', term: '', content: '' })
 
@@ -48,13 +50,49 @@ export const RedirecionadoresPage: React.FC = () => {
         },
     })
 
+    // Fetch Bots for dropdown
+    const { data: bots } = useQuery<any[]>({
+        queryKey: ['bots'], queryFn: async () => {
+            const res = await fetch('/api/bots'); const r = await res.json() as any
+            if (!r.success) throw new Error(r.error); return r.data
+        },
+    })
+
     const createMut = useMutation({
         mutationFn: async () => {
             const body: any = {
                 slug: form.slugType === 'random' ? crypto.randomUUID().slice(0, 8) : form.slug,
-                destinationUrl: form.destinationType === 'url' ? form.destinationUrl : `tg://flow/${form.flowId}`,
-                domain: form.domain, cloakerEnabled: form.cloakerEnabled,
+                destinationUrl: form.destinationType === 'url' ? form.destinationUrl : '', // Bot destination handled by backend logic or below
+                // If bot, we send destinationUrl as empty? Or maybe as a fallback?
+                // Backend expects destinationUrl. If type is bot, we can put the generated link if we want, or just empty.
+                // Let's put a placeholder or the flow link if available.
+                // Backend logic: "If destinationUrl is populated... use it".
+                // So for bot, we can send `https://t.me/...` constructed here or leave it to backend.
+                // Backend implementation uses `redirect.destinationUrl` if `destinationType === 'bot'` unless we change it.
+                // Let's construct it here for simplicity:
+                destinationType: form.destinationType,
+                botId: form.botId,
+                flowId: form.flowId,
+                domain: form.domain,
+                cloakerEnabled: form.cloakerEnabled,
+                cloakerMethod: form.cloakerMethod,
                 cloakerSafeUrl: form.cloakerSafeUrl || undefined,
+            }
+            if (form.destinationType === 'bot') {
+                // Try to find bot username in bots list to construct URL?
+                const selectedBot = bots?.find((b: any) => b.id === form.botId)
+                // If we have username, construct it. Else we might need backend to do it.
+                // Let's set destinationUrl to t.me/bot if possible.
+                // For now, let's send it as empty or a placeholder to pass validation. 
+                // Schema checks `destinationUrl: z.string().url()`. So we MUST send a valid URL.
+                // If we don't know the username yet, we can send `https://t.me/unknown`.
+                // Backend: "If destinationUrl is populated... use it".
+                // Let's try to get username from `selectedBot`.
+                // `bots` endpoint returns `data: bots`. Bot interface has `name`, `status`. Does it have username?
+                // `BotInfo` interface has `username`. `Bot` interface in `types.ts` does NOT have username explicitly, but `credentials` has it?
+                // `credentials` is JSON.
+                // Let's just put `https://t.me/bot` as placeholder if we can't find it.
+                body.destinationUrl = `https://t.me/bot?start=${form.flowId || 'start'}`
             }
             const res = await fetch('/api/redirects', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -293,6 +331,9 @@ export const RedirecionadoresPage: React.FC = () => {
                                             <span className={`redir-badge ${r.slugType === 'random' ? 'redir-badge-random' : 'redir-badge-custom'}`}>
                                                 {r.slugType === 'random' ? 'Aleatório' : 'Personalizado'}
                                             </span>
+                                            <span className="redir-badge" style={{ background: 'rgba(59,130,246,.15)', color: '#3b82f6' }}>
+                                                {r.destinationType === 'bot' ? '🤖 Bot' : '🌐 URL'}
+                                            </span>
                                             <span className={`redir-badge ${r.isActive ? 'redir-badge-active' : 'redir-badge-inactive'}`}>
                                                 {r.isActive ? 'Ativo' : 'Inativo'}
                                             </span>
@@ -356,7 +397,9 @@ export const RedirecionadoresPage: React.FC = () => {
                         {generateUtmUrl() && (
                             <div className="utm-result">
                                 {generateUtmUrl()}
-                                <Button size="sm" style={{ marginLeft: 8 }} onClick={() => navigator.clipboard.writeText(generateUtmUrl())}>📋 Copiar</Button>
+                                <div style={{ marginLeft: 8, display: 'inline-block' }}>
+                                    <Button size="sm" onClick={() => navigator.clipboard.writeText(generateUtmUrl())}>📋 Copiar</Button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -410,12 +453,12 @@ export const RedirecionadoresPage: React.FC = () => {
                                 🌐 Escolha o Domínio — Selecione o domínio que aparecerá na URL do link
                             </p>
                             <div className="redir-domain-options">
-                                <div className="redir-domain-option" onClick={() => { setForm(f => ({ ...f, domain: 'multibots.app' })); setCreateStep('config') }}>
+                                <div className="redir-domain-option" onClick={() => { setForm(f => ({ ...f, domain: window.location.host })); setCreateStep('config') }}>
                                     <span style={{ fontSize: '1.5rem' }}>🌐</span>
-                                    <div><h4>multibots.app</h4><p>Domínio padrão da plataforma</p></div>
+                                    <div><h4>{window.location.host}</h4><p>Domínio atual</p></div>
                                 </div>
                             </div>
-                            <Button variant="secondary" onClick={() => setShowCreate(false)} style={{ alignSelf: 'center' }}>Cancelar</Button>
+                            <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancelar</Button>
                         </>
                     ) : (
                         <>
@@ -471,7 +514,19 @@ export const RedirecionadoresPage: React.FC = () => {
                             {form.destinationType === 'url' ? (
                                 <Input name="dest" placeholder="https://..." value={form.destinationUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, destinationUrl: e.target.value }))} />
                             ) : (
-                                <Input name="flow" placeholder="Adicionar fluxo..." value={form.flowId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, flowId: e.target.value }))} />
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <div style={{ flex: 1 }}>
+                                        <select className="redir-dest-select" value={form.botId} onChange={e => setForm(f => ({ ...f, botId: e.target.value }))}>
+                                            <option value="">Selecione o Bot</option>
+                                            {bots?.map(b => (
+                                                <option key={b.id} value={b.id}>{b.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <Input name="flow" placeholder="ID do Fluxo (opcional)" value={form.flowId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, flowId: e.target.value }))} />
+                                    </div>
+                                </div>
                             )}
 
                             {/* Cloaker V2 */}

@@ -7,25 +7,36 @@ import type { Redirect, RedirectClick, RedirectStats } from '../../../core/redir
 
 export async function dbSaveRedirect(props: {
     db: D1Database; id: string; tenantId: string; slug: string; destinationUrl: string;
-    domain?: string; cloakerEnabled?: boolean; cloakerSafeUrl?: string;
+    destinationType?: 'url' | 'bot'; botId?: string; flowId?: string;
+    domain?: string; cloakerEnabled?: boolean; cloakerMethod?: 'redirect' | 'safe_page' | 'mirror';
+    cloakerSafeUrl?: string; pixelId?: string;
     utmSource?: string; utmMedium?: string; utmCampaign?: string;
 }): Promise<Redirect> {
     const now = new Date().toISOString()
     await props.db.prepare(`
-        INSERT INTO redirects (id, tenant_id, slug, destination_url, domain, cloaker_enabled, cloaker_safe_url, utm_source, utm_medium, utm_campaign, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO redirects (
+            id, tenant_id, slug, destination_url, destination_type, bot_id, flow_id,
+            domain, cloaker_enabled, cloaker_method, cloaker_safe_url, pixel_id,
+            utm_source, utm_medium, utm_campaign, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
         props.id, props.tenantId, props.slug, props.destinationUrl,
+        props.destinationType || 'url', props.botId || null, props.flowId || null,
         props.domain || 'multibots.app', props.cloakerEnabled ? 1 : 0,
-        props.cloakerSafeUrl || null, props.utmSource || null,
-        props.utmMedium || null, props.utmCampaign || null, now, now
+        props.cloakerMethod || 'redirect', props.cloakerSafeUrl || null, props.pixelId || null,
+        props.utmSource || null, props.utmMedium || null, props.utmCampaign || null,
+        now, now
     ).run()
 
     return {
         id: props.id, tenantId: props.tenantId, slug: props.slug,
-        destinationUrl: props.destinationUrl, domain: props.domain || 'multibots.app',
+        destinationUrl: props.destinationUrl, destinationType: props.destinationType || 'url',
+        botId: props.botId, flowId: props.flowId,
+        domain: props.domain || 'multibots.app',
         cloakerEnabled: props.cloakerEnabled || false,
-        cloakerSafeUrl: props.cloakerSafeUrl || null,
+        cloakerMethod: props.cloakerMethod || 'redirect',
+        cloakerSafeUrl: props.cloakerSafeUrl || null, pixelId: props.pixelId,
         utmSource: props.utmSource || null, utmMedium: props.utmMedium || null,
         utmCampaign: props.utmCampaign || null,
         totalClicks: 0, isActive: true, createdAt: now, updatedAt: now,
@@ -41,9 +52,10 @@ export async function dbGetRedirects(props: {
 
     return (result.results || []).map((r: any) => ({
         id: r.id, tenantId: r.tenant_id, slug: r.slug, destinationUrl: r.destination_url,
+        destinationType: r.destination_type, botId: r.bot_id, flowId: r.flow_id,
         domain: r.domain, cloakerEnabled: Boolean(r.cloaker_enabled),
-        cloakerSafeUrl: r.cloaker_safe_url, utmSource: r.utm_source,
-        utmMedium: r.utm_medium, utmCampaign: r.utm_campaign,
+        cloakerMethod: r.cloaker_method, cloakerSafeUrl: r.cloaker_safe_url, pixelId: r.pixel_id,
+        utmSource: r.utm_source, utmMedium: r.utm_medium, utmCampaign: r.utm_campaign,
         totalClicks: r.total_clicks, isActive: Boolean(r.is_active),
         createdAt: r.created_at, updatedAt: r.updated_at,
     }))
@@ -54,9 +66,10 @@ export async function dbGetRedirectBySlug(db: D1Database, slug: string): Promise
     if (!row) return null
     return {
         id: row.id, tenantId: row.tenant_id, slug: row.slug, destinationUrl: row.destination_url,
+        destinationType: row.destination_type, botId: row.bot_id, flowId: row.flow_id,
         domain: row.domain, cloakerEnabled: Boolean(row.cloaker_enabled),
-        cloakerSafeUrl: row.cloaker_safe_url, utmSource: row.utm_source,
-        utmMedium: row.utm_medium, utmCampaign: row.utm_campaign,
+        cloakerMethod: row.cloaker_method, cloakerSafeUrl: row.cloaker_safe_url, pixelId: row.pixel_id,
+        utmSource: row.utm_source, utmMedium: row.utm_medium, utmCampaign: row.utm_campaign,
         totalClicks: row.total_clicks, isActive: true,
         createdAt: row.created_at, updatedAt: row.updated_at,
     }
