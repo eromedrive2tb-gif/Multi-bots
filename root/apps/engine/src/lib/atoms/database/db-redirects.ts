@@ -43,6 +43,33 @@ export async function dbSaveRedirect(props: {
     }
 }
 
+export async function dbUpdateRedirect(props: {
+    db: D1Database; id: string; tenantId: string; slug: string; destinationUrl: string;
+    destinationType?: 'url' | 'bot'; botId?: string; flowId?: string;
+    domain?: string; cloakerEnabled?: boolean; cloakerMethod?: 'redirect' | 'safe_page' | 'mirror';
+    cloakerSafeUrl?: string; pixelId?: string;
+    utmSource?: string; utmMedium?: string; utmCampaign?: string;
+    isActive?: boolean;
+}): Promise<boolean> {
+    const now = new Date().toISOString()
+    const result = await props.db.prepare(`
+        UPDATE redirects SET
+            slug = ?, destination_url = ?, destination_type = ?, bot_id = ?, flow_id = ?,
+            domain = ?, cloaker_enabled = ?, cloaker_method = ?, cloaker_safe_url = ?, pixel_id = ?,
+            utm_source = ?, utm_medium = ?, utm_campaign = ?, is_active = ?, updated_at = ?
+        WHERE id = ? AND tenant_id = ?
+    `).bind(
+        props.slug, props.destinationUrl, props.destinationType || 'url',
+        props.botId || null, props.flowId || null, props.domain || 'multibots.app',
+        props.cloakerEnabled ? 1 : 0, props.cloakerMethod || 'redirect',
+        props.cloakerSafeUrl || null, props.pixelId || null,
+        props.utmSource || null, props.utmMedium || null, props.utmCampaign || null,
+        props.isActive !== false ? 1 : 0, now, props.id, props.tenantId
+    ).run()
+
+    return (result.meta?.changes ?? 0) > 0
+}
+
 export async function dbGetRedirects(props: {
     db: D1Database; tenantId: string; limit?: number; offset?: number;
 }): Promise<Redirect[]> {

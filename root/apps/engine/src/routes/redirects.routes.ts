@@ -9,7 +9,8 @@ import { createRedirectSchema } from '../core/redirect-types'
 import { authMiddleware } from '../middleware/auth'
 import {
     dbSaveRedirect, dbGetRedirects, dbDeleteRedirect,
-    dbGetRedirectBySlug, dbTrackClick, dbGetRedirectStats
+    dbGetRedirectBySlug, dbTrackClick, dbGetRedirectStats,
+    dbUpdateRedirect
 } from '../lib/atoms/database/db-redirects'
 
 const redirectRoutes = new Hono<{ Bindings: Env }>()
@@ -60,6 +61,33 @@ redirectRoutes.post('/api/redirects', authMiddleware, async (c) => {
             db: c.env.DB, id, tenantId: tenant.tenantId, ...parseResult.data,
         })
         return c.json({ success: true, data: redirect })
+    } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Erro'
+        if (msg.includes('UNIQUE')) return c.json({ success: false, error: 'Slug já em uso' }, 409)
+        return c.json({ success: false, error: msg }, 500)
+    }
+})
+
+redirectRoutes.put('/api/redirects/:id', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const id = c.req.param('id')
+    const body = await c.req.json()
+
+    // Validate body
+    const parseResult = createRedirectSchema.safeParse(body)
+    if (!parseResult.success) {
+        return c.json({
+            success: false,
+            error: parseResult.error.issues.map((e: { message: string }) => e.message).join(', ')
+        }, 400)
+    }
+
+    try {
+        const updated = await dbUpdateRedirect({
+            db: c.env.DB, id, tenantId: tenant.tenantId, ...parseResult.data,
+        })
+        if (!updated) return c.json({ success: false, error: 'Link não encontrado' }, 404)
+        return c.json({ success: true })
     } catch (error) {
         const msg = error instanceof Error ? error.message : 'Erro'
         if (msg.includes('UNIQUE')) return c.json({ success: false, error: 'Slug já em uso' }, 409)
