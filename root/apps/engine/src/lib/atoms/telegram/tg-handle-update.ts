@@ -39,6 +39,55 @@ export interface TelegramUpdate {
         }
         data?: string
     }
+    my_chat_member?: {
+        chat: {
+            id: number
+            title: string
+            type: string
+        }
+        from: {
+            id: number
+            first_name: string
+            username?: string
+        }
+        date: number
+        old_chat_member: {
+            status: string
+        }
+        new_chat_member: {
+            status: string
+            user: {
+                id: number
+                is_bot: boolean
+                username?: string
+            }
+        }
+    }
+    chat_member?: {
+        chat: {
+            id: number
+            title: string
+            type: string
+        }
+        from: {
+            id: number
+            first_name: string
+            username?: string
+        }
+        date: number
+        old_chat_member: {
+            status: string
+        }
+        new_chat_member: {
+            status: string
+            user: {
+                id: number
+                is_bot: boolean
+                username?: string
+                first_name: string
+            }
+        }
+    }
 }
 
 export interface TgHandleUpdateResult {

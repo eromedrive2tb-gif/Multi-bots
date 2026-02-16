@@ -34,6 +34,7 @@ export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
             title: 'AUTOMAÇÕES',
             items: [
                 { href: '/dashboard/bots', icon: '🤖', label: 'Meus Robos', subtitle: 'Gerenciar bots' },
+                { href: '/dashboard/comunidades', icon: '📢', label: 'Comunidades', subtitle: 'Grupos e Canais VIP' },
                 { href: '/dashboard/blueprints', icon: '🔧', label: 'Meus Fluxos', subtitle: 'Fluxos de venda' },
                 { href: '/dashboard/redirecionadores', icon: '🔗', label: 'Redirecionadores', subtitle: 'Links e cloaking' },
                 { href: '/dashboard/remarketing', icon: '🎯', label: 'Remarketing', subtitle: 'Campanhas' },

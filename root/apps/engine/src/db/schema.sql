@@ -307,4 +307,43 @@ CREATE TABLE IF NOT EXISTS remarketing_campaigns (
 );
 
 CREATE INDEX IF NOT EXISTS idx_remarketing_tenant ON remarketing_campaigns (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_remarketing_status ON remarketing_campaigns (tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_remarketing_status ON remarketing_campaigns (tenant_id, status);-- VIP Groups table (Communities/Channels per tenant)
+CREATE TABLE IF NOT EXISTS vip_groups (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    provider TEXT NOT NULL CHECK (provider IN ('telegram', 'discord')),
+    provider_id TEXT NOT NULL, -- Chat ID (TG) or Guild/Channel ID (DC)
+    name TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('group', 'channel', 'community')),
+    invite_link TEXT,
+    bot_id TEXT, -- Bot capable of managing this group (optional, can be any bot in tenant)
+    metadata TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (tenant_id) REFERENCES tenants (id),
+    FOREIGN KEY (bot_id) REFERENCES bots (id),
+    UNIQUE (tenant_id, provider, provider_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vip_groups_tenant ON vip_groups (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_vip_groups_provider ON vip_groups (provider, provider_id);
+
+-- VIP Group Members table
+CREATE TABLE IF NOT EXISTS vip_group_members (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    group_id TEXT NOT NULL,
+    customer_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('member', 'administrator', 'left', 'kicked', 'restricted')),
+    joined_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    left_at TEXT,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (tenant_id) REFERENCES tenants (id),
+    FOREIGN KEY (group_id) REFERENCES vip_groups (id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE,
+    UNIQUE (group_id, customer_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_group_members_group ON vip_group_members (group_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_customer ON vip_group_members (customer_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_status ON vip_group_members (group_id, status);

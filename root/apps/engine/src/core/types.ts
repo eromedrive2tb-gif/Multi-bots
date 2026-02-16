@@ -284,3 +284,43 @@ export interface Env {
     AUTH_SECRET: string
     WEBHOOK_BASE_URL?: string  // Override webhook URL for production
 }
+
+// ============================================
+// VIP GROUPS MANAGEMENT
+// ============================================
+
+export type VipGroupType = 'group' | 'channel' | 'community'
+
+export interface VipGroup {
+    id: string
+    tenantId: string
+    provider: BotProvider
+    providerId: string // Chat ID or Guild ID
+    name: string
+    type: VipGroupType
+    inviteLink?: string
+    botId?: string
+    metadata: Record<string, any>
+    createdAt: string
+    updatedAt: string
+}
+
+// ============================================
+// VIP GROUPS ZOD SCHEMAS
+// ============================================
+
+export const createVipGroupSchema = z.object({
+    provider: z.enum(['telegram', 'discord']),
+    providerId: z.string().min(1, 'ID do provedor é obrigatório'),
+    name: z.string().min(1, 'Nome é obrigatório'),
+    type: z.enum(['group', 'channel', 'community']),
+    inviteLink: z.string().optional(),
+    botId: z.string().optional(),
+    metadata: z.record(z.string(), z.any()).default({}),
+})
+
+export type CreateVipGroupDTO = z.infer<typeof createVipGroupSchema>
+
+export const updateVipGroupSchema = createVipGroupSchema.partial()
+
+export type UpdateVipGroupDTO = z.infer<typeof updateVipGroupSchema>

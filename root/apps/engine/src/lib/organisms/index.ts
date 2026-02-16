@@ -15,6 +15,7 @@ export { WebhookService } from './webhooks/WebhookService'
 export { NotificationService, type NotificationPayload } from './notifications/NotificationService'
 export { PaymentService } from './payments/PaymentService'
 export { BroadcastService } from './broadcast/BroadcastService'
+export { VipGroupService } from './groups/VipGroupService'
 
 // Providers
 export { TelegramProvider } from './telegram/TelegramProvider'

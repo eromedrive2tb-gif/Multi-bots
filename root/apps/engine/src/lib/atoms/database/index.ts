@@ -56,3 +56,9 @@ export * from './db-remarketing'
 
 // Redirect atoms
 export * from './db-redirects'
+
+// VIP Groups atoms
+export * from './db-get-vip-groups'
+export * from './db-get-vip-group-by-id'
+export * from './db-save-vip-group'
+export * from './db-delete-vip-group'

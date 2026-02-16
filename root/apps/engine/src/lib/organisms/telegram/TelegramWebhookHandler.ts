@@ -152,6 +152,132 @@ export async function handleTelegramWebhook(
         const credentials = bot.credentials as TelegramCredentials
         const token = credentials.token
 
+        // 1.5 Handle my_chat_member (Bot added/removed from group)
+        if (update.my_chat_member) {
+            const memberUpdate = update.my_chat_member
+            const newStatus = memberUpdate.new_chat_member.status
+            const chatId = String(memberUpdate.chat.id)
+            const chatTitle = memberUpdate.chat.title || `Group ${chatId}`
+            const chatType = memberUpdate.chat.type
+
+            console.log(`[Telegram] my_chat_member update: ${newStatus} for chat ${chatId} (${chatTitle})`)
+
+            const { VipGroupService } = await import('../groups/VipGroupService')
+            const vipService = new VipGroupService(context.env.DB, context.tenantId)
+
+            if (['member', 'administrator', 'creator'].includes(newStatus)) {
+                // Bot added to group/channel
+                console.log(`[Telegram] Auto-registering group ${chatId}`)
+                const groupRes = await vipService.registerGroup({
+                    name: chatTitle,
+                    provider: 'telegram',
+                    providerId: chatId,
+                    type: chatType === 'channel' ? 'channel' : 'group',
+                    botId: context.botId,
+                    metadata: {
+                        auto_added: true,
+                        added_by: memberUpdate.from.id,
+                        date: memberUpdate.date
+                    }
+                })
+
+                // Also add the user who added it as a member/admin
+                if (groupRes.success && groupRes.data) {
+                    await vipService.addMember({
+                        groupId: groupRes.data.id,
+                        customerId: String(memberUpdate.from.id),
+                        status: 'administrator',
+                        provider: 'tg',
+                        tenantId: context.tenantId,
+                        name: memberUpdate.from.first_name,
+                        username: memberUpdate.from.username
+                    })
+                }
+            } else if (['left', 'kicked'].includes(newStatus)) {
+                // Bot removed from group
+                console.log(`[Telegram] Auto-removing group ${chatId}`)
+                const groups = await vipService.listGroups()
+                if (groups.success && groups.data) {
+                    const group = groups.data.find(g => g.providerId === chatId && g.provider === 'telegram')
+                    if (group) {
+                        await vipService.deleteGroup(group.id)
+                    }
+                }
+            }
+
+            return { handled: true }
+        }
+
+        // 1.6 Handle chat_member (User joined/left)
+        if (update.chat_member) {
+            const memberUpdate = update.chat_member
+            const newStatus = memberUpdate.new_chat_member.status
+            const chatId = String(memberUpdate.chat.id)
+            const userId = String(memberUpdate.new_chat_member.user.id)
+
+            console.log(`[Telegram] chat_member update: ${newStatus} for user ${userId} in chat ${chatId}`)
+
+            const { VipGroupService } = await import('../groups/VipGroupService')
+            const vipService = new VipGroupService(context.env.DB, context.tenantId)
+
+            // Find the internal group ID
+            const groups = await vipService.listGroups()
+            if (groups.success && groups.data) {
+                const group = groups.data.find(g => g.providerId === chatId && g.provider === 'telegram')
+
+                if (group) {
+                    if (['member', 'administrator', 'creator'].includes(newStatus)) {
+                        await vipService.addMember({
+                            groupId: group.id,
+                            customerId: userId,
+                            status: newStatus as any,
+                            provider: 'tg',
+                            tenantId: context.tenantId,
+                            username: memberUpdate.new_chat_member.user.username,
+                            name: memberUpdate.new_chat_member.user.first_name || 'Unknown'
+                        })
+                    } else if (['left', 'kicked'].includes(newStatus)) {
+                        await vipService.updateMemberStatus(group.id, userId, newStatus as any)
+                    }
+                }
+            }
+
+            return { handled: true }
+        }
+
+        // 1.7 Passive Member Upsert (Message in Group)
+        // If it's a message in a group/supergroup, upsert the member
+        if (update.message && ['group', 'supergroup'].includes(update.message.chat.type)) {
+            const chatId = String(update.message.chat.id)
+            const userId = String(update.message.from.id)
+
+            // Run in background to not block response
+            context.waitUntil((async () => {
+                const { VipGroupService } = await import('../groups/VipGroupService')
+                const vipService = new VipGroupService(context.env.DB, context.tenantId)
+
+                // We need to check if this group is tracked.
+                // Optimisation: querying listGroups every message is heavy.
+                // Ideally we'd have a KV cache or simple "is this a VIP group" check.
+                // For now, we stick to the DB check but wrapped in waitUntil.
+                const groups = await vipService.listGroups()
+                if (groups.success && groups.data) {
+                    const group = groups.data.find(g => g.providerId === chatId && g.provider === 'telegram')
+                    if (group) {
+                        await vipService.addMember({
+                            groupId: group.id,
+                            customerId: userId,
+                            status: 'member', // Assumed member if talking
+                            provider: 'tg',
+                            tenantId: context.tenantId,
+                            username: update.message!.from.username,
+                            name: [update.message!.from.first_name, (update.message!.from as any).last_name].filter(Boolean).join(' ') || 'Unknown'
+                        })
+                    }
+                }
+            })())
+        }
+
         // 2. Build UniversalContext
         const ctx = buildUniversalContext(update, context.tenantId, token, context.env.DB, context.botId)
 

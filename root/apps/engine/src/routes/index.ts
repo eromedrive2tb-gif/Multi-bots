@@ -16,6 +16,7 @@ import { paymentsRoutes } from './payments.routes'
 import { paymentWebhooksRoutes } from './webhooks-payment.routes'
 import { broadcastRoutes } from './broadcasts.routes'
 import { redirectRoutes } from './redirects.routes'
+import { vipGroupsRoutes } from './vip-groups.routes'
 
 /**
  * Registers all route modules on the main app
@@ -33,7 +34,8 @@ export function registerRoutes(app: Hono<{ Bindings: Env }>) {
     app.route('/', paymentWebhooksRoutes)
     app.route('/', broadcastRoutes)
     app.route('/', redirectRoutes)
+    app.route('/', vipGroupsRoutes)
 }
 
 // Export individual routes for testing
-export { authRoutes, botsRoutes, blueprintsRoutes, webhooksRoutes, analyticsRoutes, customersRoutes, paymentsRoutes, paymentWebhooksRoutes, broadcastRoutes, redirectRoutes }
+export { authRoutes, botsRoutes, blueprintsRoutes, webhooksRoutes, analyticsRoutes, customersRoutes, paymentsRoutes, paymentWebhooksRoutes, broadcastRoutes, redirectRoutes, vipGroupsRoutes }

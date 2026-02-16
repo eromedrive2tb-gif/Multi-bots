@@ -1,11 +1,11 @@
 /** @jsxImportSource react */
-import React from 'react'
+import type { ReactNode } from 'react'
 import { Card, CardBody } from '../../atoms/ui/Card'
 
 interface StatCardProps {
     label: string
     value: string | number
-    icon?: string
+    icon?: ReactNode
     iconBg?: string
     trend?: 'up' | 'down' | 'neutral'
     trendValue?: string

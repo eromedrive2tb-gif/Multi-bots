@@ -18,6 +18,8 @@ import { PostagensPage } from '../pages/postagens'
 import { RemarketingPage } from '../pages/remarketing'
 import { RedirecionadoresPage } from '../pages/redirecionadores'
 import { GatewaysPage } from '../pages/gateways'
+import ComunidadesPage from '../pages/comunidades'
+import ComunidadesDetailsPage from '../pages/comunidades-details'
 
 const queryClient = new QueryClient()
 
@@ -30,6 +32,8 @@ export const App = () => {
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/dashboard/comunidades" element={<ComunidadesPage />} />
+                        <Route path="/dashboard/comunidades/:id" element={<ComunidadesDetailsPage />} />
                         <Route path="/dashboard/blueprints" element={<BlueprintsPage />} />
                         <Route path="/dashboard/bots" element={<BotsPage />} />
                         <Route path="/dashboard/settings" element={<SettingsPage />} />
