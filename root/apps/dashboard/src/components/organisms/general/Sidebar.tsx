@@ -1,5 +1,5 @@
 /** @jsxImportSource react */
-import type { FC } from 'react'
+import { FC, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NavLink } from '../../molecules/ui/NavLink'
 import { UserAvatar } from '../../molecules/ui/UserAvatar'
@@ -12,40 +12,96 @@ interface SidebarProps {
     }
 }
 
+interface NavItem {
+    href?: string
+    icon: string
+    label: string
+    subtitle?: string
+    children?: NavItem[]
+}
+
 interface NavSection {
     title: string
-    items: { href: string; icon: string; label: string; subtitle?: string }[]
+    items: NavItem[]
 }
 
 export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
     const navigate = useNavigate()
+    const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
+
+    const toggleDropdown = (label: string) => {
+        setOpenDropdowns(prev => ({
+            ...prev,
+            [label]: !prev[label]
+        }))
+    }
+
+    // Auto-open dropdown if current path is inside it
+    useEffect(() => {
+        sections.forEach(section => {
+            section.items.forEach(item => {
+                if (item.children) {
+                    const isActive = item.children.some(child => currentPath === child.href)
+                    if (isActive) {
+                        setOpenDropdowns(prev => ({ ...prev, [item.label]: true }))
+                    }
+                }
+            })
+        })
+    }, [currentPath])
 
     const sections: NavSection[] = [
         {
             title: 'MENU',
             items: [
-                { href: '/dashboard', icon: '📊', label: 'Dashboard', subtitle: 'Visão geral' },
-                { href: '/dashboard/analytics', icon: '📈', label: 'Analises', subtitle: 'Métricas e relatórios' },
-                { href: '/dashboard/financeiro', icon: '💰', label: 'Financeiro', subtitle: 'Receitas e transações' },
+                {
+                    icon: '📊',
+                    label: 'Dashboard',
+                    children: [
+                        { href: '/dashboard', icon: '', label: 'Visão Geral', subtitle: 'Receitas e transações' },
+                        { href: '/dashboard/analytics', icon: '', label: 'Analises', subtitle: 'Métricas e relatórios' },
+                    ],
+                },
+                {
+                    icon: '💰',
+                    label: 'Financeiro',
+                    children: [
+                        { href: '/dashboard/financeiro', icon: '📊', label: 'Visão Geral', subtitle: 'Receitas e transações' },
+                        { href: '/dashboard/gateways', icon: '💳', label: 'Gateways', subtitle: 'Pagamentos PIX' },
+                        { href: '/dashboard/planos', icon: '🏷️', label: 'Planos', subtitle: 'Pagamentos PIX' },
+                        { href: '/dashboard/safepix-wallet', icon: '🏦', label: 'Carteira SafePix', subtitle: 'Pagamentos PIX' },
+                    ],
+                },
                 { href: '/dashboard/customers', icon: '👥', label: 'Clientes', subtitle: 'Base de leads' },
             ],
         },
         {
             title: 'AUTOMAÇÕES',
             items: [
-                { href: '/dashboard/bots', icon: '🤖', label: 'Meus Robos', subtitle: 'Gerenciar bots' },
-                { href: '/dashboard/comunidades', icon: '📢', label: 'Comunidades', subtitle: 'Grupos e Canais VIP' },
-                { href: '/dashboard/blueprints', icon: '🔧', label: 'Meus Fluxos', subtitle: 'Fluxos de venda' },
+                {
+                    icon: '🤖',
+                    label: 'Meus Robos',
+                    children: [
+                        { href: '/dashboard/bots', icon: '🤖', label: 'Bots Hospedados', subtitle: 'Gerenciar bots' },
+                        { href: '/dashboard/remarketing', icon: '🎯', label: 'Remarketing', subtitle: 'Campanhas' },
+                        { href: '/dashboard/blueprints', icon: '🔧', label: 'Meus Fluxos', subtitle: 'Fluxos de venda' },
+                        { href: '/dashboard/webapps', icon: '📱', label: 'WebApps', subtitle: 'Mini aplicativos' },
+                    ],
+                },
+                {
+                    icon: '📢',
+                    label: 'Comunidades',
+                    children: [
+                        { href: '/dashboard/comunidades', icon: '📢', label: 'Comunidades', subtitle: 'Grupos e Canais VIP' },
+                        { href: '/dashboard/postagens', icon: '📨', label: 'Postagens', subtitle: 'Envios e agendamentos' },
+                    ],
+                },
                 { href: '/dashboard/redirecionadores', icon: '🔗', label: 'Redirecionadores', subtitle: 'Links e cloaking' },
-                { href: '/dashboard/remarketing', icon: '🎯', label: 'Remarketing', subtitle: 'Campanhas' },
-                { href: '/dashboard/postagens', icon: '📨', label: 'Postagens', subtitle: 'Envios e agendamentos' },
             ],
         },
         {
             title: 'INTEGRAÇÕES',
             items: [
-                { href: '/dashboard/gateways', icon: '💳', label: 'Gateways', subtitle: 'Pagamentos PIX' },
-                { href: '/dashboard/webapps', icon: '📱', label: 'WebApps', subtitle: 'Mini aplicativos' },
                 { href: '/dashboard/settings', icon: '⚙️', label: 'Configurações', subtitle: 'Preferências' },
             ],
         },
@@ -74,19 +130,55 @@ export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
                 {sections.map((section) => (
                     <div key={section.title} className="sidebar-section">
                         <div className="sidebar-section-title">{section.title}</div>
-                        {section.items.map((item) => (
-                            <NavLink
-                                key={item.href}
-                                href={item.href}
-                                icon={item.icon}
-                                active={currentPath === item.href}
-                            >
-                                <span className="nav-label-group">
-                                    <span>{item.label}</span>
-                                    {item.subtitle && <span className="nav-subtitle">{item.subtitle}</span>}
-                                </span>
-                            </NavLink>
-                        ))}
+                        {section.items.map((item) => {
+                            if (item.children) {
+                                const isOpen = !!openDropdowns[item.label]
+                                return (
+                                    <div key={item.label} className={`nav-dropdown ${isOpen ? 'nav-dropdown-open' : ''}`}>
+                                        <button
+                                            className="nav-dropdown-trigger"
+                                            onClick={() => toggleDropdown(item.label)}
+                                        >
+                                            <span className="nav-icon">{item.icon}</span>
+                                            <span className="nav-label-group">
+                                                <span>{item.label}</span>
+                                            </span>
+                                            <span className="chevron">▼</span>
+                                        </button>
+                                        <div className="nav-dropdown-content">
+                                            {item.children.map((child) => (
+                                                <NavLink
+                                                    key={child.href}
+                                                    href={child.href!}
+                                                    icon={child.icon}
+                                                    active={currentPath === child.href}
+                                                    className="sub-nav-link"
+                                                >
+                                                    <span className="nav-label-group">
+                                                        <span>{child.label}</span>
+                                                        {child.subtitle && <span className="nav-subtitle">{child.subtitle}</span>}
+                                                    </span>
+                                                </NavLink>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )
+                            }
+
+                            return (
+                                <NavLink
+                                    key={item.href}
+                                    href={item.href!}
+                                    icon={item.icon}
+                                    active={currentPath === item.href}
+                                >
+                                    <span className="nav-label-group">
+                                        <span>{item.label}</span>
+                                        {item.subtitle && <span className="nav-subtitle">{item.subtitle}</span>}
+                                    </span>
+                                </NavLink>
+                            )
+                        })}
                     </div>
                 ))}
             </nav>
