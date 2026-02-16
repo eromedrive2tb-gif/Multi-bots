@@ -18,6 +18,7 @@ import { PostagensPage } from '../pages/postagens'
 import { RemarketingPage } from '../pages/remarketing'
 import { RedirecionadoresPage } from '../pages/redirecionadores'
 import { GatewaysPage } from '../pages/gateways'
+import { PlanosPage } from '../pages/planos'
 import ComunidadesPage from '../pages/comunidades'
 import ComunidadesDetailsPage from '../pages/comunidades-details'
 
@@ -46,6 +47,7 @@ export const App = () => {
                         <Route path="/dashboard/remarketing" element={<RemarketingPage />} />
                         <Route path="/dashboard/redirecionadores" element={<RedirecionadoresPage />} />
                         <Route path="/dashboard/gateways" element={<GatewaysPage />} />
+                        <Route path="/dashboard/planos" element={<PlanosPage />} />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                 </BrowserRouter>

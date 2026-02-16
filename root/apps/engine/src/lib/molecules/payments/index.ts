@@ -9,4 +9,5 @@ export { handleWebhookPayment, parseMercadoPagoWebhook, parsePushinPayWebhook, p
 export type { PaymentWebhookData, PaymentWebhookResult } from './handle-webhook-payment'
 
 export { sendPlans } from './send-plans'
+export { selectPlan } from './select-plan'
 export { generatePixAction } from './generate-pix-action'

@@ -18,6 +18,7 @@ import { sendWebApp } from './send-webapp'
 
 // Payment Actions
 import { sendPlans } from '../payments/send-plans'
+import { selectPlan } from '../payments/select-plan'
 import { generatePixAction } from '../payments/generate-pix-action'
 
 // Register Actions to the Core Engine
@@ -33,6 +34,7 @@ export function setupRegistry() {
 
     // Payment Actions
     registerAction('send_plans', sendPlans)
+    registerAction('select_plan', selectPlan)
     registerAction('generate_pix', generatePixAction)
 
     console.log('[Registry] Actions registered successfully.')
