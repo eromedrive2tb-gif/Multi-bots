@@ -26,5 +26,6 @@ export async function generatePixAction(
         amount,
         description,
         expirationMinutes: (params.expiration_minutes as number) || 30,
+        message: params.message as string | undefined,
     })
 }

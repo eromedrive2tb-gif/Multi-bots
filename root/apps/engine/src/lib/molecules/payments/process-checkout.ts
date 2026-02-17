@@ -20,6 +20,7 @@ export interface CheckoutParams {
     amount?: number // override centavos, se não houver plano
     description?: string
     expirationMinutes?: number
+    message?: string // Custom message template
 }
 
 export async function processCheckout(
@@ -38,11 +39,6 @@ export async function processCheckout(
         let gateway = params.gatewayId
             ? gateways.find(g => g.id === params.gatewayId)
             : gateways.find(g => g.isDefault) || gateways[0]
-
-        // Se o gateway "mock" não estiver na lista (por não estar no banco), mas for solicitado,
-        // criamos um objeto temporário para ele, caso o usuário tenha um "mock" configurado ou forçado via params
-        // Mas a regra diz que o usuário ativa no dashboard, então ele deve vir do dbGetGateways.
-        // O dashboard salva o mock como qualquer outro gateway.
 
         if (!gateway) {
             // Fallback: Inject Virtual Mock Gateway if no real gateway exists
@@ -126,20 +122,37 @@ export async function processCheckout(
             expiresAt,
         })
 
-        // 6. Enviar PIX para o usuário
+        // 6. Enviar PIX para o usuário (Merged Logic)
         const amountFormatted = (amount / 100).toLocaleString('pt-BR', {
             style: 'currency',
             currency: 'BRL',
         })
 
-        // Se tiver QR Code Image (base64) e for Telegram, envia a foto
+        // Prepare Message Content
+        const defaultMessage = `💰 <b>Pagamento PIX</b>\n\n` +
+            `📋 {{pix_description}}\n` +
+            `💵 Valor: <b>{{pix_amount}}</b>\n\n` +
+            `📱 <b>Código PIX (copia e cola):</b>\n<code>{{pix_code}}</code>\n\n` +
+            `⏰ Expira em {{pix_expiration}} minutos`
+
+        let messageTemplate = params.message || defaultMessage
+
+        // Replace Variables (Unique keys to avoid Engine collision)
+        const finalMessage = messageTemplate
+            .replace(/{{pix_description}}/g, description)
+            .replace(/{{pix_amount}}/g, amountFormatted)
+            .replace(/{{pix_code}}/g, pixResult.pixCode)
+            .replace(/{{pix_expiration}}/g, String(params.expirationMinutes || 30))
+
+        let msgSent = false
+
+        // Se tiver QR Code Image (base64) e for Telegram, tenta enviar a foto COM a legenda
         if (pixResult.pixQrcode && ctx.provider === 'tg') {
             try {
                 // Import dinâmico para evitar dependência circular ou peso desnecessário
                 const { tgSendPhoto } = await import('../../atoms/telegram/tg-send-photo')
 
                 // Convert base64 to Uint8Array (Standard Web API)
-                // Remove prefixo e espaços, ajusta padding
                 let base64Data = pixResult.pixQrcode.replace(/^data:image\/\w+;base64,/, '').replace(/\s/g, '')
                 while (base64Data.length % 4 !== 0) {
                     base64Data += '='
@@ -152,27 +165,30 @@ export async function processCheckout(
                     bytes[i] = binaryString.charCodeAt(i)
                 }
 
-                await tgSendPhoto({
+                const photoResult = await tgSendPhoto({
                     token: ctx.botToken,
                     chatId: ctx.chatId,
                     photo: bytes,
-                    caption: `📱 Escaneie o QR Code para pagar <b>${amountFormatted}</b>`,
+                    caption: finalMessage, // Use the full message as caption
                     parseMode: 'HTML'
                 })
+
+                if (photoResult.success) {
+                    msgSent = true
+                }
             } catch (error) {
                 console.error('[ProcessCheckout] Failed to send QR Code image:', error)
-                // Continue execution to send text fallback
+                // Continue execution to send text fallback if photo fails
             }
         }
 
-        await sendMessage(ctx, {
-            text: `💰 <b>Pagamento PIX</b>\n\n` +
-                `📋 ${description}\n` +
-                `💵 Valor: <b>${amountFormatted}</b>\n\n` +
-                `📱 <b>Código PIX (copia e cola):</b>\n<code>${pixResult.pixCode}</code>\n\n` +
-                `⏰ Expira em ${params.expirationMinutes || 30} minutos`,
-            parseMode: 'HTML',
-        })
+        // Se não enviou a foto (por erro ou não suporte), envia apenas o texto
+        if (!msgSent) {
+            await sendMessage(ctx, {
+                text: finalMessage,
+                parseMode: 'HTML',
+            })
+        }
 
         // 7. [MOCK] Simular Webhook se for gateway de teste
         if (gateway!.provider === 'mock') {

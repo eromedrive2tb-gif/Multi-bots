@@ -60,7 +60,8 @@
             "action": "generate_pix",
             "params": {
                 "plan_id": "{{session.plan_id}}",
-                "description": "Pagamento Plano {{session.plan_name}}"
+                "description": "Pagamento Plano {{session.plan_name}}",
+                "message": "💎 <b>Checkout de Assinatura</b>\n\nOlá <b>{{session.customer_name}}</b>, aqui está o seu QR Code para o plano <b>{{pix_description}}</b>.\n\n💵 Total: <b>{{pix_amount}}</b>\n\n📱 <b>PIX Copia e Cola:</b>\n<code>{{pix_code}}</code>\n\n⏰ Este código expira em {{pix_expiration}} minutos.\n\n<i>Após o pagamento, seu acesso será liberado automaticamente.</i>"
             },
             "next_step": null
         },
