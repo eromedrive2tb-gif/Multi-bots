@@ -4,7 +4,7 @@
  * Orquestra: Molecules e Atoms de database
  */
 
-import { dbGetBots, dbGetBotById, dbDeleteBot, dbDeleteBotEvents } from '../../atoms'
+import { dbGetBots, dbGetBotById, dbDeleteBot, dbCleanupBotRecords } from '../../atoms'
 import { dbGetBotBlueprints, dbToggleBotBlueprint } from '../../atoms'
 import { tgSetWebhook, tgDeleteWebhook } from '../../atoms'
 import { validateAndSaveBot } from '../../molecules'
@@ -108,8 +108,8 @@ export class BotManagerService {
                 await tgDeleteWebhook({ token: tgCreds.token })
             }
 
-            // 1. Limpa analytics vinculados (FK constraint)
-            await dbDeleteBotEvents({
+            // 1. Limpa registros vinculados (FK constraint)
+            await dbCleanupBotRecords({
                 db: this.db,
                 botId: id,
                 tenantId: this.tenantId
