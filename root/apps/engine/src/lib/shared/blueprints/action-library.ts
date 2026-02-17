@@ -11,6 +11,7 @@ export interface ActionParam {
     required?: boolean
     options?: { value: string; label: string }[]
     defaultValue?: string | number | boolean
+    description?: string
 }
 
 export interface ActionDefinition {
@@ -18,7 +19,7 @@ export interface ActionDefinition {
     label: string
     icon: string
     description: string
-    category: 'messaging' | 'logic' | 'data' | 'http' | 'bot'
+    category: 'messaging' | 'logic' | 'data' | 'http' | 'bot' | 'payment' | 'flow'
     params: ActionParam[]
 }
 
@@ -375,6 +376,132 @@ const botActions: ActionDefinition[] = [
 ]
 
 // ============================================
+// PAYMENT ACTIONS
+// ============================================
+
+const paymentActions: ActionDefinition[] = [
+    {
+        key: 'select_plan',
+        label: 'Selecionar Plano',
+        icon: '💎',
+        description: 'Exibe lista de planos para o usuário escolher',
+        category: 'payment',
+        params: [
+            {
+                key: 'text',
+                label: 'Texto de Apresentação',
+                type: 'textarea',
+                placeholder: 'Escolha um dos planos abaixo:',
+                required: false,
+            },
+        ],
+    },
+    {
+        key: 'generate_pix',
+        label: 'Gerar PIX',
+        icon: '💠',
+        description: 'Gera um código PIX para pagamento',
+        category: 'payment',
+        params: [
+            {
+                key: 'plan_id',
+                label: 'ID do Plano (Opcional)',
+                type: 'text',
+                placeholder: '{{session.plan_id}}',
+            },
+            {
+                key: 'amount',
+                label: 'Valor (Centavos) - Override',
+                type: 'number',
+                placeholder: '1000',
+            },
+            {
+                key: 'description',
+                label: 'Descrição',
+                type: 'text',
+                placeholder: 'Pagamento Premium',
+            },
+            {
+                key: 'message',
+                label: 'Mensagem Personalizada',
+                type: 'textarea',
+                placeholder: 'Olá {{user_name}}, pague seu PIX: {{pix_code}}',
+            },
+        ],
+    },
+]
+
+// ============================================
+// FLOW ACTIONS (ORGANISMS)
+// ============================================
+
+const flowActions: ActionDefinition[] = [
+    {
+        key: 'prompt',
+        label: 'Pergunta (Prompt)',
+        icon: '❓',
+        description: 'Envia mensagem e aguarda resposta (com validação e desvio)',
+        category: 'flow',
+        params: [
+            {
+                key: 'text',
+                label: 'Pergunta',
+                type: 'textarea',
+                placeholder: 'Qual seu nome?',
+                required: true,
+            },
+            {
+                key: 'variable',
+                label: 'Salvar resposta em',
+                type: 'text',
+                placeholder: 'user_name',
+                required: true,
+            },
+            {
+                key: 'buttons',
+                label: 'Botões (JSON)',
+                type: 'json',
+                placeholder: '[{"text": "Sim", "callback": "yes"}]',
+            },
+            {
+                key: 'branches',
+                label: 'Desvios (JSON)',
+                type: 'json',
+                placeholder: '{"yes": "step_checkout", "no": "step_cancel"}',
+                description: 'Mapeia a resposta do usuário para o ID do próximo passo',
+            },
+            {
+                key: 'validation',
+                label: 'Validação',
+                type: 'select',
+                options: [
+                    { value: 'any', label: 'Qualquer texto' },
+                    { value: 'email', label: 'Email' },
+                    { value: 'phone', label: 'Telefone' },
+                ],
+                defaultValue: 'any',
+            },
+        ],
+    },
+    {
+        key: 'chain',
+        label: 'Corrente (Chain)',
+        icon: '🔗',
+        description: 'Executa múltiplos passos em sequência',
+        category: 'flow',
+        params: [
+            {
+                key: 'actions',
+                label: 'Ações (JSON Array)',
+                type: 'json',
+                placeholder: '[{"action": "send_message", "params": {...}}]',
+                required: true,
+            },
+        ],
+    },
+]
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -384,6 +511,8 @@ export const ACTION_LIBRARY: ActionDefinition[] = [
     ...dataActions,
     ...httpActions,
     ...botActions,
+    ...paymentActions,
+    ...flowActions,
 ]
 
 export const ACTION_CATEGORIES = {
@@ -392,6 +521,8 @@ export const ACTION_CATEGORIES = {
     data: { label: 'Dados', icon: '📦', color: '#f59e0b' },
     http: { label: 'HTTP', icon: '🌐', color: '#ec4899' },
     bot: { label: 'Bot', icon: '🤖', color: '#8b5cf6' },
+    payment: { label: 'Pagamento', icon: '💳', color: '#22c55e' },
+    flow: { label: 'Fluxo (Pro)', icon: '⚡', color: '#ef4444' },
 } as const
 
 export function getActionByKey(key: string): ActionDefinition | undefined {

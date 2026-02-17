@@ -37,7 +37,7 @@ export const BlueprintPropertyPanel: React.FC<BlueprintPropertyPanelProps> = ({
     const handleActionChange = (e: ChangeEvent<HTMLSelectElement>) => {
         const newAction = e.target.value
         const newActionDef = getActionByKey(newAction)
-        const newType = newActionDef?.category === 'messaging' ? 'atom' : 'molecule'
+        const newType = newActionDef?.category === 'messaging' ? 'atom' : (newActionDef?.category === 'flow' ? 'organism' : 'molecule')
         onUpdate(node.id, {
             action: newAction,
             type: newType as 'atom' | 'molecule' | 'organism',

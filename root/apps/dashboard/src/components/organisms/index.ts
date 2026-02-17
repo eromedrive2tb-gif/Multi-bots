@@ -9,6 +9,8 @@ export * from './auth/RegisterForm'
 
 // Organisms - Blueprints
 export * from './blueprints/BlueprintEditor'
+export * from './blueprints/VisualEditor'
+export * from './blueprints/WizardEditor'
 export * from './blueprints/BlueprintJsonModal'
 export * from './blueprints/BlueprintMetricsTable'
 export * from './blueprints/BlueprintPropertyPanel'
