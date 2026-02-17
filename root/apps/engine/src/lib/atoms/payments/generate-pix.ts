@@ -3,11 +3,12 @@
  * Responsabilidade: Gera um pagamento PIX via gateway externo
  * SRP: Apenas chama a API do gateway, não salva no banco
  * 
- * Suporta múltiplos gateways: MercadoPago, PushinPay, Asaas
+ * Suporta múltiplos gateways: MercadoPago, PushinPay, Asaas, Mock
  * Timeout: 5 segundos conforme regras de resiliência
  */
 
 import type { PaymentGatewayProvider } from '../../../core/payment-types'
+import { generateMockPix } from './mock-provider'
 
 export interface GeneratePixProps {
     provider: PaymentGatewayProvider
@@ -230,6 +231,13 @@ export async function generatePix(
                 return await generatePixAsaas(props.credentials, props)
             case 'stripe':
                 return { success: false, error: 'Stripe PIX: implementação pendente' }
+            case 'mock':
+                return await generateMockPix({
+                    amount: props.amount,
+                    description: props.description,
+                    externalReference: props.externalReference || crypto.randomUUID(),
+                    expirationMinutes: props.expirationMinutes || 30
+                })
             default:
                 return { success: false, error: `Provider não suportado: ${props.provider}` }
         }

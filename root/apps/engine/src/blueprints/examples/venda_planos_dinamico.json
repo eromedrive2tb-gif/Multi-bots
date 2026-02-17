@@ -1,26 +1,18 @@
 {
     "id": "venda_planos_dinamico",
     "name": "Venda de Planos Dinâmica",
-    "description": "Exemplo de fluxo que usa a nova step 'select_plan' para buscar planos do dashboard.",
+    "description": "Exemplo de fluxo que usa a nova step 'select_plan' para buscar planos do dashboard e gerar PIX.",
     "trigger": "/planos_dinamico",
     "entry_step": "welcome",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "steps": {
         "welcome": {
-            "type": "molecule",
-            "action": "send_message",
+            "type": "organism",
+            "action": "prompt",
             "params": {
-                "text": "👋 Olá! Vamos escolher seu plano?\n\nMe diga seu <b>nome</b>:",
-                "parse_mode": "HTML"
-            },
-            "next_step": "collect_name"
-        },
-        "collect_name": {
-            "type": "molecule",
-            "action": "collect_input",
-            "params": {
-                "variable": "customer_name",
-                "validation": "any"
+                "text": "👋 Olá! Bem-vindo ao nosso atendimento.\n\nVamos escolher seu plano?\n\nMe diga seu <b>nome</b>:",
+                "parse_mode": "HTML",
+                "variable": "customer_name"
             },
             "next_step": "show_dynamic_plans"
         },
@@ -33,19 +25,11 @@
             "next_step": "confirm_order"
         },
         "confirm_order": {
-            "type": "molecule",
-            "action": "send_message",
+            "type": "organism",
+            "action": "prompt",
             "params": {
                 "text": "✅ <b>Plano Selecionado!</b>\n\n• Plano: {{session.plan_name}}\n• Valor: <b>{{session.plan_currency}} {{session.plan_price}}</b>\n\nPodemos gerar o link de pagamento?",
-                "parse_mode": "HTML"
-            },
-            "next_step": "ask_payment_confirmation"
-        },
-        "ask_payment_confirmation": {
-            "type": "molecule",
-            "action": "inline_keyboard",
-            "params": {
-                "text": "Confirmar?",
+                "parse_mode": "HTML",
                 "buttons": [
                     {
                         "text": "💳 Sim, gerar PIX",
@@ -55,16 +39,8 @@
                         "text": "❌ Cancelar",
                         "callback": "pay_no"
                     }
-                ]
-            },
-            "next_step": "collect_pay_confirmation"
-        },
-        "collect_pay_confirmation": {
-            "type": "molecule",
-            "action": "collect_input",
-            "params": {
-                "variable": "pay_choice",
-                "validation": "any"
+                ],
+                "variable": "pay_choice"
             },
             "next_step": "process_payment"
         },
@@ -72,19 +48,19 @@
             "type": "molecule",
             "action": "condition",
             "params": {
-                "expression": "{{session.pay_choice}} == 'pay_yes'",
-                "true_step": "generate_checkout",
-                "false_step": "cancel"
-            }
+                "operator": "equals",
+                "variable": "pay_choice",
+                "value": "pay_yes"
+            },
+            "next_step": "generate_checkout",
+            "on_false": "cancel"
         },
         "generate_checkout": {
             "type": "molecule",
-            "action": "send_webapp",
+            "action": "generate_pix",
             "params": {
-                "text": "🎉 Quase lá! Clique abaixo para pagar seu plano <b>{{session.plan_name}}</b>:",
-                "button_text": "💳 PAGAR AGORA",
-                "page_id": "checkout",
-                "parse_mode": "HTML"
+                "plan_id": "{{session.plan_id}}",
+                "description": "Pagamento Plano {{session.plan_name}}"
             },
             "next_step": null
         },
@@ -104,7 +80,8 @@
         "tags": [
             "dinamico",
             "planos",
-            "dashboard"
+            "dashboard",
+            "pix"
         ]
     }
 }

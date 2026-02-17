@@ -21,6 +21,8 @@ export async function collectInput(
     const isTrigger = !!ctx.metadata.command
     const hasInput = lastInput !== undefined && lastInput !== null && lastInput !== ''
 
+    // console.log(`[CollectInput] Step: ${variable} | Input: "${lastInput}" | Resuming: ${params._is_resuming}`)
+
     // We are resuming if:
     // 1. Explicitly flagged by the engine (we were suspended on this step)
     // 2. DO NOT use hasInput here blindly, or we loop consuming the same input for multiple steps.

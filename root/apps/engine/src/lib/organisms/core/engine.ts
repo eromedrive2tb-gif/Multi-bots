@@ -143,6 +143,7 @@ export async function executeFlow(
     }
 
     let session = sessionResult.data
+    // console.log('[Engine] Session loaded:', JSON.stringify(session))
 
     // Determine which flow to execute
     let blueprint: Blueprint | null = null
@@ -299,6 +300,7 @@ export async function executeFlow(
 
     // Iterative execution loop (stack-safe)
     while (currentStepId && stepsExecuted < MAX_STEPS_PER_EXECUTION) {
+        // console.log(`[Engine] Loop: Step=${currentStepId} Executed=${stepsExecuted} Flow=${session.currentFlowId}`)
         const step: BlueprintStep | undefined = blueprint.steps[currentStepId]
 
         if (!step) {
@@ -377,9 +379,29 @@ export async function executeFlow(
             }
 
             if (shouldSuspend) {
+                console.log(`[Engine] Suspending at step ${currentStepId}`)
+
+                // CRITICAL FIX: Ensure session reflects the step we are suspended at.
+                // If we started via command (session.currentStepId=undefined) and suspended at entry_step,
+                // we must save this so the next request is treated as RESUMING.
+                if (currentStepId && currentStepId !== session.currentStepId) {
+                    console.log(`[Engine] Updating session step to ${currentStepId} before suspending`)
+                    const updateResult = await updateSessionAt(
+                        kv.sessions,
+                        ctx.tenantId,
+                        ctx.provider,
+                        ctx.userId,
+                        {}, // No data changes here (data captured via resultData variables above if any)
+                        { flowId: blueprint.id, stepId: currentStepId }
+                    )
+                    if (updateResult.success) {
+                        session = updateResult.data
+                    } else {
+                        console.error(`[Engine] Failed to update session on suspend: ${updateResult.error}`)
+                    }
+                }
+
                 // Stop execution, stay on this step
-                // Session already has this step as current (from previous update or initial)
-                // Just return success
                 return {
                     success: true,
                     stepsExecuted,
@@ -391,6 +413,7 @@ export async function executeFlow(
 
             // Proceed to next step
             // Update session with NEXT step
+            console.log(`[Engine] Transitioning from ${currentStepId} to ${nextId}`)
             const updateResult = await updateSessionAt(
                 kv.sessions,
                 ctx.tenantId,
@@ -402,6 +425,8 @@ export async function executeFlow(
 
             if (updateResult.success) {
                 session = updateResult.data
+            } else {
+                console.error(`[Engine] Failed to update session for transition: ${updateResult.error}`)
             }
 
             currentStepId = nextId
@@ -410,7 +435,9 @@ export async function executeFlow(
         }
 
         // Handle Error
+        // Handle Error
         if (!result.success) {
+            // console.error(`[Engine] Step Error: ${step.action} (${currentStepId}) -> ${result.error}`)
             // Log step_error
             if (ctx.db && session.currentFlowId) {
                 dbLogAnalyticsEvent({

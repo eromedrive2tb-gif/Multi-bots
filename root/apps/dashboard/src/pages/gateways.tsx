@@ -22,6 +22,7 @@ const GATEWAY_PROVIDERS = [
     { id: 'syncpay', name: 'SyncPay', type: 'pix' as const, icon: '🔄', description: 'Pagamento via PIX' },
     { id: 'wiinpay', name: 'WiinPay', type: 'pix' as const, icon: '🟢', description: 'Pagamento via PIX' },
     { id: 'crypto', name: 'Crypto Wallet', type: 'crypto' as const, icon: '₿', description: 'Pagamento via Criptomoedas' },
+    { id: 'mock', name: 'Gateway de Teste', type: 'pix' as const, icon: '🧪', description: 'Simulação para Testes (30s aprovação)' },
 ] as const
 
 export const GatewaysPage: React.FC = () => {
@@ -260,7 +261,7 @@ export const GatewaysPage: React.FC = () => {
                             </Button>
                         )}
                         <Button variant="secondary" onClick={() => setConfiguring(null)}>Cancelar</Button>
-                        <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !form.clientId || !form.clientSecret}>
+                        <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || ((!form.clientId || !form.clientSecret) && configuring !== 'mock')}>
                             {saveMut.isPending ? 'Salvando...' : '✓ Salvar'}
                         </Button>
                     </div>

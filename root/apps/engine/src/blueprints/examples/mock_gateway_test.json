@@ -1,0 +1,35 @@
+{
+    "id": "mock_gateway_test",
+    "name": "Teste Gateway Fictício",
+    "trigger": "test_mock",
+    "version": "1.0",
+    "entry_step": "welcome",
+    "steps": {
+        "welcome": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "Olá! Vamos testar o <b>Gateway Fictício</b>.\nGerando um PIX de R$ 1,00..."
+            },
+            "next_step": "generate_pix_test"
+        },
+        "generate_pix_test": {
+            "type": "molecule",
+            "action": "generate_pix",
+            "params": {
+                "amount": 100,
+                "description": "Teste Mock Gateway",
+                "expiration_minutes": 5
+            },
+            "next_step": "wait_confirmation"
+        },
+        "wait_confirmation": {
+            "type": "molecule",
+            "action": "send_message",
+            "params": {
+                "text": "Agora aguarde ~30 segundos para a simulação do pagamento..."
+            },
+            "next_step": null
+        }
+    }
+}

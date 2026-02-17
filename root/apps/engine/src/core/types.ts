@@ -192,7 +192,10 @@ export interface UniversalContext {
         currentStepId?: string
         currentFlowId?: string
     }
+    executionCtx?: ExecutionContext
+    waitUntil?: (promise: Promise<any>) => void
 }
+
 
 /**
  * Session data stored in KV

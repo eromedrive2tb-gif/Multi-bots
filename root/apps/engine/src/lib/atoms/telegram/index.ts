@@ -8,3 +8,4 @@ export { tgSendButtons, type TgSendButtonsProps, type TgSendButtonsResult } from
 export { tgSetWebhook, tgDeleteWebhook, type TgSetWebhookProps, type TgSetWebhookResult } from './tg-set-webhook'
 export { tgHandleUpdate, type TelegramUpdate, type TgHandleUpdateResult } from './tg-handle-update'
 export { tgSendWebApp } from './tg-send-webapp'
+export { tgSendPhoto } from './tg-send-photo'

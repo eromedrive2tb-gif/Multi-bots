@@ -9,7 +9,7 @@ import { z } from 'zod'
 // PAYMENT GATEWAY
 // ============================================
 
-export type PaymentGatewayProvider = 'mercadopago' | 'stripe' | 'pushinpay' | 'asaas'
+export type PaymentGatewayProvider = 'mercadopago' | 'stripe' | 'pushinpay' | 'asaas' | 'mock'
 
 export interface PaymentGateway {
     id: string
@@ -25,7 +25,7 @@ export interface PaymentGateway {
 
 export const addGatewaySchema = z.object({
     name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-    provider: z.enum(['mercadopago', 'stripe', 'pushinpay', 'asaas']),
+    provider: z.enum(['mercadopago', 'stripe', 'pushinpay', 'asaas', 'mock']),
     credentials: z.record(z.string(), z.string()).refine(
         (creds) => Object.keys(creds).length > 0,
         'Credenciais são obrigatórias'

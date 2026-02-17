@@ -20,6 +20,10 @@ import { sendWebApp } from './send-webapp'
 import { sendPlans } from '../payments/send-plans'
 import { selectPlan } from '../payments/select-plan'
 import { generatePixAction } from '../payments/generate-pix-action'
+import { interactiveMessage } from '../../organisms/general/interactive-message'
+import { sequence } from '../../organisms/flow/sequence'
+import { promptAction } from '../../organisms/flow/prompt'
+import { chain } from '../../organisms/flow/chain'
 
 // Register Actions to the Core Engine
 export function setupRegistry() {
@@ -36,6 +40,12 @@ export function setupRegistry() {
     registerAction('send_plans', sendPlans)
     registerAction('select_plan', selectPlan)
     registerAction('generate_pix', generatePixAction)
+
+    // Organisms (Composite Steps)
+    registerAction('interactive_message', interactiveMessage)
+    registerAction('sequence', sequence)
+    registerAction('prompt', promptAction)
+    registerAction('chain', chain)
 
     console.log('[Registry] Actions registered successfully.')
 }
