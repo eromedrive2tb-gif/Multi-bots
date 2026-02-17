@@ -36,6 +36,27 @@ export async function promptAction(
     // We pass all params through, so it can see 'validation', 'variable', etc.
     const inputResult = await collectInput(ctx, params)
 
+    // STEP 3: Integrated Branching (New Feature)
+    // If input was successful and not suspended, check for branches
+    if (isResuming && inputResult.success && inputResult.data && !(inputResult.data as any).suspended) {
+        const branches = params.branches as Record<string, string> | undefined
+        if (branches) {
+            const variable = String(params.variable || 'input')
+            const userInput = (inputResult.data as any)[variable]
+
+            if (userInput && branches[userInput]) {
+                // Inject the dynamic next_step into the result data for the engine to follow
+                return {
+                    ...inputResult,
+                    data: {
+                        ...(inputResult.data as object),
+                        next_step: branches[userInput]
+                    }
+                }
+            }
+        }
+    }
+
     return inputResult
 }
 

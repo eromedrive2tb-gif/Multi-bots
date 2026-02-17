@@ -40,20 +40,13 @@
                         "callback": "pay_no"
                     }
                 ],
-                "variable": "pay_choice"
-            },
-            "next_step": "process_payment"
-        },
-        "process_payment": {
-            "type": "molecule",
-            "action": "condition",
-            "params": {
-                "operator": "equals",
                 "variable": "pay_choice",
-                "value": "pay_yes"
+                "branches": {
+                    "pay_yes": "generate_checkout",
+                    "pay_no": "cancel"
+                }
             },
-            "next_step": "generate_checkout",
-            "on_false": "cancel"
+            "next_step": null
         },
         "generate_checkout": {
             "type": "molecule",
