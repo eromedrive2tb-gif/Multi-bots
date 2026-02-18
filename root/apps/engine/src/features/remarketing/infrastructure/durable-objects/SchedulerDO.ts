@@ -34,21 +34,7 @@ export class SchedulerDO extends DurableObject<Env> {
         try {
             if (request.method === 'POST' && url.pathname === '/schedule') {
                 console.log('[SchedulerDO] Received schedule request');
-                const body = await request.json();
-
-                let job: RemarketingJob;
-                try {
-                    const parseResult = RemarketingJobSchema.safeParse(body);
-                    if (parseResult.success) {
-                        job = parseResult.data;
-                    } else {
-                        console.warn('[SchedulerDO] Zod validation failed, using raw body. Errors:', parseResult.error.format());
-                        job = body as RemarketingJob;
-                    }
-                } catch (e) {
-                    console.warn('[SchedulerDO] Zod crashed during validation (bundling issue). Using raw body.', e);
-                    job = body as RemarketingJob;
-                }
+                const job = await request.json() as RemarketingJob; // Skip Zod validation due to DO bundling issues (validated at API level)
 
                 try {
                     await this.ctx.storage.put(`job:${job.id}`, job);
@@ -81,7 +67,8 @@ export class SchedulerDO extends DurableObject<Env> {
                 return new Response(JSON.stringify({ cancelled: true }), { status: 200 });
             }
 
-            if (url.pathname === '/ws') {
+            if (url.pathname.endsWith('/ws')) {
+                console.log('[SchedulerDO] Accepted WebSocket connection handshake');
                 if (request.headers.get('Upgrade') !== 'websocket') {
                     return new Response('Expected Upgrade: websocket', { status: 426 });
                 }

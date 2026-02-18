@@ -153,27 +153,25 @@ export class CampaignExecutor implements IMessageSender {
                     `UPDATE remarketing_campaigns SET total_failed = total_failed + 1, updated_at = ? WHERE id = ?`
                 ).bind(Date.now(), campaignId).run();
 
-                // Trigger real-time update
-                this.onUpdate?.({
-                    type: 'campaign_update',
-                    campaignId,
-                    tenantId: job.tenantId,
-                    status: 'active',
-                    totalSent: (campaign.total_sent || 0), // Note: these are slightly stale but D1 update happened
-                    totalFailed: (campaign.total_failed || 0) + 1
-                });
             }
 
-            // Trigger real-time update for SUCCESS
+            // Fetch latest stats for the WHOLE campaign to send a single accurate update
+            const stats = await this.db.prepare(
+                `SELECT total_sent, total_failed, status FROM remarketing_campaigns WHERE id = ?`
+            ).bind(campaignId).first<any>();
+
+            // Trigger ONE real-time update per batch with full stats
             this.onUpdate?.({
                 type: 'campaign_update',
                 campaignId,
                 tenantId: job.tenantId,
-                status: 'active',
-                totalSent: (campaign.total_sent || 0) + 1,
-                totalFailed: (campaign.total_failed || 0)
+                status: stats.status,
+                totalSent: stats.total_sent,
+                totalFailed: stats.total_failed
             });
         }
+
+        // Check if more recipients exist
 
         // Check if more recipients exist
         const remaining = await this.db.prepare(

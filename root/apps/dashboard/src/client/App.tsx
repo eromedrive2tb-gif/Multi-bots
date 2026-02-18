@@ -22,7 +22,16 @@ import { PlanosPage } from '../pages/planos'
 import ComunidadesPage from '../pages/comunidades'
 import ComunidadesDetailsPage from '../pages/comunidades-details'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            refetchOnWindowFocus: false, // Prevents "disparada" when switching tabs
+            refetchOnMount: true, // Allow refetch on initial mount
+            refetchOnReconnect: true,
+            staleTime: 1000 * 60 * 5, // Data remains "fresh" for 5 minutes (saves edge costs)
+        },
+    },
+})
 
 export const App = () => {
     return (

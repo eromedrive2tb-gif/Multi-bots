@@ -31,7 +31,7 @@ const AUDIENCE_SEGMENTS = [
 ]
 
 export const RemarketingPage: React.FC = () => {
-    const qc = useQueryClient()
+    const queryClient = useQueryClient()
     const [showWizard, setShowWizard] = useState(false)
     const [wizardStep, setWizardStep] = useState<WizardStep>(1)
     const [search, setSearch] = useState('')
@@ -55,8 +55,6 @@ export const RemarketingPage: React.FC = () => {
         },
     })
 
-    const queryClient = useQueryClient()
-
     // WebSocket for Event-based Updates
     useEffect(() => {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -74,9 +72,25 @@ export const RemarketingPage: React.FC = () => {
                     const data = JSON.parse(event.data);
                     if (data.type === 'campaign_update') {
                         console.log('[Remarketing] Real-time update received:', data);
-                        // Invalidate both campaigns list and specific recipients if open
-                        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-                        if (data.campaignId) {
+
+                        // IN-PLACE CACHE UPDATE (No HTTP Request)
+                        queryClient.setQueryData<Campaign[]>(['campaigns'], (old) => {
+                            if (!old) return old;
+                            return old.map(c => {
+                                if (c.id === data.campaignId) {
+                                    return {
+                                        ...c,
+                                        totalSent: data.totalSent ?? c.totalSent,
+                                        totalFailed: data.totalFailed ?? c.totalFailed,
+                                        status: data.status ?? c.status
+                                    };
+                                }
+                                return c;
+                            });
+                        });
+
+                        // Optionally invalidate recipients only if specifically told or for completion
+                        if (data.status === 'completed') {
                             queryClient.invalidateQueries({ queryKey: ['recipients', data.campaignId] });
                         }
                     }
@@ -137,7 +151,7 @@ export const RemarketingPage: React.FC = () => {
                 if (!actR.success) console.warn('Failed to auto-activate campaign:', actR.error)
             }
         },
-        onSuccess: () => { qc.invalidateQueries({ queryKey: ['campaigns'] }); setShowWizard(false); setWizardStep(1); setForm(f => ({ ...f, immediate: false })) },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['campaigns'] }); setShowWizard(false); setWizardStep(1); setForm(f => ({ ...f, immediate: false })) },
     })
 
     const toggleMut = useMutation({
@@ -145,7 +159,7 @@ export const RemarketingPage: React.FC = () => {
             const res = await fetch(`/api/broadcasts/campaigns/${id}/${action}`, { method: 'POST' })
             const r = await res.json() as any; if (!r.success) throw new Error(r.error)
         },
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['campaigns'] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
     })
 
     const deleteMut = useMutation({
@@ -153,7 +167,7 @@ export const RemarketingPage: React.FC = () => {
             const res = await fetch(`/api/broadcasts/campaigns/${id}/delete`, { method: 'POST' })
             const r = await res.json() as any; if (!r.success) throw new Error(r.error)
         },
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['campaigns'] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
     })
 
     const totalCampaigns = campaigns?.length || 0

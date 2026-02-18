@@ -21,16 +21,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         queryKey: ['auth-me'],
         queryFn: async () => {
             const res = await fetch('/api/auth/me')
-            console.log('[UserContext] /api/auth/me status:', res.status)
-            if (!res.ok) {
-                console.error('[UserContext] Not authenticated')
-                throw new Error('Not authenticated')
-            }
+            if (!res.ok) throw new Error('Not authenticated')
             const result = await res.json() as any
-            console.log('[UserContext] /api/auth/me result:', result)
             return result.data
         },
         retry: false,
+        staleTime: 1000 * 60 * 30, // Auth data is highly stable, cache for 30 min
     })
 
     const value = {
