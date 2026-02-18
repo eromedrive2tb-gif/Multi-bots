@@ -26,5 +26,21 @@
       "binding": "PAGES_KV",
       "id": "local"
     }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SCHEDULER_DO",
+        "class_name": "SchedulerDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": [
+        "SchedulerDO"
+      ]
+    }
   ]
 }

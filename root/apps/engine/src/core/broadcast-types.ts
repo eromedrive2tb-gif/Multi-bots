@@ -90,7 +90,10 @@ export const createCampaignSchema = z.object({
     name: z.string().min(1, 'Nome é obrigatório'),
     segment: segmentSchema,
     botId: z.string().uuid('Bot ID inválido'),
-    content: broadcastContentSchema,
+    content: broadcastContentSchema.optional(),
+    flowId: z.string().optional(),
+    frequency: z.enum(['once', 'daily', 'weekly', 'monthly']).default('once'),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:mm').optional(), // HH:mm
     filters: z.record(z.string(), z.unknown()).default({}),
 })
 

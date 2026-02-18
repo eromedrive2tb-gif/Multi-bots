@@ -1,5 +1,5 @@
 /** @jsxImportSource react */
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '../components/templates'
 import { Button } from '../components/atoms/ui/Button'
@@ -8,9 +8,15 @@ import { Modal } from '../components/molecules/ui/Modal'
 import { Input } from '../components/atoms/ui/Input'
 
 interface Campaign {
-    id: string; name: string; flowId: string; targetAudience: string;
-    status: 'active' | 'paused' | 'draft'; frequency: string;
-    messagesSent: number; revenue: number; createdAt: string
+    id: string; name: string; flowId: string; segment: string;
+    status: 'active' | 'paused' | 'draft' | 'completed'; frequency: string;
+    startTime?: string;
+    totalSent: number; totalFailed: number; revenue: number; createdAt: string;
+    botId: string;
+}
+
+interface Bot {
+    id: string; name: string;
 }
 
 type WizardStep = 1 | 2 | 3
@@ -19,7 +25,7 @@ const AUDIENCE_SEGMENTS = [
     { value: 'all', label: 'Todos os Leads', icon: '👥', desc: 'Todas as pessoas na base' },
     { value: 'not_purchased', label: 'Não Compraram', icon: '🛒', desc: 'Leads que não finalizaram compra' },
     { value: 'purchased', label: 'Já Compraram', icon: '✅', desc: 'Clientes que já compraram' },
-    { value: 'pix_generated', label: 'PIX Gerado', icon: '💰', desc: 'Geraram PIX mas não pagaram' },
+    { value: 'pix_recovery', label: 'PIX Gerado', icon: '💰', desc: 'Geraram PIX mas não pagaram' },
     { value: 'expired', label: 'Expirados', icon: '⏰', desc: 'PIX expirado sem pagamento' },
     { value: 'group_members', label: 'Membros do Grupo', icon: '👨‍👧‍👦', desc: 'Membros de grupos/canais' },
 ]
@@ -33,14 +39,74 @@ export const RemarketingPage: React.FC = () => {
     const [sort, setSort] = useState('newest')
 
     const [form, setForm] = useState({
-        name: '', flowId: '', targetAudience: 'all',
+        name: '', flowId: '', segment: 'all', botId: '',
         frequency: 'daily', startTime: '09:00', endTime: '18:00',
+        immediate: false,
         content: '',
+        contentType: 'flow' as 'flow' | 'text'
     })
+
+    const [viewRecipientsId, setViewRecipientsId] = useState<string | null>(null)
 
     const { data: campaigns, isLoading } = useQuery<Campaign[]>({
         queryKey: ['campaigns'], queryFn: async () => {
             const res = await fetch('/api/broadcasts/campaigns'); const r = await res.json() as any
+            if (!r.success) throw new Error(r.error); return r.data || []
+        },
+    })
+
+    const queryClient = useQueryClient()
+
+    // WebSocket for Event-based Updates
+    useEffect(() => {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/broadcasts/ws`;
+
+        let socket: WebSocket;
+        let reconnectTimeout: any;
+
+        const connect = () => {
+            console.log('[Remarketing] Connecting to WebSocket...');
+            socket = new WebSocket(wsUrl);
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'campaign_update') {
+                        console.log('[Remarketing] Real-time update received:', data);
+                        // Invalidate both campaigns list and specific recipients if open
+                        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+                        if (data.campaignId) {
+                            queryClient.invalidateQueries({ queryKey: ['recipients', data.campaignId] });
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Remarketing] WS parse error:', e);
+                }
+            };
+
+            socket.onclose = () => {
+                console.warn('[Remarketing] WS closed. Reconnecting...');
+                reconnectTimeout = setTimeout(connect, 5000);
+            };
+
+            socket.onerror = (err) => {
+                console.error('[Remarketing] WS error:', err);
+                socket.close();
+            };
+        };
+
+        connect();
+
+        return () => {
+            if (socket) socket.close();
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        };
+    }, [queryClient]);
+
+    const { data: bots } = useQuery<Bot[]>({
+        queryKey: ['bots'], queryFn: async () => {
+            const res = await fetch('/api/bots'); const r = await res.json() as any
             if (!r.success) throw new Error(r.error); return r.data || []
         },
     })
@@ -50,14 +116,28 @@ export const RemarketingPage: React.FC = () => {
             const res = await fetch('/api/broadcasts/campaigns', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: form.name, flowId: form.flowId,
-                    filters: { audience: form.targetAudience },
-                    frequency: form.frequency, message: form.content,
+                    name: form.name,
+                    botId: form.botId,
+                    segment: form.segment,
+                    flowId: form.contentType === 'flow' ? form.flowId : '',
+                    frequency: form.frequency,
+                    startTime: form.immediate ? undefined : form.startTime,
+                    content: { text: form.contentType === 'text' ? form.content : '' },
                 }),
             })
-            const r = await res.json() as any; if (!r.success) throw new Error(r.error)
+            const r = await res.json() as any;
+            if (!r.success) throw new Error(r.error)
+
+            const newCampaignId = r.data.id;
+
+            // If immediate execution is requested, activate the campaign immediately
+            if (form.immediate && newCampaignId) {
+                const actRes = await fetch(`/api/broadcasts/campaigns/${newCampaignId}/activate`, { method: 'POST' })
+                const actR = await actRes.json() as any;
+                if (!actR.success) console.warn('Failed to auto-activate campaign:', actR.error)
+            }
         },
-        onSuccess: () => { qc.invalidateQueries({ queryKey: ['campaigns'] }); setShowWizard(false); setWizardStep(1) },
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['campaigns'] }); setShowWizard(false); setWizardStep(1); setForm(f => ({ ...f, immediate: false })) },
     })
 
     const toggleMut = useMutation({
@@ -78,7 +158,7 @@ export const RemarketingPage: React.FC = () => {
 
     const totalCampaigns = campaigns?.length || 0
     const activeCampaigns = campaigns?.filter(c => c.status === 'active').length || 0
-    const totalMsgSent = campaigns?.reduce((sum, c) => sum + (c.messagesSent || 0), 0) || 0
+    const totalMsgSent = campaigns?.reduce((sum, c) => sum + (c.totalSent || 0), 0) || 0
     const totalRevenue = campaigns?.reduce((sum, c) => sum + (c.revenue || 0), 0) || 0
 
     const filtered = (campaigns || [])
@@ -255,18 +335,22 @@ export const RemarketingPage: React.FC = () => {
                                     <div key={c.id} className="rmk-campaign-card">
                                         <div className="rmk-campaign-info">
                                             <h4>{c.name}</h4>
-                                            <p>{AUDIENCE_SEGMENTS.find(s => s.value === c.targetAudience)?.label || c.targetAudience} • {c.frequency}</p>
+                                            <p>{AUDIENCE_SEGMENTS.find(s => s.value === c.segment)?.label || c.segment} • {c.frequency}</p>
                                         </div>
                                         <div className="rmk-campaign-meta">
-                                            <div className="rmk-meta-item"><div className="val">{c.messagesSent || 0}</div><div className="lbl">Enviadas</div></div>
-                                            <div className="rmk-meta-item"><div className="val">{fmt(c.revenue || 0)}</div><div className="lbl">Receita</div></div>
-                                            <span className={`badge badge-${c.status === 'active' ? 'success' : c.status === 'paused' ? 'warning' : 'neutral'}`}>{c.status}</span>
+                                            <div className="rmk-meta-item"><div className="val">{c.totalSent || 0}</div><div className="lbl">Enviadas</div></div>
+                                            <div className="rmk-meta-item"><div className="val">{c.totalFailed || 0}</div><div className="lbl">Falhas</div></div>
+                                            <div className="rmk-meta-item">
+                                                <div className="val" style={{ color: c.status === 'active' ? '#eab308' : c.status === 'completed' ? '#10b981' : 'var(--color-text-muted)' }}>
+                                                    {c.status.toUpperCase()}
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="rmk-campaign-actions">
-                                            <Button size="sm" variant="secondary" onClick={() => toggleMut.mutate({ id: c.id, action: c.status === 'active' ? 'pause' : 'activate' })}>
-                                                {c.status === 'active' ? '⏸️' : '▶️'}
-                                            </Button>
-                                            <Button size="sm" variant="secondary" onClick={() => { if (confirm('Excluir campanha?')) deleteMut.mutate(c.id) }}>🗑️</Button>
+                                            <button className="rmk-view-btn" onClick={() => setViewRecipientsId(c.id)}>📊 Relatório</button>
+                                            {c.status === 'active' && <Button size="sm" variant="secondary" onClick={() => toggleMut.mutate({ id: c.id, action: 'pause' })}>{toggleMut.isPending ? '...' : 'Pausar'}</Button>}
+                                            {c.status === 'paused' && <Button size="sm" variant="secondary" onClick={() => toggleMut.mutate({ id: c.id, action: 'activate' })}>{toggleMut.isPending ? '...' : 'Ativar'}</Button>}
+                                            <Button size="sm" variant="danger" onClick={() => { if (confirm('Excluir campanha?')) deleteMut.mutate(c.id) }}>✕</Button>
                                         </div>
                                     </div>
                                 ))}
@@ -293,17 +377,68 @@ export const RemarketingPage: React.FC = () => {
                                 <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Nome da Campanha</label>
                                 <Input name="name" placeholder="Ex: Recuperar carrinhos" value={form.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, name: e.target.value }))} />
                             </div>
+
                             <div>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Fluxo (Blueprint)</label>
-                                <Input name="flow" placeholder="ID ou nome do fluxo" value={form.flowId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, flowId: e.target.value }))} />
+                                <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Robo Responsavel</label>
+                                <select
+                                    className="rmk-filter-select"
+                                    style={{ width: '100%' }}
+                                    value={form.botId}
+                                    onChange={e => setForm(f => ({ ...f, botId: e.target.value }))}
+                                >
+                                    <option value="">Selecione um Bot...</option>
+                                    {bots?.map(bot => (
+                                        <option key={bot.id} value={bot.id}>{bot.name}</option>
+                                    ))}
+                                </select>
                             </div>
+
+                            <div>
+                                <div style={{ display: 'flex', gap: 10, marginBottom: 15 }}>
+                                    <Button
+                                        size="sm"
+                                        variant={form.contentType === 'flow' ? 'primary' : 'secondary'}
+                                        onClick={() => setForm(f => ({ ...f, contentType: 'flow' }))}
+                                    >
+                                        Blueprint (Fluxo)
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={form.contentType === 'text' ? 'primary' : 'secondary'}
+                                        onClick={() => setForm(f => ({ ...f, contentType: 'text' }))}
+                                    >
+                                        Mensagem Simples
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {form.contentType === 'flow' ? (
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Fluxo (Blueprint ID)</label>
+                                    <Input name="flow" placeholder="ID do fluxo (ex: welcome_flow)" value={form.flowId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, flowId: e.target.value }))} />
+                                </div>
+                            ) : (
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Sua Mensagem</label>
+                                    <textarea
+                                        style={{
+                                            width: '100%', padding: '10px', borderRadius: 'var(--radius-md)',
+                                            background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)',
+                                            color: 'var(--color-text-primary)', fontSize: '0.85rem', minHeight: '80px'
+                                        }}
+                                        placeholder="Olá, temos uma oferta para você..."
+                                        value={form.content}
+                                        onChange={(e) => setForm(f => ({ ...f, content: e.target.value }))}
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 10 }}>Público-Alvo</label>
                                 <div className="rmk-audience-grid">
                                     {AUDIENCE_SEGMENTS.map(seg => (
                                         <button key={seg.value}
-                                            className={`rmk-audience-option ${form.targetAudience === seg.value ? 'active' : ''}`}
-                                            onClick={() => setForm(f => ({ ...f, targetAudience: seg.value }))}
+                                            className={`rmk-audience-option ${form.segment === seg.value ? 'active' : ''}`}
+                                            onClick={() => setForm(f => ({ ...f, segment: seg.value }))}
                                         >
                                             <span className="icon">{seg.icon}</span>
                                             <div><h5>{seg.label}</h5><p>{seg.desc}</p></div>
@@ -312,7 +447,7 @@ export const RemarketingPage: React.FC = () => {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <Button onClick={() => setWizardStep(2)} disabled={!form.name}>Próximo →</Button>
+                                <Button onClick={() => setWizardStep(2)} disabled={!form.name || !form.botId}>Próximo →</Button>
                             </div>
                         </>
                     )}
@@ -321,7 +456,21 @@ export const RemarketingPage: React.FC = () => {
                     {wizardStep === 2 && (
                         <>
                             <div className="rmk-schedule-group">
-                                <div>
+                                <div style={{ gridColumn: '1 / -1', marginBottom: 8 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={form.immediate}
+                                            onChange={e => setForm(f => ({ ...f, immediate: e.target.checked }))}
+                                        />
+                                        <span>🚀 Iniciar envio imediatamente após criar</span>
+                                    </label>
+                                    <p style={{ margin: '4px 0 0 24px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                        O envio começará gradualmente respeitando a estratégia Anti-Ban (Gotejamento).
+                                    </p>
+                                </div>
+
+                                <div style={{ opacity: form.immediate ? 0.5 : 1, pointerEvents: form.immediate ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
                                     <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Frequência</label>
                                     <select className="rmk-filter-select" style={{ width: '100%' }} value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}>
                                         <option value="once">Uma vez</option>
@@ -330,11 +479,11 @@ export const RemarketingPage: React.FC = () => {
                                         <option value="monthly">Mensal</option>
                                     </select>
                                 </div>
-                                <div>
+                                <div style={{ opacity: form.immediate ? 0.5 : 1, pointerEvents: form.immediate ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
                                     <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Horário Início</label>
                                     <Input name="startTime" type="time" value={form.startTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, startTime: e.target.value }))} />
                                 </div>
-                                <div>
+                                <div style={{ opacity: form.immediate ? 0.5 : 1, pointerEvents: form.immediate ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
                                     <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Horário Fim</label>
                                     <Input name="endTime" type="time" value={form.endTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, endTime: e.target.value }))} />
                                 </div>
@@ -353,8 +502,9 @@ export const RemarketingPage: React.FC = () => {
                                 <h4 style={{ margin: '0 0 var(--space-md)' }}>📋 Resumo da Campanha</h4>
                                 <div style={{ display: 'grid', gap: 8 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Nome:</span><span style={{ fontWeight: 600 }}>{form.name}</span></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Bot:</span><span style={{ fontWeight: 600 }}>{bots?.find(b => b.id === form.botId)?.name}</span></div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Fluxo:</span><span style={{ fontWeight: 600 }}>{form.flowId || '—'}</span></div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Público:</span><span style={{ fontWeight: 600 }}>{AUDIENCE_SEGMENTS.find(s => s.value === form.targetAudience)?.label}</span></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Público:</span><span style={{ fontWeight: 600 }}>{AUDIENCE_SEGMENTS.find(s => s.value === form.segment)?.label}</span></div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Frequência:</span><span style={{ fontWeight: 600 }}>{form.frequency}</span></div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Horário:</span><span style={{ fontWeight: 600 }}>{form.startTime} — {form.endTime}</span></div>
                                 </div>
@@ -369,6 +519,109 @@ export const RemarketingPage: React.FC = () => {
                     )}
                 </div>
             </Modal>
+
+            {/* Campaign Report Modal */}
+            <ReportModal
+                campaignId={viewRecipientsId}
+                onClose={() => setViewRecipientsId(null)}
+            />
         </DashboardLayout>
     )
 }
+
+const ReportModal: React.FC<{ campaignId: string | null, onClose: () => void }> = ({ campaignId, onClose }) => {
+    const { data: recipients, isLoading } = useQuery<any[]>({
+        queryKey: ['recipients', campaignId],
+        queryFn: async () => {
+            if (!campaignId) return [];
+            const res = await fetch(`/api/broadcasts/campaigns/${campaignId}/recipients`);
+            const r = await res.json() as any;
+            return r.success ? r.data : [];
+        },
+        enabled: !!campaignId,
+    });
+
+    if (!campaignId) return null;
+
+    const stats = {
+        total: recipients?.length || 0,
+        sent: recipients?.filter(r => r.status === 'sent').length || 0,
+        blocked: recipients?.filter(r => r.status === 'blocked').length || 0,
+        invalid: recipients?.filter(r => r.status === 'invalid_id').length || 0,
+        failed: recipients?.filter(r => r.status === 'failed').length || 0,
+        pending: recipients?.filter(r => r.status === 'pending').length || 0,
+    };
+
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case 'sent': return { bg: 'rgba(16,185,129,.15)', color: '#10b981', label: 'ENVIADO' };
+            case 'blocked': return { bg: 'rgba(245,158,11,.15)', color: '#f59e0b', label: 'BLOQUEADO' };
+            case 'invalid_id': return { bg: 'rgba(139,92,246,.15)', color: '#8b5cf6', label: 'ID INVÁLIDO' };
+            case 'failed': return { bg: 'rgba(239,68,68,.15)', color: '#ef4444', label: 'FALHOU' };
+            default: return { bg: 'rgba(107,114,128,.15)', color: 'var(--color-text-muted)', label: 'PENDENTE' };
+        }
+    };
+
+    return (
+        <Modal title="📊 Relatório Detalhado de Campanha" isOpen={!!campaignId} onClose={onClose}>
+            <div style={{ minWidth: '500px' }}>
+                {/* Stats Summary Bar */}
+                <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10,
+                    marginBottom: 20, padding: 15, background: 'var(--color-bg-tertiary)', borderRadius: 12
+                }}>
+                    <div style={{ textAlign: 'center' }}><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{stats.sent}</div><div style={{ fontSize: '0.65rem', color: '#10b981' }}>ENVIADOS</div></div>
+                    <div style={{ textAlign: 'center' }}><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{stats.blocked}</div><div style={{ fontSize: '0.65rem', color: '#f59e0b' }}>BLOCKED</div></div>
+                    <div style={{ textAlign: 'center' }}><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{stats.invalid}</div><div style={{ fontSize: '0.65rem', color: '#8b5cf6' }}>INVALID ID</div></div>
+                    <div style={{ textAlign: 'center' }}><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{stats.failed}</div><div style={{ fontSize: '0.65rem', color: '#ef4444' }}>FALHAS</div></div>
+                    <div style={{ textAlign: 'center' }}><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{stats.pending}</div><div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>FILA</div></div>
+                </div>
+
+                <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+                    {isLoading ? <div className="loading-center"><Spinner /></div> : (
+                        !recipients || recipients.length === 0 ? <p style={{ textAlign: 'center', padding: 20 }}>Sem dados para exibir.</p> : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                                        <th style={{ padding: 10 }}>Destinatário</th>
+                                        <th style={{ padding: 10 }}>Resultado</th>
+                                        <th style={{ padding: 10 }}>Horário</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recipients.map((r) => {
+                                        const style = getStatusStyle(r.status);
+                                        return (
+                                            <tr key={r.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                                <td style={{ padding: 10 }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{r.customer_id}</span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: 10 }}>
+                                                    <span style={{
+                                                        padding: '3px 8px', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700,
+                                                        background: style.bg, color: style.color
+                                                    }}>
+                                                        {style.label}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: 10, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                                    {new Date(r.updated_at || r.created_at).toLocaleTimeString()}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )
+                    )}
+                </div>
+            </div>
+            <div style={{ marginTop: 25, textAlign: 'right', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Total de {stats.total} leads processados</span>
+                <Button variant="secondary" onClick={onClose}>Fechar Relatório</Button>
+            </div>
+        </Modal>
+    );
+};

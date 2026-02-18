@@ -286,6 +286,7 @@ export interface Env {
     PAGES_KV: KVNamespace
     AUTH_SECRET: string
     WEBHOOK_BASE_URL?: string  // Override webhook URL for production
+    SCHEDULER_DO: DurableObjectNamespace
 }
 
 // ============================================

@@ -17,6 +17,7 @@ import { paymentWebhooksRoutes } from './webhooks-payment.routes'
 import { broadcastRoutes } from './broadcasts.routes'
 import { redirectRoutes } from './redirects.routes'
 import { vipGroupsRoutes } from './vip-groups.routes'
+import remarketingRoutes from '../features/remarketing/interface/RemarketingController'
 
 /**
  * Registers all route modules on the main app
@@ -35,6 +36,7 @@ export function registerRoutes(app: Hono<{ Bindings: Env }>) {
     app.route('/', broadcastRoutes)
     app.route('/', redirectRoutes)
     app.route('/', vipGroupsRoutes)
+    app.route('/', remarketingRoutes)
 }
 
 // Export individual routes for testing

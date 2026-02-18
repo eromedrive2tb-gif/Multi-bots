@@ -113,4 +113,5 @@ app.get('*', async (c) => {
 })
 
 export default app
+export { SchedulerDO } from '../../engine/src/features/remarketing/infrastructure/durable-objects/SchedulerDO'
 // Force Rebuild Trigger: 1

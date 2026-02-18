@@ -2,7 +2,7 @@
 import type { FC, ChangeEvent } from 'react'
 
 interface InputProps {
-    type?: 'text' | 'email' | 'password' | 'number'
+    type?: 'text' | 'email' | 'password' | 'number' | 'date' | 'time' | 'datetime-local'
     name: string
     id?: string
     placeholder?: string

@@ -115,7 +115,7 @@ broadcastRoutes.post('/api/broadcasts/campaigns', authMiddleware, async (c) => {
 broadcastRoutes.post('/api/broadcasts/campaigns/:id/activate', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const service = new BroadcastService(c.env.DB, tenant.tenantId)
-    const result = await service.activateCampaign(c.req.param('id'))
+    const result = await service.activateCampaign(c.req.param('id'), c.env.SCHEDULER_DO)
     if (!result.success) return c.json({ success: false, error: result.error }, 400)
     return c.json({ success: true })
 })
@@ -134,6 +134,38 @@ broadcastRoutes.post('/api/broadcasts/campaigns/:id/delete', authMiddleware, asy
     const result = await service.deleteCampaign(c.req.param('id'))
     if (!result.success) return c.json({ success: false, error: result.error }, 404)
     return c.json({ success: true })
+})
+
+broadcastRoutes.get('/api/broadcasts/campaigns/:id/recipients', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const service = new BroadcastService(c.env.DB, tenant.tenantId)
+    const result = await service.getCampaignRecipients(c.req.param('id'))
+    return c.json({ success: true, data: result })
+})
+
+broadcastRoutes.get('/api/broadcasts/ws', authMiddleware, async (c) => {
+    const tenant = c.get('tenant')
+    const id = c.env.SCHEDULER_DO.idFromName(tenant.tenantId)
+    const stub = c.env.SCHEDULER_DO.get(id)
+
+    // Forward the request to the Durable Object for WebSocket upgrade
+    return stub.fetch(c.req.raw)
+})
+
+broadcastRoutes.get('/api/broadcasts/debug-scheduler', async (c, next) => {
+    // Custom auth for debug: allow header bypass
+    const headerTenant = c.req.header('x-tenant-id');
+    if (headerTenant) {
+        c.set('tenant', { tenantId: headerTenant, userId: 'debug', user: { id: 'debug', name: 'Debug', email: 'debug' } });
+        await next();
+    } else {
+        return authMiddleware(c, next);
+    }
+}, async (c) => {
+    const tenant = c.get('tenant')
+    const service = new BroadcastService(c.env.DB, tenant.tenantId)
+    const result = await service.getSchedulerDebug(c.env.SCHEDULER_DO)
+    return c.json({ success: true, data: result })
 })
 
 export { broadcastRoutes }
