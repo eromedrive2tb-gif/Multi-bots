@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
 import React, { useState, useEffect } from 'react'
+import { useSocket } from '../../../client/context/SocketContext'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
 import { FormField } from '../../molecules/ui/FormField'
 import { Button } from '../../atoms/ui/Button'
@@ -14,6 +15,7 @@ interface ProfileFormProps {
 export const ProfileForm: React.FC<ProfileFormProps> = ({ user, onSuccess, onError }) => {
     const [name, setName] = useState(user.name)
     const [loading, setLoading] = useState(false)
+    const { request } = useSocket()
 
     useEffect(() => {
         setName(user.name)
@@ -23,19 +25,10 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ user, onSuccess, onErr
         e.preventDefault()
         setLoading(true)
         try {
-            const res = await fetch('/api/settings/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            })
-            const result = await res.json() as any
-            if (result.success) {
-                onSuccess('Perfil atualizado com sucesso!')
-            } else {
-                onError(result.error || 'Erro ao atualizar perfil')
-            }
+            await request('UPDATE_PROFILE', { name })
+            onSuccess('Perfil atualizado com sucesso!')
         } catch (err) {
-            onError('Erro de conexão ao servidor')
+            onError(err instanceof Error ? err.message : 'Erro ao atualizar perfil')
         } finally {
             setLoading(false)
         }
@@ -51,7 +44,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ user, onSuccess, onErr
                         name="name"
                         type="text"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e: any) => setName(e.target.value)}
                         required
                     />
                     <div className="form-field" style={{ marginBottom: '1rem' }}>

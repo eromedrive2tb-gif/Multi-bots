@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import { Spinner } from '../../atoms/ui/Spinner'
 import { RedirectCard } from '../../molecules/redirects/RedirectCard'
-import { Redirect } from '../../../client/services/RedirectsClientService'
+import { Redirect } from '../../../../../engine/src/core/types'
 import React from 'react'
 
 interface RedirectListProps {

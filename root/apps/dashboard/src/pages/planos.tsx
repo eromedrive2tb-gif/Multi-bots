@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates'
 import { Button } from '../components/atoms/ui/Button'
 import { Spinner } from '../components/atoms/ui/Spinner'
@@ -21,6 +22,7 @@ interface Plan {
 
 export const PlanosPage: React.FC = () => {
     const qc = useQueryClient()
+    const { request, isConnected } = useSocket()
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [form, setForm] = useState({
         name: '',
@@ -33,29 +35,20 @@ export const PlanosPage: React.FC = () => {
     const { data: plans, isLoading } = useQuery<Plan[]>({
         queryKey: ['plans'],
         queryFn: async () => {
-            const res = await fetch('/api/payments/plans')
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data || []
+            return await request<Plan[]>('FETCH_PAYMENTS_PLANS', { activeOnly: false }) || []
         },
     })
 
     const saveMut = useMutation({
         mutationFn: async () => {
             const priceCents = Math.round(parseFloat(form.priceStr.replace(',', '.')) * 100)
-            const res = await fetch('/api/payments/plans', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: form.name,
-                    description: form.description,
-                    price: priceCents,
-                    type: form.type,
-                    intervalDays: form.type === 'subscription' ? form.intervalDays : null,
-                }),
+            await request('CREATE_PLAN', {
+                name: form.name,
+                description: form.description,
+                price: priceCents,
+                type: form.type,
+                intervalDays: form.type === 'subscription' ? form.intervalDays : null,
             })
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['plans'] })
@@ -66,9 +59,7 @@ export const PlanosPage: React.FC = () => {
 
     const deleteMut = useMutation({
         mutationFn: async (id: string) => {
-            const res = await fetch(`/api/payments/plans/${id}/delete`, { method: 'POST' })
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
+            await request('DELETE_PLAN', { id })
         },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['plans'] }),
     })

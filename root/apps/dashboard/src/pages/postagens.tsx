@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates'
 import { Button } from '../components/atoms/ui/Button'
 import { Spinner } from '../components/atoms/ui/Spinner'
@@ -17,6 +18,7 @@ interface BroadcastDraft {
 
 export const PostagensPage: React.FC = () => {
     const qc = useQueryClient()
+    const { request, isConnected } = useSocket()
     const [tab, setTab] = useState<TabKey>('enviar')
     const textRef = useRef<HTMLTextAreaElement>(null)
     const [draft, setDraft] = useState<BroadcastDraft>({
@@ -26,40 +28,47 @@ export const PostagensPage: React.FC = () => {
     const [newBtn, setNewBtn] = useState({ text: '', url: '' })
 
     const { data: bots } = useQuery<any[]>({
-        queryKey: ['bots-list'], queryFn: async () => {
-            const res = await fetch('/api/bots'); const r = await res.json() as any
-            if (!r.success) throw new Error(r.error); return r.data
+        queryKey: ['bots-list'],
+        enabled: isConnected,
+        queryFn: async () => {
+            return await request<any[]>('FETCH_BOTS') || []
         },
     })
 
     const { data: broadcasts, isLoading: loadingBc } = useQuery<any[]>({
-        queryKey: ['broadcasts'], queryFn: async () => {
-            const res = await fetch('/api/broadcasts'); const r = await res.json() as any
-            if (!r.success) throw new Error(r.error); return r.data || []
+        queryKey: ['broadcasts'],
+        enabled: isConnected,
+        queryFn: async () => {
+            return await request<any[]>('FETCH_BROADCASTS') || []
         },
     })
 
     const { data: scheduled } = useQuery<any[]>({
-        queryKey: ['scheduled-broadcasts'], queryFn: async () => {
-            const res = await fetch('/api/broadcasts?status=scheduled'); const r = await res.json() as any
-            if (!r.success) throw new Error(r.error); return r.data || []
+        queryKey: ['scheduled-broadcasts'],
+        enabled: isConnected,
+        queryFn: async () => {
+            return await request<any[]>('FETCH_BROADCASTS', { status: 'scheduled' }) || []
         },
     })
 
     const sendMut = useMutation({
         mutationFn: async () => {
-            const res = await fetch('/api/broadcasts', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    botId: draft.botId, type: draft.channelId ? 'channel' : 'broadcast',
-                    targetId: draft.channelId || undefined,
-                    content: { text: draft.content, media_url: draft.mediaUrl || undefined, buttons: draft.buttons.length ? draft.buttons : undefined },
-                }),
-            })
-            const r = await res.json() as any; if (!r.success) throw new Error(r.error)
+            const payload = {
+                botId: draft.botId,
+                targetType: draft.channelId ? 'channel' : 'broadcast',
+                targetId: draft.channelId || undefined,
+                content: {
+                    text: draft.content,
+                    media_url: draft.mediaUrl || undefined,
+                    buttons: draft.buttons.length ? draft.buttons : undefined
+                },
+                scheduledAt: draft.scheduledAt || undefined
+            }
+            await request('SEND_BROADCAST', payload)
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['broadcasts'] })
+            qc.invalidateQueries({ queryKey: ['scheduled-broadcasts'] })
             setDraft(d => ({ ...d, content: '', mediaUrl: '', buttons: [] }))
         },
     })
@@ -259,11 +268,11 @@ export const PostagensPage: React.FC = () => {
                                 </div>
                                 <div>
                                     <div className="post-select-label">GRUPO/CANAL (DESTINO)</div>
-                                    <Input name="channel" placeholder="@canal ou ID" value={draft.channelId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(d => ({ ...d, channelId: e.target.value }))} />
+                                    <Input name="channel" placeholder="@canal ou ID" value={draft.channelId} onChange={(e: any) => setDraft(d => ({ ...d, channelId: e.target.value }))} />
                                 </div>
                                 <div>
                                     <div className="post-select-label">CANAL CDN (ARMAZENAMENTO)</div>
-                                    <Input name="cdn" placeholder="@canal_cdn" value={draft.cdnChannelId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(d => ({ ...d, cdnChannelId: e.target.value }))} />
+                                    <Input name="cdn" placeholder="@canal_cdn" value={draft.cdnChannelId} onChange={(e: any) => setDraft(d => ({ ...d, cdnChannelId: e.target.value }))} />
                                 </div>
                             </div>
 
@@ -296,7 +305,7 @@ export const PostagensPage: React.FC = () => {
                                 <div className="post-media-zone">
                                     <div>📤</div>
                                     <p style={{ margin: '8px 0 0', fontSize: '0.8rem' }}>Arraste ou clique para enviar</p>
-                                    <Input name="mediaUrl" placeholder="ou cole uma URL de mídia" value={draft.mediaUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(d => ({ ...d, mediaUrl: e.target.value }))} />
+                                    <Input name="mediaUrl" placeholder="ou cole uma URL de mídia" value={draft.mediaUrl} onChange={(e: any) => setDraft(d => ({ ...d, mediaUrl: e.target.value }))} />
                                 </div>
                             </div>
 
@@ -313,8 +322,8 @@ export const PostagensPage: React.FC = () => {
                                     ))}
                                 </div>
                                 <div className="post-add-btn-row" style={{ marginTop: 8 }}>
-                                    <Input name="btnText" placeholder="Texto do botão" value={newBtn.text} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewBtn(b => ({ ...b, text: e.target.value }))} />
-                                    <Input name="btnUrl" placeholder="URL" value={newBtn.url} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewBtn(b => ({ ...b, url: e.target.value }))} />
+                                    <Input name="btnText" placeholder="Texto do botão" value={newBtn.text} onChange={(e: any) => setNewBtn(b => ({ ...b, text: e.target.value }))} />
+                                    <Input name="btnUrl" placeholder="URL" value={newBtn.url} onChange={(e: any) => setNewBtn(b => ({ ...b, url: e.target.value }))} />
                                     <Button size="sm" variant="secondary" onClick={addButton}>+ Adicionar</Button>
                                 </div>
                             </div>
@@ -390,7 +399,9 @@ export const PostagensPage: React.FC = () => {
                             </select>
                         </div>
                         <textarea className="post-textarea" placeholder="Mensagem de boas-vindas..." style={{ borderRadius: 'var(--radius-md)' }} />
-                        <Button style={{ marginTop: 'var(--space-md)' }}>💾 Salvar</Button>
+                        <div style={{ marginTop: 'var(--space-md)' }}>
+                            <Button>💾 Salvar</Button>
+                        </div>
                     </div>
                 )}
 

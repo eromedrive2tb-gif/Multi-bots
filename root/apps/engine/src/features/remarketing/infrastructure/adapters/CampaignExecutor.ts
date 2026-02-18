@@ -1,5 +1,4 @@
 import { IMessageSender, RemarketingJob, RateLimitError, BlockError, InvalidRequestError } from '../../domain/types';
-import { D1Database } from '@cloudflare/workers-types';
 import { TelegramSender } from './TelegramSender';
 import { DiscordSender } from './DiscordSender';
 
@@ -160,14 +159,15 @@ export class CampaignExecutor implements IMessageSender {
                 `SELECT total_sent, total_failed, status FROM remarketing_campaigns WHERE id = ?`
             ).bind(campaignId).first<any>();
 
-            // Trigger ONE real-time update per batch with full stats
+            // Trigger ONE real-time update per batch with full stats and processed IDs
             this.onUpdate?.({
                 type: 'campaign_update',
                 campaignId,
                 tenantId: job.tenantId,
                 status: stats.status,
                 totalSent: stats.total_sent,
-                totalFailed: stats.total_failed
+                totalFailed: stats.total_failed,
+                batch: recipients.map((r: any) => ({ id: r.id, status: r.status })) // Zero-Fetch ID updates
             });
         }
 

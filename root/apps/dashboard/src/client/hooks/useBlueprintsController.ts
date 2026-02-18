@@ -1,29 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BlueprintClientService } from '../services/BlueprintService'
+import { useSocket } from '../context/SocketContext'
 import type { Blueprint, BlueprintListItem } from '../../../../engine/src/core/types'
-
-// Singleton instance for the service (or inject via context if preferred)
-const blueprintService = new BlueprintClientService()
 
 export const useBlueprintsController = () => {
     const queryClient = useQueryClient()
+    const { request, isConnected } = useSocket()
 
     // Query: List Blueprints
     const listQuery = useQuery({
         queryKey: ['blueprints'],
         queryFn: async () => {
-            const result = await blueprintService.listBlueprints()
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            return await request<BlueprintListItem[]>('FETCH_BLUEPRINTS') || []
         }
     })
 
     // Mutation: Delete Blueprint
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const result = await blueprintService.deleteBlueprint(id)
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            await request('DELETE_BLUEPRINT', { id })
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['blueprints'] })
@@ -33,9 +27,7 @@ export const useBlueprintsController = () => {
     // Mutation: Save Blueprint (Create or Update)
     const saveMutation = useMutation({
         mutationFn: async (blueprint: Blueprint) => {
-            const result = await blueprintService.saveBlueprint(blueprint)
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            await request('SAVE_BLUEPRINT', blueprint)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['blueprints'] })
@@ -45,12 +37,7 @@ export const useBlueprintsController = () => {
     // Query: Get Single Blueprint (Lazy/On-Demand)
     // Helper to fetch a specific blueprint details when needed (e.g. for editing)
     const fetchBlueprint = async (id: string): Promise<Blueprint | null> => {
-        const result = await blueprintService.getBlueprint(id)
-        if (!result.success) {
-            console.error('Failed to fetch blueprint:', result.error)
-            return null
-        }
-        return result.data
+        return await request<Blueprint>('FETCH_BLUEPRINT', { id })
     }
 
     return {

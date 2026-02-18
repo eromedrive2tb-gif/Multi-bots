@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Redirect } from '../services/RedirectsClientService'
+import { Redirect } from '../../../../engine/src/core/types'
 
 export type TabKey = 'links' | 'codigos' | 'utm' | 'dominio'
 export type CreateStep = 'domain' | 'config'

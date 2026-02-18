@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useSocket } from '../context/SocketContext'
 import Editor from '@monaco-editor/react'
 import { Card, CardHeader, CardBody } from '../../components/atoms/ui/Card'
 import { Button } from '../../components/atoms/ui/Button'
@@ -15,6 +16,7 @@ export function WebAppEditorPage() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { tenantId } = useUser()
+    const { request, isConnected } = useSocket()
     const isNew = id === 'new'
 
     // State
@@ -30,17 +32,15 @@ export function WebAppEditorPage() {
 
     // Fetch existing page
     useEffect(() => {
-        if (!isNew && id) {
+        if (!isNew && id && isConnected) {
             fetchPage(id)
         }
-    }, [id])
+    }, [id, isNew, isConnected])
 
     const fetchPage = async (pageId: string) => {
         try {
-            const res = await fetch(`/api/pages/${pageId}`)
-            const json = await res.json()
-            if (json.success) {
-                const data = json.data as WebAppPage
+            const data = await request<WebAppPage>('FETCH_PAGE', { id: pageId })
+            if (data) {
                 setName(data.name)
                 setPageId(data.id)
                 setHtml(data.html)
@@ -68,22 +68,16 @@ export function WebAppEditorPage() {
                 js
             }
 
-            const res = await fetch('/api/pages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
+            const success = await request('SAVE_PAGE', payload)
 
-            const json = await res.json()
-
-            if (json.success) {
+            if (success) {
                 if (isNew) {
                     navigate(`/dashboard/webapps/${pageId}`)
                 } else {
                     setPreviewKey(prev => prev + 1)
                 }
             } else {
-                alert(`Erro ao salvar: ${json.error}`)
+                alert(`Erro ao salvar página.`)
             }
         } catch (error) {
             console.error('Error saving:', error)

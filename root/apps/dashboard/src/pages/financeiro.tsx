@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates'
 import { Spinner } from '../components/atoms/ui/Spinner'
 
@@ -21,34 +22,30 @@ interface Transaction {
 export const FinanceiroPage: React.FC = () => {
     const [period, setPeriod] = useState<Period>('month')
     const [gatewayFilter, setGatewayFilter] = useState('all')
+    const { request, isConnected } = useSocket()
 
-    const periods: { key: Period; label: string }[] = [
+    const periods = React.useMemo<{ key: Period; label: string }[]>(() => [
         { key: 'today', label: 'Hoje' },
         { key: 'yesterday', label: 'Ontem' },
         { key: 'week', label: 'Semana' },
         { key: 'month', label: 'Mês' },
         { key: 'total', label: 'Todo Período' },
-    ]
+    ], [])
 
     const { data: summary, isLoading: loadingSummary } = useQuery<FinancialSummary>({
         queryKey: ['financial-summary', period],
         queryFn: async () => {
-            const res = await fetch(`/api/payments/summary?period=${period}`)
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            return await request<FinancialSummary>('FETCH_PAYMENTS_SUMMARY', { period })
         },
     })
 
     const { data: transactions, isLoading: loadingTx } = useQuery<Transaction[]>({
         queryKey: ['transactions', period, gatewayFilter],
         queryFn: async () => {
-            const params = new URLSearchParams({ period })
-            if (gatewayFilter !== 'all') params.set('gateway', gatewayFilter)
-            const res = await fetch(`/api/payments/transactions?${params}`)
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data || []
+            return await request<Transaction[]>('FETCH_PAYMENTS_TRANSACTIONS', {
+                period,
+                gateway: gatewayFilter !== 'all' ? gatewayFilter : undefined
+            }) || []
         },
     })
 

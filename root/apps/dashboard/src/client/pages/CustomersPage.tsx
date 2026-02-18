@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSocket } from '../context/SocketContext'
 import { DashboardLayout } from '../../components/templates'
 import { Input } from '../../components/atoms/ui/Input'
 import { Button } from '../../components/atoms/ui/Button'
@@ -13,6 +14,7 @@ export const CustomersPage: React.FC = () => {
     const [search, setSearch] = useState('')
     const [page, setPage] = useState(0)
     const limit = 20
+    const { request, isConnected } = useSocket()
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
     const [isClearing, setIsClearing] = useState(false)
     const [showConfirmClear, setShowConfirmClear] = useState(false)
@@ -20,9 +22,7 @@ export const CustomersPage: React.FC = () => {
     const handleClearAll = async () => {
         setIsClearing(true)
         try {
-            const response = await fetch('/api/customers', { method: 'DELETE' })
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
+            await request('CLEAR_CUSTOMERS')
             setShowConfirmClear(false)
             refetch()
         } catch (err) {
@@ -36,16 +36,11 @@ export const CustomersPage: React.FC = () => {
     const { data, isLoading, error, refetch } = useQuery<{ data: Customer[], total: number }>({
         queryKey: ['customers', page, search],
         queryFn: async () => {
-            const params = new URLSearchParams({
-                limit: String(limit),
-                offset: String(page * limit)
+            return await request<{ data: Customer[], total: number }>('FETCH_CUSTOMERS', {
+                limit,
+                offset: page * limit,
+                search
             })
-            if (search) params.append('search', search)
-
-            const response = await fetch(`/api/customers?${params.toString()}`)
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data
         },
         placeholderData: (previousData) => previousData
     })

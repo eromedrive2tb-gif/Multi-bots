@@ -1,11 +1,13 @@
 /** @jsxImportSource react */
-import { FC, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { FC, useState, useEffect, useMemo } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { NavLink } from '../../molecules/ui/NavLink'
 import { UserAvatar } from '../../molecules/ui/UserAvatar'
+import { useSocket } from '../../../client/context/SocketContext'
+
 
 interface SidebarProps {
-    currentPath: string
+    currentPath?: string
     user: {
         name: string
         email: string
@@ -25,32 +27,13 @@ interface NavSection {
     items: NavItem[]
 }
 
-export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
+export const Sidebar: FC<SidebarProps> = ({ user }) => {
     const navigate = useNavigate()
+    const location = useLocation()
+    const currentPath = location.pathname
     const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
 
-    const toggleDropdown = (label: string) => {
-        setOpenDropdowns(prev => ({
-            ...prev,
-            [label]: !prev[label]
-        }))
-    }
-
-    // Auto-open dropdown if current path is inside it
-    useEffect(() => {
-        sections.forEach(section => {
-            section.items.forEach(item => {
-                if (item.children) {
-                    const isActive = item.children.some(child => currentPath === child.href)
-                    if (isActive) {
-                        setOpenDropdowns(prev => ({ ...prev, [item.label]: true }))
-                    }
-                }
-            })
-        })
-    }, [currentPath])
-
-    const sections: NavSection[] = [
+    const sections: NavSection[] = useMemo(() => [
         {
             title: 'MENU',
             items: [
@@ -105,17 +88,45 @@ export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
                 { href: '/dashboard/settings', icon: '⚙️', label: 'Configurações', subtitle: 'Preferências' },
             ],
         },
-    ]
+    ], [])
+
+    const toggleDropdown = (label: string) => {
+        setOpenDropdowns(prev => ({
+            ...prev,
+            [label]: !prev[label]
+        }))
+    }
+
+    // Auto-open dropdown if current path is inside it
+    useEffect(() => {
+        const newOpenDropdowns: Record<string, boolean> = {}
+        sections.forEach(section => {
+            section.items.forEach(item => {
+                if (item.children) {
+                    const isActive = item.children.some(child => currentPath === child.href)
+                    if (isActive) {
+                        newOpenDropdowns[item.label] = true
+                    }
+                }
+            })
+        })
+        setOpenDropdowns(prev => ({ ...prev, ...newOpenDropdowns }))
+    }, [currentPath, sections])
+
+    const { request } = useSocket()
 
     const handleLogout = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
-            await fetch('/api/auth/logout', { method: 'POST' })
+            await request('LOGOUT', { sessionId: localStorage.getItem('sessionId') || '' })
             navigate('/login')
         } catch (error) {
             console.error('Logout failed:', error)
+            // Fallback for session clear if socket fails
+            navigate('/login')
         }
     }
+
 
     return (
         <aside className="sidebar">
@@ -136,6 +147,7 @@ export const Sidebar: FC<SidebarProps> = ({ currentPath, user }) => {
                                 return (
                                     <div key={item.label} className={`nav-dropdown ${isOpen ? 'nav-dropdown-open' : ''}`}>
                                         <button
+                                            type="button"
                                             className="nav-dropdown-trigger"
                                             onClick={() => toggleDropdown(item.label)}
                                         >

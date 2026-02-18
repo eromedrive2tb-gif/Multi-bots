@@ -2,6 +2,7 @@
 import React from 'react'
 import { Modal } from '../../molecules/ui/Modal'
 import { Button } from '../../atoms/ui/Button'
+import { useSocket } from '../../../client/context/SocketContext'
 import type { Customer } from '../../../../engine/src/core/types'
 import { useQuery } from '@tanstack/react-query'
 
@@ -11,15 +12,13 @@ interface CustomerDetailsModalProps {
 }
 
 export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({ customer, onClose }) => {
+    const { request } = useSocket()
     // Fetch History
     const { data: history, isLoading: isLoadingHistory } = useQuery({
         queryKey: ['customer-history', customer?.id],
         queryFn: async () => {
             if (!customer) return []
-            const response = await fetch(`/api/customers/${customer.id}/history`)
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data as any[]
+            return await request('FETCH_CUSTOMER_HISTORY', { customerId: customer.id })
         },
         enabled: !!customer,
         staleTime: 1000 * 60 * 5, // 5 minutes cache

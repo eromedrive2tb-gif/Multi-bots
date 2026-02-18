@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
-import type { FC, ReactNode } from 'react'
+import React, { FC, ReactNode, memo } from 'react'
+
 import { Link } from 'react-router-dom'
 
 interface NavLinkProps {
@@ -10,7 +11,7 @@ interface NavLinkProps {
     children: ReactNode
 }
 
-export const NavLink: FC<NavLinkProps> = ({
+export const NavLink: FC<NavLinkProps> = memo(({
     href,
     icon,
     active = false,
@@ -26,4 +27,5 @@ export const NavLink: FC<NavLinkProps> = ({
             <span className="nav-text">{children}</span>
         </Link>
     )
-}
+})
+

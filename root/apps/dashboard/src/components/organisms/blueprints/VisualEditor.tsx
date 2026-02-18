@@ -34,6 +34,7 @@ import {
 import type { Blueprint } from '../../../../../engine/src/core/types'
 import { BlueprintNode, type StepNode, type StepNodeData } from '../../atoms/blueprints/BlueprintNode'
 import { BlueprintPropertyPanel } from './BlueprintPropertyPanel'
+import { useSocket } from '../../../client/context/SocketContext'
 
 interface ApiResponse {
     success: boolean
@@ -221,6 +222,8 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
         }
     }, [nodes, edges, blueprintId, trigger])
 
+    const { request } = useSocket()
+
     const handleSave = useCallback(async () => {
         setSaving(true)
         setMessage('')
@@ -232,18 +235,8 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
                 await onSave(blueprint)
                 setMessage('✅ Salvo!')
             } else {
-                const isNew = !initialBlueprint
-                const url = isNew ? '/api/blueprints' : `/api/blueprints/${blueprint.id}`
-                const method = isNew ? 'POST' : 'PUT'
-
-                const response = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(blueprint),
-                })
-
-                const result: ApiResponse = await response.json()
-                setMessage(result.success ? '✅ Salvo!' : `❌ ${result.error}`)
+                await request('SAVE_BLUEPRINT', blueprint)
+                setMessage('✅ Salvo!')
             }
         } catch (error) {
             setMessage(`❌ ${error instanceof Error ? error.message : 'Erro'}`)
@@ -251,7 +244,7 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
             setSaving(false)
             setTimeout(() => setMessage(''), 3000)
         }
-    }, [buildBlueprint, onSave, initialBlueprint])
+    }, [buildBlueprint, onSave, request])
 
     return (
         <div style={{ display: 'flex', height: '700px', background: '#1a1a2e', borderRadius: '12px', overflow: 'hidden' }}>

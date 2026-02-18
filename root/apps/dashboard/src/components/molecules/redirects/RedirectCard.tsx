@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import { Button } from '../../atoms/ui/Button'
-import { Redirect } from '../../../client/services/RedirectsClientService'
+import { Redirect } from '../../../../../engine/src/core/types'
 import React from 'react'
 
 interface RedirectCardProps {

@@ -1,8 +1,9 @@
 /** @jsxImportSource react */
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Modal } from '../../molecules/ui/Modal'
 import { Button } from '../../atoms/ui/Button'
 import { useQuery } from '@tanstack/react-query'
+import { useSocket } from '../../../client/context/SocketContext'
 import type { Bot, Blueprint } from '../../../../../engine/src/core/types'
 import { analyzeCompatibility } from '../../../../../engine/src/lib/shared'
 
@@ -13,16 +14,14 @@ interface BotBlueprintsModalProps {
 }
 
 export const BotBlueprintsModal: React.FC<BotBlueprintsModalProps> = ({ isOpen, onClose, bot }) => {
+    const { request } = useSocket()
     const [isSyncing, setIsSyncing] = useState(false)
 
     // Fetch bot blueprints with status
     const { data: blueprints = [], isLoading, refetch } = useQuery<(Blueprint & { isActive: boolean })[]>({
         queryKey: ['bot-blueprints', bot.id],
         queryFn: async () => {
-            const response = await fetch(`/api/bots/${bot.id}/blueprints`)
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            return await request('FETCH_BOT_BLUEPRINTS', { botId: bot.id })
         },
         enabled: isOpen
     })
@@ -30,18 +29,11 @@ export const BotBlueprintsModal: React.FC<BotBlueprintsModalProps> = ({ isOpen, 
     const handleSync = async () => {
         setIsSyncing(true)
         try {
-            const response = await fetch(`/api/bots/${bot.id}/sync`, {
-                method: 'POST'
-            })
-            const result = await response.json() as any
-            if (result.success) {
-                alert('Comandos sincronizados com sucesso!')
-                onClose()
-            } else {
-                alert(`Erro ao sincronizar: ${result.error}`)
-            }
+            await request('SYNC_BOT_COMMANDS', { id: bot.id })
+            alert('Comandos sincronizados com sucesso!')
+            onClose()
         } catch (err) {
-            alert('Erro de conexão ao sincronizar')
+            alert(err instanceof Error ? err.message : 'Erro ao sincronizar')
         } finally {
             setIsSyncing(false)
         }
@@ -49,18 +41,14 @@ export const BotBlueprintsModal: React.FC<BotBlueprintsModalProps> = ({ isOpen, 
 
     const handleToggle = async (blueprintId: string, currentStatus: boolean) => {
         try {
-            const response = await fetch(`/api/bots/${bot.id}/blueprints/${blueprintId}/toggle`, {
-                method: 'POST',
-                body: JSON.stringify({ isActive: !currentStatus })
+            await request('TOGGLE_BOT_BLUEPRINT', {
+                botId: bot.id,
+                blueprintId,
+                isActive: !currentStatus
             })
-            const result = await response.json() as any
-            if (result.success) {
-                refetch()
-            } else {
-                alert('Erro ao atualizar status: ' + result.error)
-            }
+            refetch()
         } catch (e) {
-            alert('Erro de conexão')
+            alert(e instanceof Error ? e.message : 'Erro de conexão')
         }
     }
 

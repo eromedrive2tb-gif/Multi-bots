@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
+import { useSocket } from '../../../client/context/SocketContext'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
 import { Button } from '../../atoms/ui/Button'
 import { FormField } from '../../molecules/ui/FormField'
@@ -9,6 +10,7 @@ interface AddBotFormProps {
 }
 
 export const AddBotForm: React.FC<AddBotFormProps> = ({ onSuccess }) => {
+    const { request } = useSocket()
     const [name, setName] = useState('')
     const [provider, setProvider] = useState<'telegram' | 'discord'>('telegram')
     const [telegramToken, setTelegramToken] = useState('')
@@ -28,26 +30,17 @@ export const AddBotForm: React.FC<AddBotFormProps> = ({ onSuccess }) => {
             : { applicationId: discordAppId, publicKey: discordPublicKey, token: discordToken }
 
         try {
-            const response = await fetch('/api/bots', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, provider, credentials }),
-            })
+            await request('ADD_BOT', { name, provider, credentials })
 
-            const result = await response.json() as any
-            if (result.success) {
-                // Reset form
-                setName('')
-                setTelegramToken('')
-                setDiscordAppId('')
-                setDiscordPublicKey('')
-                setDiscordToken('')
-                if (onSuccess) onSuccess()
-            } else {
-                setError(result.error || 'Erro ao adicionar bot')
-            }
+            // Reset form
+            setName('')
+            setTelegramToken('')
+            setDiscordAppId('')
+            setDiscordPublicKey('')
+            setDiscordToken('')
+            if (onSuccess) onSuccess()
         } catch (err) {
-            setError('Erro de conexão')
+            setError(err instanceof Error ? err.message : 'Erro ao adicionar bot')
         } finally {
             setLoading(false)
         }
@@ -70,7 +63,7 @@ export const AddBotForm: React.FC<AddBotFormProps> = ({ onSuccess }) => {
                         type="text"
                         placeholder="Meu Bot"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e: any) => setName(e.target.value)}
                         required
                     />
 
@@ -116,7 +109,7 @@ export const AddBotForm: React.FC<AddBotFormProps> = ({ onSuccess }) => {
                                 type="password"
                                 placeholder="123456:ABC-DEF..."
                                 value={telegramToken}
-                                onChange={(e) => setTelegramToken(e.target.value)}
+                                onChange={(e: any) => setTelegramToken(e.target.value)}
                                 required
                             />
                             <p className="form-hint">
@@ -132,7 +125,7 @@ export const AddBotForm: React.FC<AddBotFormProps> = ({ onSuccess }) => {
                                 type="text"
                                 placeholder="123456789012345678"
                                 value={discordAppId}
-                                onChange={(e) => setDiscordAppId(e.target.value)}
+                                onChange={(e: any) => setDiscordAppId(e.target.value)}
                                 required
                             />
                             <FormField
@@ -141,7 +134,7 @@ export const AddBotForm: React.FC<AddBotFormProps> = ({ onSuccess }) => {
                                 type="text"
                                 placeholder="abc123..."
                                 value={discordPublicKey}
-                                onChange={(e) => setDiscordPublicKey(e.target.value)}
+                                onChange={(e: any) => setDiscordPublicKey(e.target.value)}
                                 required
                             />
                             <FormField
@@ -150,7 +143,7 @@ export const AddBotForm: React.FC<AddBotFormProps> = ({ onSuccess }) => {
                                 type="password"
                                 placeholder="MTIzNDU2Nzg5..."
                                 value={discordToken}
-                                onChange={(e) => setDiscordToken(e.target.value)}
+                                onChange={(e: any) => setDiscordToken(e.target.value)}
                                 required
                             />
                             <p className="form-hint">

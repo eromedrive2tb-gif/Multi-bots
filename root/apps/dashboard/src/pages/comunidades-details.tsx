@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import { FC, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
 import { ArrowLeft, Trash2, Shield, User, Loader2, ExternalLink, Calendar } from 'lucide-react'
 import { Button } from '../components/atoms/ui/Button'
@@ -34,36 +35,35 @@ interface VipGroup {
 const ComunidadesDetailsPage: FC = () => {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
+    const { request, isConnected } = useSocket()
     const [group, setGroup] = useState<VipGroup | null>(null)
     const [members, setMembers] = useState<GroupMember[]>([])
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState<string | null>(null) // memberId being acted on
 
     useEffect(() => {
-        if (id) {
+        if (id && isConnected) {
             fetchData()
         }
-    }, [id])
+    }, [id, isConnected])
 
     const fetchData = async () => {
         setLoading(true)
         try {
             // Fetch Group
-            const groupRes = await fetch(`/api/groups/${id}`)
-            const groupData = await groupRes.json() as { success: boolean, data: VipGroup, error?: string }
+            const groupData = await request<VipGroup>('FETCH_GROUP', { id })
 
-            if (groupData.success) {
-                setGroup(groupData.data)
+            if (groupData) {
+                setGroup(groupData)
             } else {
-                throw new Error(groupData.error)
+                throw new Error('Grupo não encontrado')
             }
 
             // Fetch Members
-            const membersRes = await fetch(`/api/groups/${id}/members`)
-            const membersData = await membersRes.json() as { success: boolean, data: GroupMember[], error?: string }
+            const membersData = await request<GroupMember[]>('FETCH_GROUP_MEMBERS', { groupId: id })
 
-            if (membersData.success) {
-                setMembers(membersData.data)
+            if (membersData) {
+                setMembers(membersData)
             }
         } catch (error) {
             console.error(error)
@@ -79,14 +79,13 @@ const ComunidadesDetailsPage: FC = () => {
 
         setLoading(true)
         try {
-            const res = await fetch(`/api/groups/${id}/sync-members`, { method: 'POST' })
-            const data = await res.json()
+            const data = await request<{ synced: number }>('SYNC_GROUP_MEMBERS', { groupId: id })
 
-            if (data.success) {
-                alert(`Sincronização concluída! ${data.data.synced} membros sincronizados.`)
+            if (data) {
+                alert(`Sincronização concluída! ${data.synced} membros sincronizados.`)
                 fetchData()
             } else {
-                alert(`Erro: ${data.error}`)
+                alert(`Erro na sincronização`)
             }
         } catch (e) {
             alert('Falha na sincronização')
@@ -100,23 +99,15 @@ const ComunidadesDetailsPage: FC = () => {
 
         setActionLoading(member.customer_id)
         try {
-            // Note: external_id is usually used for provider actions, but our API uses internal customer_id or memberId?
-            // The route is DELETE /api/groups/:id/members/:memberId
-            // And in route implementation: const memberId = c.req.param('memberId') // This is the customerId
-            // So we pass member.customer_id
+            const success = await request('KICK_MEMBER', { groupId: id, customerId: member.customer_id })
 
-            const res = await fetch(`/api/groups/${id}/members/${member.customer_id}`, {
-                method: 'DELETE'
-            })
-            const data = await res.json() as { success: boolean, error?: string }
-
-            if (data.success) {
+            if (success) {
                 // Update local state
                 setMembers(members.map(m =>
                     m.customer_id === member.customer_id ? { ...m, status: 'kicked' } : m
                 ))
             } else {
-                alert(`Erro: ${data.error}`)
+                alert(`Erro ao remover membro`)
             }
         } catch (e) {
             alert('Falha ao remover membro')
@@ -272,8 +263,8 @@ const ComunidadesDetailsPage: FC = () => {
                             </div>
                         )}
                         <div className="pt-2">
-                            <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/comunidades')}>
-                                Gerenciar Bots
+                            <Button variant="secondary" className="w-full" onClick={() => navigate('/dashboard/comunidades')}>
+                                Voltar
                             </Button>
                         </div>
                     </div>

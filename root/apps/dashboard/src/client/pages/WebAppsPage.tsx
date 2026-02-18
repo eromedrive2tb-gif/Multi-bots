@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react'
+import { useSocket } from '../context/SocketContext'
 import { Link } from 'react-router-dom'
 import { Card, CardHeader, CardBody } from '../../components/atoms/ui/Card'
 import { Button } from '../../components/atoms/ui/Button'
@@ -10,17 +11,19 @@ import { DashboardLayout } from '../../components/templates/DashboardLayout'
 export function WebAppsPage() {
     const [pages, setPages] = useState<WebAppPage[]>([])
     const [loading, setLoading] = useState(true)
+    const { request, isConnected } = useSocket()
 
     useEffect(() => {
-        fetchPages()
-    }, [])
+        if (isConnected) {
+            fetchPages()
+        }
+    }, [isConnected])
 
     const fetchPages = async () => {
         try {
-            const res = await fetch('/api/pages')
-            const json = await res.json()
-            if (json.success) {
-                setPages(json.data)
+            const data = await request<WebAppPage[]>('FETCH_PAGES')
+            if (data) {
+                setPages(data)
             }
         } catch (error) {
             console.error('Failed to fetch pages', error)

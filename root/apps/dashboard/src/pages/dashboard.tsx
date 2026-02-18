@@ -5,7 +5,8 @@ import { DashboardLayout } from '../components/templates'
 import { StatsGrid } from '../components/organisms'
 import { SystemActivity } from '../components/organisms'
 import { useUser } from '../client/context/UserContext'
-import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics-aggregator'
+import { useSocket } from '../client/context/SocketContext'
+import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics/analytics-aggregator'
 
 export const DashboardPage: React.FC = () => {
     const { user, tenantId } = useUser()
@@ -13,14 +14,12 @@ export const DashboardPage: React.FC = () => {
     const displayTenantId = tenantId || ''
 
     // Fetch real analytics data
+    const { request, isConnected } = useSocket()
+    // Fetch real analytics data
     const { data: analyticsData, isLoading } = useQuery<AnalyticsDashboardData>({
         queryKey: ['analytics', { status: 'all' }],
-        queryFn: async () => {
-            const response = await fetch('/api/analytics?status=all')
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data
-        }
+        queryFn: () => request('FETCH_ANALYTICS', { status: 'all' }),
+        enabled: isConnected
     })
 
     const overview = analyticsData?.overview || {
@@ -34,7 +33,7 @@ export const DashboardPage: React.FC = () => {
         totalBlueprints: 0
     }
 
-    const totalUsers = analyticsData?.bots?.reduce((sum, bot) => sum + (bot.totalUsers || 0), 0) || 0
+    const totalUsers = analyticsData?.bots?.reduce((sum: number, bot: any) => sum + (bot.totalUsers || 0), 0) || 0
 
     const stats = [
         {

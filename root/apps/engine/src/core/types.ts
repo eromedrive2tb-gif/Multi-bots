@@ -328,3 +328,51 @@ export type CreateVipGroupDTO = z.infer<typeof createVipGroupSchema>
 export const updateVipGroupSchema = createVipGroupSchema.partial()
 
 export type UpdateVipGroupDTO = z.infer<typeof updateVipGroupSchema>
+
+// ============================================
+// REDIRECTS MANAGEMENT
+// ============================================
+
+export interface Redirect {
+    id: string
+    tenantId: string
+    slug: string
+    slugType?: 'random' | 'custom'
+    domain: string
+    mode: string
+    isActive: boolean
+    destinationType: 'bot' | 'url'
+    destinationUrl: string
+    botId?: string
+    flowId?: string
+    pixelId?: string
+    cloakerEnabled: boolean
+    cloakerMethod: 'redirect' | 'safe_page' | 'mirror'
+    cloakerSafeUrl?: string
+    totalClicks?: number
+    blockedCount?: number
+    allowedCount?: number
+    createdAt: string
+    updatedAt: string
+}
+
+export const createRedirectSchema = z.object({
+    slug: z.string().min(1, 'Slug é obrigatório'),
+    domain: z.string().min(1, 'Domínio é obrigatório'),
+    mode: z.string().default('random'),
+    isActive: z.boolean().default(true),
+    destinationType: z.enum(['bot', 'url']),
+    destinationUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+    botId: z.string().optional(),
+    flowId: z.string().optional(),
+    pixelId: z.string().optional(),
+    cloakerEnabled: z.boolean().default(false),
+    cloakerMethod: z.enum(['redirect', 'safe_page', 'mirror']).default('redirect'),
+    cloakerSafeUrl: z.string().url('URL segura inválida').optional().or(z.literal('')),
+})
+
+export type CreateRedirectDTO = z.infer<typeof createRedirectSchema>
+
+export const updateRedirectSchema = createRedirectSchema.partial()
+
+export type UpdateRedirectDTO = z.infer<typeof updateRedirectSchema>

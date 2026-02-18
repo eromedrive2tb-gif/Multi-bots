@@ -1,6 +1,8 @@
 /** @jsxImportSource react */
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useUser } from '../client/context/UserContext'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates'
 import { Button } from '../components/atoms/ui/Button'
 import { Spinner } from '../components/atoms/ui/Spinner'
@@ -31,6 +33,8 @@ const AUDIENCE_SEGMENTS = [
 ]
 
 export const RemarketingPage: React.FC = () => {
+    const { tenantId } = useUser()
+    const { request, isConnected } = useSocket()
     const queryClient = useQueryClient()
     const [showWizard, setShowWizard] = useState(false)
     const [wizardStep, setWizardStep] = useState<WizardStep>(1)
@@ -49,124 +53,86 @@ export const RemarketingPage: React.FC = () => {
     const [viewRecipientsId, setViewRecipientsId] = useState<string | null>(null)
 
     const { data: campaigns, isLoading } = useQuery<Campaign[]>({
-        queryKey: ['campaigns'], queryFn: async () => {
-            const res = await fetch('/api/broadcasts/campaigns'); const r = await res.json() as any
-            if (!r.success) throw new Error(r.error); return r.data || []
-        },
+        queryKey: ['campaigns'],
+        queryFn: () => request('FETCH_CAMPAIGNS'),
+        enabled: isConnected && !!tenantId
     })
 
-    // WebSocket for Event-based Updates
+    // WebSocket event listener for real-time updates (global emitter)
     useEffect(() => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/api/broadcasts/ws`;
+        const handler = (e: any) => {
+            const data = e.detail;
+            if (data.type === 'campaign_update') {
+                console.log('[Remarketing] Real-time update received:', data);
 
-        let socket: WebSocket;
-        let reconnectTimeout: any;
-
-        const connect = () => {
-            console.log('[Remarketing] Connecting to WebSocket...');
-            socket = new WebSocket(wsUrl);
-
-            socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'campaign_update') {
-                        console.log('[Remarketing] Real-time update received:', data);
-
-                        // IN-PLACE CACHE UPDATE (No HTTP Request)
-                        queryClient.setQueryData<Campaign[]>(['campaigns'], (old) => {
-                            if (!old) return old;
-                            return old.map(c => {
-                                if (c.id === data.campaignId) {
-                                    return {
-                                        ...c,
-                                        totalSent: data.totalSent ?? c.totalSent,
-                                        totalFailed: data.totalFailed ?? c.totalFailed,
-                                        status: data.status ?? c.status
-                                    };
-                                }
-                                return c;
-                            });
-                        });
-
-                        // Optionally invalidate recipients only if specifically told or for completion
-                        if (data.status === 'completed') {
-                            queryClient.invalidateQueries({ queryKey: ['recipients', data.campaignId] });
+                // IN-PLACE CACHE UPDATE
+                queryClient.setQueryData<Campaign[]>(['campaigns'], (old) => {
+                    if (!old) return old;
+                    return old.map(c => {
+                        if (c.id === data.campaignId) {
+                            return {
+                                ...c,
+                                totalSent: data.totalSent ?? c.totalSent,
+                                totalFailed: data.totalFailed ?? c.totalFailed,
+                                status: data.status ?? c.status
+                            };
                         }
-                    }
-                } catch (e) {
-                    console.error('[Remarketing] WS parse error:', e);
+                        return c;
+                    });
+                });
+
+                if (data.batch && data.batch.length > 0) {
+                    queryClient.setQueryData<any[]>(['recipients', data.campaignId], (old) => {
+                        if (!old) return old;
+                        return old.map(recipient => {
+                            const update = data.batch.find((b: any) => b.id === recipient.id);
+                            if (update) {
+                                return { ...recipient, status: update.status, updated_at: Date.now() };
+                            }
+                            return recipient;
+                        });
+                    });
                 }
-            };
 
-            socket.onclose = () => {
-                console.warn('[Remarketing] WS closed. Reconnecting...');
-                reconnectTimeout = setTimeout(connect, 5000);
-            };
-
-            socket.onerror = (err) => {
-                console.error('[Remarketing] WS error:', err);
-                socket.close();
-            };
+                if (data.status === 'completed') {
+                    queryClient.invalidateQueries({ queryKey: ['recipients', data.campaignId] });
+                }
+            }
         };
 
-        connect();
-
-        return () => {
-            if (socket) socket.close();
-            if (reconnectTimeout) clearTimeout(reconnectTimeout);
-        };
+        window.addEventListener('socket_update', handler);
+        return () => window.removeEventListener('socket_update', handler);
     }, [queryClient]);
 
     const { data: bots } = useQuery<Bot[]>({
-        queryKey: ['bots'], queryFn: async () => {
-            const res = await fetch('/api/bots'); const r = await res.json() as any
-            if (!r.success) throw new Error(r.error); return r.data || []
-        },
+        queryKey: ['bots'],
+        queryFn: () => request('FETCH_BOTS'),
+        enabled: isConnected && !!tenantId
     })
 
     const createMut = useMutation({
-        mutationFn: async () => {
-            const res = await fetch('/api/broadcasts/campaigns', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: form.name,
-                    botId: form.botId,
-                    segment: form.segment,
-                    flowId: form.contentType === 'flow' ? form.flowId : '',
-                    frequency: form.frequency,
-                    startTime: form.immediate ? undefined : form.startTime,
-                    content: { text: form.contentType === 'text' ? form.content : '' },
-                }),
-            })
-            const r = await res.json() as any;
-            if (!r.success) throw new Error(r.error)
-
-            const newCampaignId = r.data.id;
-
-            // If immediate execution is requested, activate the campaign immediately
-            if (form.immediate && newCampaignId) {
-                const actRes = await fetch(`/api/broadcasts/campaigns/${newCampaignId}/activate`, { method: 'POST' })
-                const actR = await actRes.json() as any;
-                if (!actR.success) console.warn('Failed to auto-activate campaign:', actR.error)
-            }
+        mutationFn: () => request('CREATE_CAMPAIGN', {
+            ...form,
+            immediate: form.immediate,
+            flowId: form.contentType === 'flow' ? form.flowId : '',
+            content: { text: form.contentType === 'text' ? form.content : '' }
+        }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            setShowWizard(false);
+            setWizardStep(1);
+            setForm(f => ({ ...f, immediate: false }))
         },
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['campaigns'] }); setShowWizard(false); setWizardStep(1); setForm(f => ({ ...f, immediate: false })) },
     })
 
     const toggleMut = useMutation({
-        mutationFn: async ({ id, action }: { id: string; action: 'activate' | 'pause' }) => {
-            const res = await fetch(`/api/broadcasts/campaigns/${id}/${action}`, { method: 'POST' })
-            const r = await res.json() as any; if (!r.success) throw new Error(r.error)
-        },
+        mutationFn: ({ id, action }: { id: string; action: 'activate' | 'pause' }) =>
+            request(action === 'activate' ? 'ACTIVATE_CAMPAIGN' : 'PAUSE_CAMPAIGN', { id }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
     })
 
     const deleteMut = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await fetch(`/api/broadcasts/campaigns/${id}/delete`, { method: 'POST' })
-            const r = await res.json() as any; if (!r.success) throw new Error(r.error)
-        },
+        mutationFn: (id: string) => request('DELETE_CAMPAIGN', { id }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
     })
 
@@ -544,14 +510,10 @@ export const RemarketingPage: React.FC = () => {
 }
 
 const ReportModal: React.FC<{ campaignId: string | null, onClose: () => void }> = ({ campaignId, onClose }) => {
+    const { request } = useSocket()
     const { data: recipients, isLoading } = useQuery<any[]>({
         queryKey: ['recipients', campaignId],
-        queryFn: async () => {
-            if (!campaignId) return [];
-            const res = await fetch(`/api/broadcasts/campaigns/${campaignId}/recipients`);
-            const r = await res.json() as any;
-            return r.success ? r.data : [];
-        },
+        queryFn: () => request('FETCH_RECIPIENTS', { campaignId }),
         enabled: !!campaignId,
     });
 

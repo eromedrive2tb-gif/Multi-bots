@@ -29,12 +29,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         staleTime: 1000 * 60 * 30, // Auth data is highly stable, cache for 30 min
     })
 
-    const value = {
+    const value = React.useMemo(() => ({
         user: data?.user || null,
         tenantId: data?.tenantId || null,
         isLoading,
         error
-    }
+    }), [data, isLoading, error])
 
     return (
         <UserContext.Provider value={value}>
@@ -42,6 +42,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         </UserContext.Provider>
     )
 }
+
 
 export const useUser = () => {
     const context = useContext(UserContext)

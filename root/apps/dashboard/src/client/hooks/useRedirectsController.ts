@@ -1,55 +1,59 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { RedirectsClientService, CreateRedirectDTO } from '../services/RedirectsClientService'
+import { useSocket } from '../context/SocketContext'
 
-// Singleton instance
-const redirectsService = new RedirectsClientService()
+export interface CreateRedirectDTO {
+    slug: string
+    destinationUrl: string
+    destinationType: 'url' | 'bot'
+    botId?: string
+    flowId?: string
+    domain: string
+    cloakerEnabled: boolean
+    cloakerMethod: 'redirect' | 'safe_page' | 'mirror'
+    cloakerSafeUrl?: string
+    mode?: string
+}
 
 export const useRedirectsController = () => {
     const queryClient = useQueryClient()
+    const { request, isConnected } = useSocket()
 
     // Query: List Redirects
     const listQuery = useQuery({
         queryKey: ['redirects'],
         queryFn: async () => {
-            const result = await redirectsService.listRedirects()
-            if (!result.success) throw new Error(result.error)
-            return result.data
-        }
+            return await request<any[]>('FETCH_REDIRECTS') || []
+        },
+        enabled: isConnected
     })
 
     // Query: Stats
     const statsQuery = useQuery({
         queryKey: ['redirect-stats'],
         queryFn: async () => {
-            const result = await redirectsService.getStats()
-            if (!result.success) throw new Error(result.error)
-            return result.data
-        }
+            return await request<any>('FETCH_RED_STATS')
+        },
+        enabled: isConnected
     })
 
     // Query: Bots (for dropdown)
     const botsQuery = useQuery({
         queryKey: ['bots'],
         queryFn: async () => {
-            const result = await redirectsService.listBots()
-            if (!result.success) throw new Error(result.error)
-            return result.data
-        }
+            return await request<any[]>('FETCH_BOTS') || []
+        },
+        enabled: isConnected
     })
 
     // Helper: Fetch blueprints for a specific bot (not a hook, just a promise function)
     const fetchBotBlueprints = async (botId: string) => {
-        const result = await redirectsService.getBotBlueprints(botId)
-        if (!result.success) throw new Error(result.error)
-        return result.data
+        return await request<any[]>('FETCH_BLUEPRINTS', { botId }) || []
     }
 
     // Mutation: Create Redirect
     const createMutation = useMutation({
         mutationFn: async (data: CreateRedirectDTO) => {
-            const result = await redirectsService.createRedirect(data)
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            await request('CREATE_REDIRECT', data)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['redirects'] })
@@ -60,9 +64,7 @@ export const useRedirectsController = () => {
     // Mutation: Delete Redirect
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const result = await redirectsService.deleteRedirect(id)
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            await request('DELETE_REDIRECT', { id })
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['redirects'] })
@@ -73,9 +75,7 @@ export const useRedirectsController = () => {
     // Mutation: Update Redirect
     const updateMutation = useMutation({
         mutationFn: async ({ id, data }: { id: string; data: CreateRedirectDTO }) => {
-            const result = await redirectsService.updateRedirect(id, data)
-            if (!result.success) throw new Error(result.error)
-            return result.data
+            await request('UPDATE_REDIRECT', { id, data })
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['redirects'] })
@@ -96,3 +96,4 @@ export const useRedirectsController = () => {
         fetchBotBlueprints
     }
 }
+

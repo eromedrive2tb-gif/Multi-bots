@@ -1,7 +1,8 @@
 /** @jsxImportSource react */
 import { FC, useState, useEffect } from 'react'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates/DashboardLayout'
-import { Plus, Trash2, MessageSquare, ExternalLink, RefreshCw, Users, ShieldCheck } from 'lucide-react'
+import { Plus, Trash2, MessageSquare, RefreshCw, Users, ShieldCheck } from 'lucide-react'
 import { Button } from '../components/atoms/ui/Button'
 import { StatCard } from '../components/molecules/general/StatCard'
 import { Modal } from '../components/molecules/ui/Modal'
@@ -26,12 +27,6 @@ interface AddGroupForm {
     botId?: string
 }
 
-interface ApiResponse<T> {
-    success: boolean
-    data: T
-    error?: string
-}
-
 const Page: FC = () => {
     const [groups, setGroups] = useState<VipGroup[]>([])
     const [loading, setLoading] = useState(true)
@@ -39,6 +34,7 @@ const Page: FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [syncing, setSyncing] = useState(false)
+    const { request, isConnected } = useSocket()
 
     // Form state
     const [formData, setFormData] = useState<AddGroupForm>({
@@ -52,12 +48,11 @@ const Page: FC = () => {
         setLoading(true)
         setError(null)
         try {
-            const res = await fetch('/api/groups')
-            const data = await res.json() as ApiResponse<VipGroup[]>
-            if (data.success) {
-                setGroups(data.data)
+            const data = await request<VipGroup[]>('FETCH_GROUPS')
+            if (data) {
+                setGroups(data)
             } else {
-                setError(data.error || 'Erro desconhecido')
+                setError('Nenhum grupo encontrado')
             }
         } catch (err) {
             setError('Erro ao carregar grupos')
@@ -67,19 +62,20 @@ const Page: FC = () => {
     }
 
     useEffect(() => {
-        fetchGroups()
-    }, [])
+        if (isConnected) {
+            fetchGroups()
+        }
+    }, [isConnected])
 
     const handleDelete = async (id: string) => {
         if (!confirm('Tem certeza que deseja remover este grupo?')) return
 
         try {
-            const res = await fetch(`/api/groups/${id}`, { method: 'DELETE' })
-            const data = await res.json() as ApiResponse<void>
-            if (data.success) {
+            const success = await request('DELETE_GROUP', { id })
+            if (success) {
                 setGroups(groups.filter(g => g.id !== id))
             } else {
-                alert(`Erro: ${data.error}`)
+                alert(`Erro ao deletar grupo`)
             }
         } catch (err) {
             alert('Erro ao deletar grupo')
@@ -92,19 +88,14 @@ const Page: FC = () => {
         setError(null)
 
         try {
-            const res = await fetch('/api/groups', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            })
-            const data = await res.json() as ApiResponse<VipGroup>
+            const data = await request<VipGroup>('CREATE_GROUP', formData)
 
-            if (data.success) {
-                setGroups([data.data, ...groups])
+            if (data) {
+                setGroups([data, ...groups])
                 setIsModalOpen(false)
                 setFormData({ name: '', provider: 'telegram', providerId: '', type: 'group' })
             } else {
-                alert(`Erro: ${data.error}`)
+                alert(`Erro ao criar grupo`)
             }
         } catch (err) {
             alert('Erro ao criar grupo')
@@ -117,15 +108,14 @@ const Page: FC = () => {
         setSyncing(true)
         setError(null)
         try {
-            const res = await fetch('/api/groups/sync', { method: 'POST' })
-            const data = await res.json() as ApiResponse<any>
+            const data = await request<any[]>('SYNC_GROUPS')
 
-            if (data.success) {
+            if (data) {
                 // Reload groups to show new/updated ones
                 await fetchGroups()
-                alert(`Sincronização concluída! ${data.data.length} grupos encontrados/atualizados.`)
+                alert(`Sincronização concluída! ${data.length} grupos encontrados/atualizados.`)
             } else {
-                alert(`Erro na sincronização: ${data.error}`)
+                alert(`Erro na sincronização`)
             }
         } catch (err) {
             alert('Erro ao conectar com servidor de sincronização')
@@ -327,11 +317,6 @@ const Page: FC = () => {
                                             </div>
                                         </div>
                                         <div className="group-actions">
-                                            {group.inviteLink && (
-                                                <a href={group.inviteLink} target="_blank" rel="noopener noreferrer" className="action-btn">
-                                                    <ExternalLink size={16} />
-                                                </a>
-                                            )}
                                             <button onClick={(e) => {
                                                 e.stopPropagation()
                                                 handleDelete(group.id)

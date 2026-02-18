@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
+import { useSocket } from '../../../client/context/SocketContext'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
 import { Button } from '../../atoms/ui/Button'
 import { StatusBadge, ProviderBadge } from '../../atoms/ui/StatusBadge'
@@ -12,6 +13,7 @@ interface BotCardProps {
 }
 
 export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
+    const { request } = useSocket()
     const [loading, setLoading] = useState(false)
     const [showBlueprintsModal, setShowBlueprintsModal] = useState(false)
 
@@ -24,21 +26,18 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
 
         setLoading(true)
         try {
-            const response = await fetch(`/api/bots/${bot.id}/${action}`, {
-                method: 'POST',
-            })
-            const result = await response.json() as any
-            if (result.success) {
-                if (action === 'sync') {
-                    alert('Comandos sincronizados com sucesso!')
-                } else if (onUpdate) {
-                    onUpdate()
-                }
-            } else {
-                alert(result.error || `Erro ao ${action === 'check' ? 'verificar' : 'remover'} bot`)
+            const socketAction = action === 'check' ? 'CHECK_BOT_HEALTH' :
+                action === 'delete' ? 'DELETE_BOT' : 'SYNC_BOT_COMMANDS'
+
+            await request(socketAction, { id: bot.id })
+
+            if (action === 'sync') {
+                alert('Comandos sincronizados com sucesso!')
+            } else if (onUpdate) {
+                onUpdate()
             }
         } catch (err) {
-            alert('Erro de conexão')
+            alert(err instanceof Error ? err.message : 'Erro de conexão')
         } finally {
             setLoading(false)
         }

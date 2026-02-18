@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates'
 import { BotGrid } from '../components/organisms'
 import { BotStats } from '../components/molecules'
@@ -11,14 +12,11 @@ import type { Bot } from '../../../engine/src/core/types'
 export const BotsPage: React.FC = () => {
     const queryClient = useQueryClient()
 
+    const { request, isConnected } = useSocket()
     const { data: bots = [], isLoading, error } = useQuery<Bot[]>({
         queryKey: ['bots'],
-        queryFn: async () => {
-            const response = await fetch('/api/bots')
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data
-        }
+        queryFn: () => request('FETCH_BOTS'),
+        enabled: isConnected
     })
 
     const onlineBots = bots.filter(b => b.status === 'online').length

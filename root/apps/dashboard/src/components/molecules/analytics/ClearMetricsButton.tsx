@@ -1,23 +1,20 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
+import { useSocket } from '../../../client/context/SocketContext'
 
 export const ClearMetricsButton: React.FC = () => {
+    const { request } = useSocket()
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
 
     const handleClear = async () => {
         setLoading(true)
         try {
-            const res = await fetch('/api/analytics', { method: 'DELETE' })
-            if (res.ok) {
-                window.location.reload()
-            } else {
-                const data = await res.json() as any
-                alert('Erro ao limpar métricas: ' + (data.error || 'Erro desconhecido'))
-            }
+            await request('CLEAR_ANALYTICS')
+            window.location.reload()
         } catch (e) {
             console.error(e)
-            alert('Erro de conexão com o servidor')
+            alert('Erro ao limpar métricas: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
         } finally {
             setLoading(false)
             setIsOpen(false)

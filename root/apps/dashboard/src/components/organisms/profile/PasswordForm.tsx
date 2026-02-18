@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
+import { useSocket } from '../../../client/context/SocketContext'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
 import { FormField } from '../../molecules/ui/FormField'
 import { Button } from '../../atoms/ui/Button'
@@ -10,6 +11,7 @@ interface PasswordFormProps {
 }
 
 export const PasswordForm: React.FC<PasswordFormProps> = ({ onSuccess, onError }) => {
+    const { request } = useSocket()
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
         newPassword: '',
@@ -25,20 +27,11 @@ export const PasswordForm: React.FC<PasswordFormProps> = ({ onSuccess, onError }
         }
         setLoading(true)
         try {
-            const res = await fetch('/api/settings/password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(passwordData)
-            })
-            const result = await res.json() as any
-            if (result.success) {
-                onSuccess('Senha alterada com sucesso!')
-                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
-            } else {
-                onError(result.error || 'Erro ao alterar senha')
-            }
+            await request('UPDATE_PASSWORD', passwordData)
+            onSuccess('Senha alterada com sucesso!')
+            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
         } catch (err) {
-            onError('Erro de conexão ao servidor')
+            onError(err instanceof Error ? err.message : 'Erro ao alterar senha')
         } finally {
             setLoading(false)
         }
@@ -54,7 +47,7 @@ export const PasswordForm: React.FC<PasswordFormProps> = ({ onSuccess, onError }
                         name="currentPassword"
                         type="password"
                         value={passwordData.currentPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                        onChange={(e: any) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                         required
                     />
                     <FormField
@@ -62,7 +55,7 @@ export const PasswordForm: React.FC<PasswordFormProps> = ({ onSuccess, onError }
                         name="newPassword"
                         type="password"
                         value={passwordData.newPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                        onChange={(e: any) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                         required
                     />
                     <FormField
@@ -70,7 +63,7 @@ export const PasswordForm: React.FC<PasswordFormProps> = ({ onSuccess, onError }
                         name="confirmPassword"
                         type="password"
                         value={passwordData.confirmPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                        onChange={(e: any) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                         required
                     />
                     <Button type="submit" variant="secondary" disabled={loading}>

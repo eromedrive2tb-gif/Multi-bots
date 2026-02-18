@@ -2,6 +2,7 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates'
 import { Card, CardHeader, CardBody } from '../components/atoms'
 import { FilterBar } from '../components/organisms'
@@ -9,7 +10,7 @@ import { MetricsSummary } from '../components/organisms'
 import { BlueprintMetricsTable } from '../components/organisms'
 import { BotStatusChart } from '../components/organisms'
 import { QuickInsights } from '../components/organisms'
-import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics-aggregator'
+import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics/analytics-aggregator'
 import type { AnalyticsFilterParams } from '../../../engine/src/core/analytics-types'
 
 export const AnalyticsPage: React.FC = () => {
@@ -23,21 +24,11 @@ export const AnalyticsPage: React.FC = () => {
         dateTo: searchParams.get('dateTo') || undefined,
     }
 
+    const { request, isConnected } = useSocket()
     const { data, isLoading, error } = useQuery<AnalyticsDashboardData>({
         queryKey: ['analytics', filters],
-        queryFn: async () => {
-            const query = new URLSearchParams()
-            if (filters.botId) query.set('botId', filters.botId)
-            if (filters.blueprintId) query.set('blueprintId', filters.blueprintId)
-            if (filters.status && filters.status !== 'all') query.set('status', filters.status)
-            if (filters.dateFrom) query.set('dateFrom', filters.dateFrom)
-            if (filters.dateTo) query.set('dateTo', filters.dateTo)
-
-            const response = await fetch(`/api/analytics?${query.toString()}`)
-            const result = await response.json() as any
-            if (!result.success) throw new Error(result.error || 'Erro ao carregar dados')
-            return result.data
-        }
+        queryFn: () => request('FETCH_ANALYTICS', filters),
+        enabled: isConnected
     })
 
     if (isLoading) {

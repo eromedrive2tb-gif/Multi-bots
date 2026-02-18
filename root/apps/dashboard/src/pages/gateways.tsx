@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSocket } from '../client/context/SocketContext'
 import { DashboardLayout } from '../components/templates'
 import { Button } from '../components/atoms/ui/Button'
 import { Spinner } from '../components/atoms/ui/Spinner'
@@ -27,6 +28,7 @@ const GATEWAY_PROVIDERS = [
 
 export const GatewaysPage: React.FC = () => {
     const qc = useQueryClient()
+    const { request } = useSocket()
     const [category, setCategory] = useState<GatewayCategory>('all')
     const [configuring, setConfiguring] = useState<string | null>(null)
     const [form, setForm] = useState({ clientId: '', clientSecret: '', scope: 'global' as 'global' | 'specific' })
@@ -34,28 +36,22 @@ export const GatewaysPage: React.FC = () => {
     const { data: configured, isLoading } = useQuery<GatewayConfig[]>({
         queryKey: ['gateways'],
         queryFn: async () => {
-            const res = await fetch('/api/payments/gateways')
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
-            return result.data || []
+            return await request('FETCH_GATEWAYS')
         },
     })
 
     const saveMut = useMutation({
         mutationFn: async () => {
             if (!configuring) return
-            const res = await fetch('/api/payments/gateways', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    provider: configuring,
+            await request('SAVE_GATEWAY', {
+                provider: configuring,
+                name: GATEWAY_PROVIDERS.find(g => g.id === configuring)?.name || configuring,
+                credentials: {
                     clientId: form.clientId,
                     clientSecret: form.clientSecret,
-                    scope: form.scope,
-                }),
+                },
+                isDefault: form.scope === 'global',
             })
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['gateways'] })
@@ -66,9 +62,7 @@ export const GatewaysPage: React.FC = () => {
 
     const deleteMut = useMutation({
         mutationFn: async (id: string) => {
-            const res = await fetch(`/api/payments/gateways/${id}/delete`, { method: 'POST' })
-            const result = await res.json() as any
-            if (!result.success) throw new Error(result.error)
+            await request('DELETE_GATEWAY', { id })
         },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['gateways'] }),
     })

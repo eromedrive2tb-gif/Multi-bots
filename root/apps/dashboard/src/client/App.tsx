@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { UserProvider } from './context/UserContext'
+import { SocketProvider } from './context/SocketContext'
 
 import { DashboardPage } from '../pages/dashboard'
 import { BlueprintsPage } from '../pages/blueprints'
@@ -37,29 +38,31 @@ export const App = () => {
     return (
         <QueryClientProvider client={queryClient}>
             <UserProvider>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/register" element={<RegisterPage />} />
-                        <Route path="/dashboard" element={<DashboardPage />} />
-                        <Route path="/dashboard/comunidades" element={<ComunidadesPage />} />
-                        <Route path="/dashboard/comunidades/:id" element={<ComunidadesDetailsPage />} />
-                        <Route path="/dashboard/blueprints" element={<BlueprintsPage />} />
-                        <Route path="/dashboard/bots" element={<BotsPage />} />
-                        <Route path="/dashboard/settings" element={<SettingsPage />} />
-                        <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
-                        <Route path="/dashboard/webapps" element={<WebAppsPage />} />
-                        <Route path="/dashboard/webapps/:id" element={<WebAppEditorPage />} />
-                        <Route path="/dashboard/customers" element={<CustomersPage />} />
-                        <Route path="/dashboard/financeiro" element={<FinanceiroPage />} />
-                        <Route path="/dashboard/postagens" element={<PostagensPage />} />
-                        <Route path="/dashboard/remarketing" element={<RemarketingPage />} />
-                        <Route path="/dashboard/redirecionadores" element={<RedirecionadoresPage />} />
-                        <Route path="/dashboard/gateways" element={<GatewaysPage />} />
-                        <Route path="/dashboard/planos" element={<PlanosPage />} />
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    </Routes>
-                </BrowserRouter>
+                <SocketProvider>
+                    <BrowserRouter>
+                        <Routes>
+                            <Route path="/login" element={<LoginPage />} />
+                            <Route path="/register" element={<RegisterPage />} />
+                            <Route path="/dashboard" element={<DashboardPage />} />
+                            <Route path="/dashboard/comunidades" element={<ComunidadesPage />} />
+                            <Route path="/dashboard/comunidades/:id" element={<ComunidadesDetailsPage />} />
+                            <Route path="/dashboard/blueprints" element={<BlueprintsPage />} />
+                            <Route path="/dashboard/bots" element={<BotsPage />} />
+                            <Route path="/dashboard/settings" element={<SettingsPage />} />
+                            <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
+                            <Route path="/dashboard/webapps" element={<WebAppsPage />} />
+                            <Route path="/dashboard/webapps/:id" element={<WebAppEditorPage />} />
+                            <Route path="/dashboard/customers" element={<CustomersPage />} />
+                            <Route path="/dashboard/financeiro" element={<FinanceiroPage />} />
+                            <Route path="/dashboard/postagens" element={<PostagensPage />} />
+                            <Route path="/dashboard/remarketing" element={<RemarketingPage />} />
+                            <Route path="/dashboard/redirecionadores" element={<RedirecionadoresPage />} />
+                            <Route path="/dashboard/gateways" element={<GatewaysPage />} />
+                            <Route path="/dashboard/planos" element={<PlanosPage />} />
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        </Routes>
+                    </BrowserRouter>
+                </SocketProvider>
             </UserProvider>
         </QueryClientProvider>
     )
