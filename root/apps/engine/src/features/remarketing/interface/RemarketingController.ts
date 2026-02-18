@@ -5,7 +5,7 @@ import { RemarketingJobSchema } from '../domain/types';
 
 // Define the bindigns relevant to this feature
 type Bindings = {
-    SCHEDULER_DO: DurableObjectNamespace;
+    CAMPAIGN_SCHEDULER_DO: DurableObjectNamespace;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -14,8 +14,8 @@ app.post('/schedule', zValidator('json', RemarketingJobSchema.omit({ id: true, s
     const payload = c.req.valid('json');
     const { tenantId } = payload;
 
-    const id = c.env.SCHEDULER_DO.idFromName(tenantId);
-    const stub = c.env.SCHEDULER_DO.get(id);
+    const id = c.env.CAMPAIGN_SCHEDULER_DO.idFromName(tenantId);
+    const stub = c.env.CAMPAIGN_SCHEDULER_DO.get(id);
 
     // Generate a job ID here or let the DO do it. 
     // Better to generate here so we can return it.

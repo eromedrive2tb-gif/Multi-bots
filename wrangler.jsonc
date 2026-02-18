@@ -30,8 +30,12 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "SCHEDULER_DO",
-        "class_name": "SchedulerDO"
+        "name": "CAMPAIGN_SCHEDULER_DO",
+        "class_name": "CampaignSchedulerDO"
+      },
+      {
+        "name": "USER_SESSION_DO",
+        "class_name": "UserSessionDO"
       }
     ]
   },
@@ -40,6 +44,18 @@
       "tag": "v1",
       "new_classes": [
         "SchedulerDO"
+      ]
+    },
+    {
+      "tag": "v2",
+      "new_classes": [
+        "UserSessionDO"
+      ],
+      "renamed_classes": [
+        {
+          "from": "SchedulerDO",
+          "to": "CampaignSchedulerDO"
+        }
       ]
     }
   ]

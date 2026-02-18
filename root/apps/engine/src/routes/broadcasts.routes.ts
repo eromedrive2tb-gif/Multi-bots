@@ -115,7 +115,7 @@ broadcastRoutes.post('/api/broadcasts/campaigns', authMiddleware, async (c) => {
 broadcastRoutes.post('/api/broadcasts/campaigns/:id/activate', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
     const service = new BroadcastService(c.env.DB, tenant.tenantId)
-    const result = await service.activateCampaign(c.req.param('id'), c.env.SCHEDULER_DO)
+    const result = await service.activateCampaign(c.req.param('id'), c.env.CAMPAIGN_SCHEDULER_DO)
     if (!result.success) return c.json({ success: false, error: result.error }, 400)
     return c.json({ success: true })
 })
@@ -145,8 +145,8 @@ broadcastRoutes.get('/api/broadcasts/campaigns/:id/recipients', authMiddleware, 
 
 broadcastRoutes.get('/api/broadcasts/ws', authMiddleware, async (c) => {
     const tenant = c.get('tenant')
-    const id = c.env.SCHEDULER_DO.idFromName(tenant.tenantId)
-    const stub = c.env.SCHEDULER_DO.get(id)
+    const id = c.env.USER_SESSION_DO.idFromName(tenant.userId)
+    const stub = c.env.USER_SESSION_DO.get(id)
 
     // Forward the request to the Durable Object for WebSocket upgrade
     return stub.fetch(c.req.raw)
@@ -164,7 +164,7 @@ broadcastRoutes.get('/api/broadcasts/debug-scheduler', async (c, next) => {
 }, async (c) => {
     const tenant = c.get('tenant')
     const service = new BroadcastService(c.env.DB, tenant.tenantId)
-    const result = await service.getSchedulerDebug(c.env.SCHEDULER_DO)
+    const result = await service.getSchedulerDebug(c.env.CAMPAIGN_SCHEDULER_DO)
     return c.json({ success: true, data: result })
 })
 
