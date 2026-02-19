@@ -1,15 +1,15 @@
 
 import { DurableObject } from 'cloudflare:workers';
-import { BroadcastService } from '../../../../lib/organisms/broadcast/BroadcastService';
-import { AnalyticsService } from '../../../../lib/organisms/analytics/AnalyticsService';
-import { BotManagerService } from '../../../../lib/organisms';
-import { BlueprintService } from '../../../../lib/organisms';
-import { PaymentService } from '../../../../lib/organisms/payments/PaymentService';
-import { AuthService } from '../../../../lib/organisms';
-import { VipGroupService } from '../../../../lib/organisms';
-import { savePage, listPages, getPage } from '../../../../lib/molecules/kv-page-manager';
-import { dbGetCustomers, dbGetRedirects, dbGetRedirectStats } from '../../../../lib/atoms';
-import { Env } from '../../../../core/types';
+import { BroadcastService } from '../../lib/organisms/broadcast/BroadcastService';
+import { AnalyticsService } from '../../lib/organisms/analytics/AnalyticsService';
+import { BotManagerService } from '../../lib/organisms';
+import { BlueprintService } from '../../lib/organisms';
+import { PaymentService } from '../../lib/organisms/payments/PaymentService';
+import { AuthService } from '../../lib/organisms';
+import { VipGroupService } from '../../lib/organisms';
+import { savePage, listPages, getPage } from '../../lib/molecules/kv-page-manager';
+import { dbGetCustomers, dbGetRedirects, dbGetRedirectStats } from '../../lib/atoms';
+import { Env } from '../../core/types';
 
 export class UserSessionDO extends DurableObject<Env> {
     constructor(ctx: DurableObjectState, env: Env) {
@@ -305,6 +305,12 @@ export class UserSessionDO extends DurableObject<Env> {
                 case 'FETCH_GROUPS': {
                     const service = new VipGroupService(this.env.DB, tenantId);
                     const result = await service.listGroups();
+                    ws.send(JSON.stringify({ type: 'response', reqId, success: result.success, data: result.success ? result.data : undefined, error: !result.success ? result.error : undefined }));
+                    break;
+                }
+                case 'FETCH_GROUP': {
+                    const service = new VipGroupService(this.env.DB, tenantId);
+                    const result = await service.getGroup(payload.id);
                     ws.send(JSON.stringify({ type: 'response', reqId, success: result.success, data: result.success ? result.data : undefined, error: !result.success ? result.error : undefined }));
                     break;
                 }

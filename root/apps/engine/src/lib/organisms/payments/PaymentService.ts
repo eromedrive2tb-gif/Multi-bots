@@ -109,18 +109,8 @@ export class PaymentService {
     }
 
     async deletePlan(planId: string): Promise<Result<boolean>> {
-        try {
-            const result = await this.db.prepare(
-                `UPDATE plans SET is_active = 0, updated_at = ? WHERE id = ? AND tenant_id = ?`
-            ).bind(new Date().toISOString(), planId, this.tenantId).run()
-
-            if ((result.meta?.changes ?? 0) === 0) {
-                return { success: false, error: 'Plano não encontrado' }
-            }
-            return { success: true, data: true }
-        } catch (error) {
-            return { success: false, error: error instanceof Error ? error.message : 'Erro ao desativar plano' }
-        }
+        const { dbDeletePlan } = await import('../../atoms/database/db-delete-plan')
+        return await dbDeletePlan({ db: this.db, planId, tenantId: this.tenantId })
     }
 
     // ============================================

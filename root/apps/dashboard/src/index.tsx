@@ -114,5 +114,5 @@ app.get('*', async (c) => {
 
 export default app
 export { CampaignSchedulerDO } from '../../engine/src/features/remarketing/infrastructure/durable-objects/CampaignSchedulerDO'
-export { UserSessionDO } from '../../engine/src/features/remarketing/infrastructure/durable-objects/UserSessionDO'
+export { UserSessionDO } from '../../engine/src/infra/durable-objects/UserSessionDO'
 // Force Rebuild Trigger: 1

@@ -166,7 +166,7 @@ export class VipGroupService implements IVipGroupService {
                             // Note: This is inefficient (N+1), but safe for MVP. 
                             // TODO: Implement bulk get or cache
                             const existingGroups = await this.listGroups()
-                            const exists = existingGroups.data?.find(g => g.providerId === guild.id)
+                            const exists = existingGroups.success ? existingGroups.data?.find((g: VipGroup) => g.providerId === guild.id) : undefined
 
                             if (!exists) {
                                 // Create new group
@@ -174,8 +174,9 @@ export class VipGroupService implements IVipGroupService {
                                     name: guild.name,
                                     provider: 'discord',
                                     providerId: guild.id,
-                                    type: 'community', // Default to community for Discord servers
-                                    botId: bot.id
+                                    type: 'community',
+                                    botId: bot.id,
+                                    metadata: {}
                                 })
                                 results.push({ type: 'created', name: guild.name, provider: 'discord' })
                             } else {
@@ -192,7 +193,7 @@ export class VipGroupService implements IVipGroupService {
                     // Telegram logic: Iterate EXISTING groups and update metadata
                     // API does not support "get all chats I'm in"
                     const groups = await this.listGroups()
-                    const tgGroups = groups.data?.filter(g => g.provider === 'telegram') || []
+                    const tgGroups = (groups.success ? groups.data : [])?.filter((g: VipGroup) => g.provider === 'telegram') || []
 
                     for (const group of tgGroups) {
                         const chatResult = await tgGetChat({ token, chatId: group.providerId })
@@ -349,48 +350,42 @@ export class VipGroupService implements IVipGroupService {
             // We need the internal UUID for the relation
             let internalCustomerId: string
 
-            const existing = await this.db.prepare('SELECT id FROM customers WHERE external_id = ? AND tenant_id = ?')
-                .bind(data.customerId, data.tenantId)
-                .first<{ id: string }>()
+            const { dbUpsertCustomer } = await import('../../atoms/database/db-upsert-customer')
 
-            if (existing) {
-                internalCustomerId = existing.id
-            } else {
-                // Create customer on the fly if not exists (should have been created by webhook, but safe fallback)
-                internalCustomerId = uuidv4()
-                await this.db.prepare(`
-                    INSERT INTO customers (id, tenant_id, external_id, provider, name, username, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `).bind(
-                    internalCustomerId,
-                    data.tenantId,
-                    data.customerId,
-                    data.provider,
-                    data.name || 'Unknown',
-                    data.username || null,
-                    new Date().toISOString()
-                ).run()
+            // Note: dbUpsertCustomer atom handles the logic of finding by external_id or creating
+            const customerResult = await dbUpsertCustomer({
+                db: this.db,
+                tenantId: data.tenantId,
+                externalId: data.customerId,
+                provider: data.provider,
+                name: data.name || 'Unknown',
+                username: data.username
+            })
+
+            if (!customerResult.success || !customerResult.data) {
+                return { success: false, error: 'Falha ao processar cliente' }
             }
 
-            // 2. Upsert member record
-            await this.db.prepare(`
-                INSERT INTO vip_group_members (id, tenant_id, group_id, customer_id, status, joined_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(group_id, customer_id) DO UPDATE SET
-                status = excluded.status,
-                updated_at = excluded.updated_at,
-                left_at = CASE WHEN excluded.status IN ('member', 'administrator') THEN NULL ELSE left_at END
-            `).bind(
-                uuidv4(),
-                data.tenantId,
-                data.groupId,
-                internalCustomerId,
-                data.status,
-                new Date().toISOString(),
-                new Date().toISOString()
-            ).run()
+            internalCustomerId = customerResult.data.id
 
-            return { success: true }
+            // 2. Upsert member record using Atom
+            const { dbSaveVipGroupMember } = await import('../../atoms/groups/db-save-vip-group-member')
+            // Map restricted to member or handle it. For now, we cast as any if atom supports it, or map it.
+            // valid statuses: 'member' | 'administrator' | 'left' | 'kicked'
+            // 'restricted' is not in the db schema status enum, mapping to 'member' for now or need to update schema/atom.
+            const validStatus = data.status === 'restricted' ? 'member' : data.status
+
+            return await dbSaveVipGroupMember({
+                db: this.db,
+                id: uuidv4(),
+                tenantId: data.tenantId,
+                groupId: data.groupId,
+                customerId: internalCustomerId,
+                status: validStatus,
+                joinedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            })
+
         } catch (e) {
             console.error('Error adding member:', e)
             return { success: false, error: 'Falha ao adicionar membro' }
@@ -402,72 +397,36 @@ export class VipGroupService implements IVipGroupService {
      */
     async updateMemberStatus(
         groupId: string,
-        customerId: string, // provider user id (external_id) or internal? 
-        // Note: The schema uses internal customer_id. 
-        // But the webhook implies we are passing external ID (userId from telegram).
-        // WE NEED TO FIX THIS: The service should lookup customer by external ID if needed, 
-        // or the handler should pass the internal ID.
-        // The handler passed `userId` which is Telegram ID (external).
-        // So we need to resolve it to internal ID here or change the method signature.
-        // Let's resolve it here for convenience.
+        customerId: string,
         status: 'member' | 'administrator' | 'left' | 'kicked'
     ): Promise<Result<void>> {
-        // Since we are using external_id in the handler, let's look it up.
-        // OR we assume the handler passed the external ID and we need to query `customers` table.
-        // Let's try to do it via subquery or 2 steps.
+        // Resolve Customer Internal ID
+        const { dbGetCustomerByExternalId } = await import('../../atoms/database/db-get-customer-by-external-id')
+        const customerResult = await dbGetCustomerByExternalId({ db: this.db, tenantId: this.tenantId, externalId: customerId })
 
-        // Optimization: The handler `userId` is the External ID.
-        // The `vip_group_members` table uses `customer_id` (Internal UUID).
-        // We should look up the internal ID.
-
-        const customer = await this.db.prepare('SELECT id FROM customers WHERE external_id = ? AND tenant_id = ?')
-            .bind(customerId, this.tenantId)
-            .first<{ id: string }>()
-
-        if (!customer) {
-            // If customer doesn't exist, we can't update status in `vip_group_members` anyway
+        if (!customerResult.success || !customerResult.data) {
             return { success: false, error: 'Cliente não encontrado' }
         }
 
-        try {
-            await this.db.prepare(`
-               UPDATE vip_group_members 
-               SET status = ?, left_at = ?, updated_at = ?
-               WHERE group_id = ? AND customer_id = ?
-           `).bind(
-                status,
-                ['left', 'kicked'].includes(status) ? new Date().toISOString() : null,
-                new Date().toISOString(),
-                groupId,
-                customer.id
-            ).run()
+        const customer = customerResult.data
 
-            return { success: true }
-        } catch (e) {
-            return { success: false, error: 'Erro ao atualizar status' }
-        }
+        const { dbUpdateVipGroupMemberStatus } = await import('../../atoms/groups/db-update-vip-group-member-status')
+        return await dbUpdateVipGroupMemberStatus({
+            db: this.db,
+            tenantId: this.tenantId,
+            groupId,
+            customerId: customer.id,
+            status,
+            leftAt: ['left', 'kicked'].includes(status) ? new Date().toISOString() : null,
+            updatedAt: new Date().toISOString()
+        })
     }
 
     /**
      * Lista membros de um grupo
      */
     async getGroupMembers(groupId: string): Promise<Result<any[]>> {
-        try {
-            const { results } = await this.db.prepare(`
-                SELECT 
-                    m.*,
-                    c.name as customer_name,
-                    c.username as customer_username,
-                    c.external_id
-                FROM vip_group_members m
-                JOIN customers c ON m.customer_id = c.id
-                WHERE m.group_id = ?
-                ORDER BY m.joined_at DESC
-            `).bind(groupId).all()
-
-            return { success: true, data: results }
-        } catch (e) {
-            return { success: false, error: 'Erro ao listar membros' }
-        }
+        const { dbGetVipGroupMembers } = await import('../../atoms/groups/db-get-vip-group-members')
+        return await dbGetVipGroupMembers({ db: this.db, groupId })
     }
 }

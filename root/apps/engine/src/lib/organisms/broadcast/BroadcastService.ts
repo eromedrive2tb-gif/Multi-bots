@@ -142,59 +142,9 @@ export class BroadcastService {
                 const campaign = campaigns.find(c => c.id === campaignId)
 
                 if (campaign) {
-                    // POPULATE RECIPIENTS (Anti-Ban Queue)
-                    // In a real scenario, this SELECT would be based on the campaign.segment (e.g. 'purchased', 'all')
-                    // For this implementation, we will select ALL customers or a test set.
-                    // We use INSERT INTO ... SELECT ... to be efficient.
-
-                    // Ensure we don't duplicate if already populated (e.g. pausing and resuming)
-                    const existing = await this.db.prepare(
-                        `SELECT count(*) as c FROM remarketing_recipients WHERE campaign_id = ?`
-                    ).bind(campaignId).first('c');
-
-                    if (!existing || existing === 0) {
-                        // Mocking the selection source. Assuming a 'customers' table exists or we just insert dummy data for testing.
-                        // For checking the "Drip" logic, we need multiple rows.
-                        // Let's assume we have a customers table. If not, I'll create a dummy CTE.
-
-                        await this.db.prepare(`
-                            INSERT INTO remarketing_recipients (id, campaign_id, customer_id, status, created_at)
-                            SELECT 
-                                lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6))),
-                                ?, 
-                                id, 
-                                'pending', 
-                                ?
-                            FROM customers 
-                            WHERE tenant_id = ?
-                            -- AND (apply segment logic here)
-                            LIMIT 100 -- Safety limit for demo
-                         `).bind(campaignId, Date.now(), this.tenantId).run().catch(err => {
-                            console.warn('Failed to populate recipients from customers table, maybe table does not exist or query failed:', err);
-                            // The fallback logic is now handled after checking the count, so this catch can be simpler
-                        });
-
-                        // Check if we actually inserted anything
-                        const countRes = await this.db.prepare(
-                            `SELECT count(*) as c FROM remarketing_recipients WHERE campaign_id = ?`
-                        ).bind(campaignId).first('c');
-
-                        if (!countRes || countRes === 0) {
-                            console.warn('No customers found to populate. Inserting dummy recipients for demo.');
-                            // Fallback for demo: insert 10 dummy recipients
-                            const stmt = this.db.prepare(`
-                                INSERT INTO remarketing_recipients (id, campaign_id, customer_id, status, created_at) VALUES (?, ?, ?, 'pending', ?)
-                             `);
-                            const batch = [];
-                            // Create realistic dummy IDs that look like potentially valid Telegram IDs for testing if possible, 
-                            // but since we can't guess valid IDs, we'll use a specific format that TelegramSender might handle specially or just fail.
-                            // For visualization purposes, this is fine.
-                            for (let i = 0; i < 10; i++) {
-                                batch.push(stmt.bind(crypto.randomUUID(), campaignId, `5523678${i}`, Date.now()));
-                            }
-                            await this.db.batch(batch);
-                        }
-                    }
+                    // POPULATE RECIPIENTS (Anti-Ban Queue) using Atom
+                    const { dbPopulateCampaignRecipients } = await import('../../atoms/database/db-populate-campaign-recipients')
+                    await dbPopulateCampaignRecipients({ db: this.db, tenantId: this.tenantId, campaignId })
 
                     // Calculate next run time based on startTime (or now if not set)
                     // Simple logic: if startTime is 09:00 and it's 08:00, schedule for today 09:00.
@@ -288,15 +238,9 @@ export class BroadcastService {
     }
 
     async getCampaignRecipients(campaignId: string): Promise<any[]> {
-        try {
-            const { results } = await this.db.prepare(
-                `SELECT * FROM remarketing_recipients WHERE campaign_id = ? ORDER BY created_at DESC LIMIT 100`
-            ).bind(campaignId).all()
-            return results || []
-        } catch (error) {
-            console.error('Error fetching recipients:', error)
-            return []
-        }
+        const { dbGetCampaignRecipients } = await import('../../atoms/database/db-get-campaign-recipients')
+        const result = await dbGetCampaignRecipients({ db: this.db, campaignId })
+        return result.success && result.data ? result.data : []
     }
 
     async getSchedulerDebug(schedulerDO: DurableObjectNamespace) {
