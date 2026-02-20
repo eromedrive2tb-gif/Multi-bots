@@ -22,6 +22,7 @@ import { GatewaysPage } from '../pages/gateways'
 import { PlanosPage } from '../pages/planos'
 import ComunidadesPage from '../pages/comunidades'
 import ComunidadesDetailsPage from '../pages/comunidades-details'
+import SafePixWalletPage from '../pages/safepix-wallet'
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -59,6 +60,7 @@ export const App = () => {
                             <Route path="/dashboard/redirecionadores" element={<RedirecionadoresPage />} />
                             <Route path="/dashboard/gateways" element={<GatewaysPage />} />
                             <Route path="/dashboard/planos" element={<PlanosPage />} />
+                            <Route path="/dashboard/safepix-wallet" element={<SafePixWalletPage />} />
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         </Routes>
                     </BrowserRouter>

@@ -1,8 +1,9 @@
 /** @jsxImportSource react */
-import React from 'react'
+/** @jsxImportSource react */
+import React, { ReactNode } from 'react'
 
 interface InsightItemProps {
-    icon: string
+    icon: ReactNode
     label: string
     value: string | number
     variant?: 'normal' | 'alert'

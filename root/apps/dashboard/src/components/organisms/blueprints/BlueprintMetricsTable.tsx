@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
-import type { BlueprintMetric } from '../../../core/analytics-types'
+import { ClipboardList, CheckCircle2, Circle } from 'lucide-react'
+import type { BlueprintMetric } from '../../../../../engine/src/core/analytics-types'
 
 interface BlueprintMetricsTableProps {
     blueprints: BlueprintMetric[]
@@ -9,9 +10,9 @@ interface BlueprintMetricsTableProps {
 export const BlueprintMetricsTable: React.FC<BlueprintMetricsTableProps> = ({ blueprints }) => {
     if (blueprints.length === 0) {
         return (
-            <div className="empty-state">
-                <span className="empty-icon">📋</span>
-                <h3>Nenhum blueprint encontrado</h3>
+            <div className="empty-state flex flex-col items-center gap-2 text-slate-400">
+                <span className="empty-icon text-cyan-400"><ClipboardList size={32} /></span>
+                <h3 className="text-white">Nenhum blueprint encontrado</h3>
                 <p>Crie seu primeiro blueprint para ver as métricas</p>
             </div>
         )
@@ -41,8 +42,8 @@ export const BlueprintMetricsTable: React.FC<BlueprintMetricsTableProps> = ({ bl
                                 <code className="trigger-badge">{bp.trigger}</code>
                             </td>
                             <td>
-                                <span className={`status-badge ${bp.isActive ? 'status-active' : 'status-inactive'}`}>
-                                    {bp.isActive ? '🟢 Ativo' : '⚫ Inativo'}
+                                <span className={`status-badge flex items-center gap-1 ${bp.isActive ? 'status-active text-emerald-400' : 'status-inactive text-slate-400'}`}>
+                                    {bp.isActive ? <><CheckCircle2 size={14} /> Ativo</> : <><Circle size={14} /> Inativo</>}
                                 </span>
                             </td>
                             <td className="metric-value">{bp.flowStarts}</td>

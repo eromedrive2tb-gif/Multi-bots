@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
 import type { Blueprint } from '../../../../../engine/src/core/types'
+import { WandSparkles, Settings, MessageSquare, ClipboardList, Rocket, CreditCard, InfoIcon, Package, ArrowRight, ArrowLeft } from 'lucide-react'
 
 interface WizardEditorProps {
     initialBlueprint?: Blueprint
@@ -42,7 +43,7 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
         name: initialBlueprint?.name || 'Fluxo VIP',
         trigger: initialBlueprint?.trigger || '/vip',
         // Welcome
-        welcomeMessage: 'Olá! 👋 Bem-vindo ao nosso atendimento.\n\nPara começar, qual é o seu nome?',
+        welcomeMessage: 'Olá! Bem-vindo ao nosso atendimento.\n\nPara começar, qual é o seu nome?',
         captureName: true,
         // Plans
         plansTitle: 'Excelente! Escolha o plano ideal para você:',
@@ -53,7 +54,7 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
         upsellPlanId: 'plano_anual_vip',
         // Downsell
         downsellEnabled: false,
-        downsellMessage: 'Espere! 🛑\n\nNão vá embora ainda. Que tal um desconto exclusivo para entrar agora?',
+        downsellMessage: 'Espere!\n\nNão vá embora ainda. Que tal um desconto exclusivo para entrar agora?',
         downsellPlanId: 'plano_promocional',
         // Order Bump
         orderBumpEnabled: false,
@@ -61,7 +62,7 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
         comboPlanId: 'plano_vip_ebook',
         // Delivery
         deliveryLink: 'https://t.me/+AbCdEfGhIjKl',
-        deliveryMessage: '✅ <b>Pagamento Confirmado!</b>\n\nAqui está o seu link de acesso exclusivo:\n{{link}}\n\nSeja bem-vindo!'
+        deliveryMessage: '<b>Pagamento Confirmado!</b>\n\nAqui está o seu link de acesso exclusivo:\n{{link}}\n\nSeja bem-vindo!'
     })
 
     const handleChange = (field: keyof WizardConfig, value: string | boolean) => {
@@ -104,8 +105,8 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
                     text: config.upsellMessage,
                     variable: 'upsell_choice',
                     buttons: [
-                        { text: '✅ Sim, eu quero!', callback: 'yes' },
-                        { text: '❌ Não, obrigado', callback: 'no' }
+                        { text: 'Sim, eu quero!', callback: 'yes' },
+                        { text: 'Não, obrigado', callback: 'no' }
                     ],
                     branches: {
                         'yes': 'apply_upsell',
@@ -135,8 +136,8 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
                     text: config.orderBumpMessage,
                     variable: 'bump_choice',
                     buttons: [
-                        { text: '✅ Adicionar à oferta', callback: 'yes' },
-                        { text: '❌ Pular', callback: 'no' }
+                        { text: 'Adicionar à oferta', callback: 'yes' },
+                        { text: 'Pular', callback: 'no' }
                     ],
                     branches: {
                         'yes': 'apply_bump',
@@ -166,8 +167,8 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
                 variable: 'pay_choice',
                 parse_mode: 'HTML',
                 buttons: [
-                    { text: '✅ Sim, gerar PIX', callback: 'yes' },
-                    { text: '❌ Cancelar', callback: 'no' }
+                    { text: 'Sim, gerar PIX', callback: 'yes' },
+                    { text: 'Cancelar', callback: 'no' }
                 ],
                 branches: {
                     'yes': 'generate_pix',
@@ -186,8 +187,8 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
                     text: config.downsellMessage,
                     variable: 'downsell_choice',
                     buttons: [
-                        { text: '✅ Aceitar Desconto', callback: 'yes' },
-                        { text: '❌ Desistir', callback: 'no' }
+                        { text: 'Aceitar Desconto', callback: 'yes' },
+                        { text: 'Desistir', callback: 'no' }
                     ],
                     branches: {
                         'yes': 'apply_downsell',
@@ -215,7 +216,7 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
             params: {
                 plan_id: '{{session.plan_id}}',
                 description: 'Acesso VIP',
-                message: '💎 <b>Pagamento Gerado</b>\nvalor: {{pix_amount}}\n\n{{pix_code}}'
+                message: '<b>Pagamento Gerado</b>\nvalor: {{pix_amount}}\n\n{{pix_code}}'
             },
             next_step: 'delivery'
         }
@@ -287,7 +288,7 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
         }}>
             {/* Sidebar Steps */}
             <div style={{ width: '250px', background: '#16213e', padding: '24px', borderRight: '1px solid #0f3460' }}>
-                <h3 style={{ marginBottom: '24px', color: '#6366f1' }}>🧙‍♂️ Wizard Pro</h3>
+                <h3 className="flex items-center gap-2" style={{ marginBottom: '24px', color: '#6366f1' }}><WandSparkles size={20} /> Wizard Pro</h3>
                 {[1, 2, 3, 4].map(s => (
                     <div
                         key={s}
@@ -322,29 +323,29 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
                 <div style={{ maxWidth: '600px', margin: '0 auto' }}>
                     {step === 1 && (
                         <div>
-                            <h2 style={{ marginBottom: '24px' }}>⚙️ Configuração Inicial</h2>
+                            <h2 className="flex items-center gap-2" style={{ marginBottom: '24px' }}><Settings size={24} className="text-cyan-neon" /> Configuração Inicial</h2>
                             {renderInput('Nome do Fluxo', 'name')}
                             {renderInput('Comando de Ativação (Trigger)', 'trigger')}
                             {renderToggle('Coletar Nome do Usuário?', 'captureName')}
 
-                            <h3 style={{ marginTop: '24px', marginBottom: '16px' }}>💬 Boas-vindas</h3>
+                            <h3 className="flex items-center gap-2" style={{ marginTop: '24px', marginBottom: '16px' }}><MessageSquare size={18} className="text-cyan-neon" /> Boas-vindas</h3>
                             {renderInput('Texto de Boas-vindas', 'welcomeMessage', 'textarea')}
 
-                            <h3 style={{ marginTop: '24px', marginBottom: '16px' }}>📋 Planos</h3>
+                            <h3 className="flex items-center gap-2" style={{ marginTop: '24px', marginBottom: '16px' }}><ClipboardList size={18} className="text-cyan-neon" /> Planos</h3>
                             {renderInput('Título da Lista de Planos', 'plansTitle')}
 
                             <button
                                 onClick={() => setStep(2)}
-                                style={{ padding: '10px 24px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '16px' }}
+                                style={{ padding: '10px 24px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}
                             >
-                                Ir para Funil ➡️
+                                Ir para Funil <ArrowRight size={16} />
                             </button>
                         </div>
                     )}
 
                     {step === 2 && (
                         <div>
-                            <h2 style={{ marginBottom: '24px' }}>🚀 Funil de Vendas</h2>
+                            <h2 className="flex items-center gap-2" style={{ marginBottom: '24px' }}><Rocket size={24} className="text-cyan-neon" /> Funil de Vendas</h2>
                             <p style={{ opacity: 0.7, marginBottom: '24px' }}>Configure estratégias para aumentar seu ticket médio.</p>
 
                             {/* Upsell Section */}
@@ -381,37 +382,37 @@ export const WizardEditor: React.FC<WizardEditorProps> = ({
                             </div>
 
                             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                                <button onClick={() => setStep(1)} style={styles.backBtn}>⬅️ Voltar</button>
-                                <button onClick={() => setStep(3)} style={styles.nextBtn}>Próximo ➡️</button>
+                                <button onClick={() => setStep(1)} style={styles.backBtn} className="flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
+                                <button onClick={() => setStep(3)} style={styles.nextBtn} className="flex items-center gap-2">Próximo <ArrowRight size={16} /></button>
                             </div>
                         </div>
                     )}
 
                     {step === 3 && (
                         <div>
-                            <h2 style={{ marginBottom: '24px' }}>💳 Pagamento & Checkout</h2>
+                            <h2 className="flex items-center gap-2" style={{ marginBottom: '24px' }}><CreditCard size={24} className="text-cyan-neon" /> Pagamento & Checkout</h2>
                             <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                                <p style={{ color: '#22c55e', margin: 0 }}>
-                                    ℹ️ O link de pagamento será gerado dinamicamente com base no plano final (após Upsell/Bump/Downsell).
+                                <p className="flex gap-2" style={{ color: '#22c55e', margin: 0 }}>
+                                    <InfoIcon size={18} /> O link de pagamento será gerado dinamicamente com base no plano final (após Upsell/Bump/Downsell).
                                 </p>
                             </div>
                             {/* In V3 could add PIX styling options here */}
                             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                                <button onClick={() => setStep(2)} style={styles.backBtn}>⬅️ Voltar</button>
-                                <button onClick={() => setStep(4)} style={styles.nextBtn}>Próximo ➡️</button>
+                                <button onClick={() => setStep(2)} style={styles.backBtn} className="flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
+                                <button onClick={() => setStep(4)} style={styles.nextBtn} className="flex items-center gap-2">Próximo <ArrowRight size={16} /></button>
                             </div>
                         </div>
                     )}
 
                     {step === 4 && (
                         <div>
-                            <h2 style={{ marginBottom: '24px' }}>📦 Entrega</h2>
+                            <h2 className="flex items-center gap-2" style={{ marginBottom: '24px' }}><Package size={24} className="text-cyan-neon" /> Entrega</h2>
                             {renderInput('Mensagem de Sucesso', 'deliveryMessage', 'textarea')}
                             {renderInput('Link do Grupo/Conteúdo', 'deliveryLink')}
 
                             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                                <button onClick={() => setStep(3)} style={styles.backBtn}>⬅️ Voltar</button>
-                                <button onClick={handleFinish} style={styles.finishBtn}>🚀 Criar Fluxo Completo</button>
+                                <button onClick={() => setStep(3)} style={styles.backBtn} className="flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
+                                <button onClick={handleFinish} style={styles.finishBtn} className="flex items-center gap-2"><Rocket size={16} /> Criar Fluxo Completo</button>
                             </div>
                         </div>
                     )}

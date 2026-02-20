@@ -18,6 +18,8 @@ export { dbSaveBlueprint, type DbSaveBlueprintProps } from './db-save-blueprint'
 export { dbGetBlueprints, dbGetBlueprintById, dbGetBlueprintByTrigger, type DbGetBlueprintsProps, type DbGetBlueprintByIdProps, type DbGetBlueprintByTriggerProps } from './db-get-blueprints'
 // db-list-blueprints.ts doesn't exist, removed.
 export { dbDeleteBlueprint, type DbDeleteBlueprintProps } from './db-delete-blueprint'
+export { dbGetBotBlueprints, dbToggleBotBlueprint } from './db-bot-blueprints'
+export { dbCheckBlueprintActive } from './db-check-blueprint-active'
 
 // Customer atoms
 export { dbUpsertCustomer, type DbUpsertCustomerProps } from './db-upsert-customer'

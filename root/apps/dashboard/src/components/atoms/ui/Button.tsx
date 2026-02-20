@@ -27,7 +27,10 @@ export const Button: FC<ButtonProps> = ({
             className={`btn btn-${variant} btn-${size} ${className}`}
             onClick={onClick}
         >
-            {children}
+            {variant === 'primary' && <div className="btn-shimmer" />}
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'inherit', position: 'relative', zIndex: 10, width: '100%' }}>
+                {children}
+            </span>
         </button>
     )
 }

@@ -2,6 +2,8 @@
 import React from 'react'
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
 import { getActionByKey, getCategoryColor } from '../../../../../engine/src/lib/shared'
+import { IconRenderer } from '../ui/IconRenderer'
+import { AlertTriangle } from 'lucide-react'
 
 export interface StepNodeData extends Record<string, unknown> {
     label: string
@@ -16,7 +18,7 @@ export type StepNode = Node<StepNodeData, 'step'>
 export const BlueprintNode: React.FC<NodeProps<StepNode>> = ({ data, selected }) => {
     const actionDef = getActionByKey(data.action)
     const categoryColor = actionDef ? getCategoryColor(actionDef.category) : '#666'
-    const icon = actionDef?.icon || '⚙️'
+    const icon = actionDef?.icon || 'Settings'
     const label = actionDef?.label || data.action
 
     // Preview do conteúdo
@@ -56,7 +58,7 @@ export const BlueprintNode: React.FC<NodeProps<StepNode>> = ({ data, selected })
                     gap: '8px',
                 }}
             >
-                <span style={{ fontSize: '18px' }}>{icon}</span>
+                <IconRenderer name={icon} size={18} />
                 <span style={{ fontWeight: 600, fontSize: '13px' }}>{label}</span>
             </div>
 
@@ -87,7 +89,7 @@ export const BlueprintNode: React.FC<NodeProps<StepNode>> = ({ data, selected })
                             gap: '4px',
                         }}
                     >
-                        ⚠️ Clique para configurar
+                        <AlertTriangle size={14} className="text-warning" /> Clique para configurar
                     </div>
                 )}
             </div>

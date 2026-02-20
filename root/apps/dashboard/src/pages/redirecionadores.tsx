@@ -10,6 +10,7 @@ import { DomainSetup } from '../components/molecules/redirects/DomainSetup'
 
 import { useRedirectsController } from '../client/hooks/useRedirectsController'
 import { useRedirectsUI } from '../client/hooks/useRedirectsUI'
+import { Link as LinkIcon, MousePointerClick, Zap, Plus, Globe } from 'lucide-react'
 
 export const RedirecionadoresPage: React.FC = () => {
     // Logic Controller
@@ -74,10 +75,10 @@ export const RedirecionadoresPage: React.FC = () => {
     }
 
     const tabs = [
-        { key: 'links', label: 'Links' },
-        { key: 'codigos', label: 'Códigos de Vendas' },
-        { key: 'utm', label: 'Gerador UTM' },
-        { key: 'dominio', label: '🌐 Domínio Próprio' },
+        { key: 'links', label: 'Links', icon: <LinkIcon size={14} /> },
+        { key: 'codigos', label: 'Códigos de Vendas', icon: <Zap size={14} /> },
+        { key: 'utm', label: 'Gerador UTM', icon: <LinkIcon size={14} /> },
+        { key: 'dominio', label: 'Domínio Próprio', icon: <Globe size={14} /> },
     ]
 
     return (
@@ -168,7 +169,7 @@ export const RedirecionadoresPage: React.FC = () => {
                         <h1>Redirecionadores</h1>
                         <p>Configure seus links de redirecionamento</p>
                     </div>
-                    <Button onClick={openCreateModal}>➕ Criar Link</Button>
+                    <Button onClick={openCreateModal}><Plus size={16} /> Criar Link</Button>
                 </div>
 
                 {/* Stats */}
@@ -176,19 +177,19 @@ export const RedirecionadoresPage: React.FC = () => {
                     <StatCard
                         label="TOTAL LINKS"
                         value={stats?.totalLinks || 0}
-                        icon="🔗"
+                        icon={<LinkIcon size={24} />}
                         iconBg="rgba(6,182,212,.15)"
                     />
                     <StatCard
                         label="TOTAL CLIQUES"
                         value={stats?.totalClicks || 0}
-                        icon="👆"
+                        icon={<MousePointerClick size={24} />}
                         iconBg="rgba(139,92,246,.15)"
                     />
                     <StatCard
                         label="COM CLOAKER"
                         value={stats?.withCloaker || 0}
-                        icon="⚡"
+                        icon={<Zap size={24} />}
                         iconBg="rgba(234,179,8,.15)"
                     />
                 </div>
@@ -198,10 +199,10 @@ export const RedirecionadoresPage: React.FC = () => {
                     {tabs.map(t => (
                         <button
                             key={t.key}
-                            className={`redir-tab ${tab === t.key ? 'active' : ''}`}
+                            className={`redir-tab flex items-center gap-2 ${tab === t.key ? 'active' : ''}`}
                             onClick={() => setTab(t.key as any)}
                         >
-                            {t.label}
+                            {t.icon} {t.label}
                         </button>
                     ))}
                 </div>
@@ -209,7 +210,7 @@ export const RedirecionadoresPage: React.FC = () => {
                 {/* Content */}
                 {tab === 'links' && (
                     <>
-                        <div className="section-title">🔗 Meus Redirecionadores ({redirects?.length || 0})</div>
+                        <div className="section-title"><LinkIcon size={16} className="text-cyan-neon" /> Meus Redirecionadores ({redirects?.length || 0})</div>
                         <RedirectList
                             redirects={redirects}
                             isLoading={isLoading}
@@ -221,7 +222,7 @@ export const RedirecionadoresPage: React.FC = () => {
 
                 {tab === 'codigos' && (
                     <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: 'var(--space-md)' }}>🏷️</div>
+                        <div className="flex justify-center mb-4 text-cyan-neon"><Zap size={48} /></div>
                         <h3 style={{ margin: 0 }}>Códigos de Vendas</h3>
                         <p style={{ fontSize: '0.85rem', marginTop: 4 }}>Gerencie seus códigos de rastreamento de vendas aqui.</p>
                     </div>

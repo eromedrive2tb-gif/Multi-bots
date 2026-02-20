@@ -5,7 +5,7 @@ import { StatCard } from '../../molecules/general/StatCard'
 interface Stat {
     label: string
     value: string | number
-    icon?: string
+    icon?: React.ReactNode
     trend?: 'up' | 'down' | 'neutral'
     trendValue?: string
 }

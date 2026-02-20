@@ -7,6 +7,7 @@ import { Button } from '../components/atoms/ui/Button'
 import { Spinner } from '../components/atoms/ui/Spinner'
 import { Modal } from '../components/molecules/ui/Modal'
 import { Input } from '../components/atoms/ui/Input'
+import { Package, Repeat, Banknote, Trash2 } from 'lucide-react'
 
 interface Plan {
     id: string;
@@ -127,7 +128,7 @@ export const PlanosPage: React.FC = () => {
             <div className="plans-page">
                 <div className="plans-header">
                     <div className="plans-header-text">
-                        <h3>📦 Meus Planos</h3>
+                        <h3 className="flex items-center gap-2"><Package size={18} className="text-cyan-neon" /> Meus Planos</h3>
                         <p>Crie e gerencie os planos oferecidos nos seus robôs.</p>
                     </div>
                     <Button onClick={() => setIsModalOpen(true)}>+ Novo Plano</Button>
@@ -139,8 +140,8 @@ export const PlanosPage: React.FC = () => {
                     <div className="plans-grid">
                         {plans?.map(plan => (
                             <div key={plan.id} className={`plan-card ${!plan.isActive ? 'inactive' : ''}`}>
-                                <span className={`plan-badge ${plan.type === 'subscription' ? 'recorrente' : ''}`}>
-                                    {plan.type === 'subscription' ? '🔄 RECORRENTE' : '💰 ÚNICO'}
+                                <span className={`plan-badge flex items-center gap-1 ${plan.type === 'subscription' ? 'recorrente' : ''}`}>
+                                    {plan.type === 'subscription' ? <><Repeat size={10} /> RECORRENTE</> : <><Banknote size={10} /> ÚNICO</>}
                                 </span>
                                 <h4 className="plan-name">{plan.name}</h4>
                                 <div className="plan-price">
@@ -158,7 +159,7 @@ export const PlanosPage: React.FC = () => {
                                             size="sm"
                                             onClick={() => confirm('Desativar este plano?') && deleteMut.mutate(plan.id)}
                                         >
-                                            🗑️ Remover
+                                            <Trash2 size={14} style={{ marginRight: 4 }} /> Remover
                                         </Button>
                                     )}
                                 </div>
@@ -182,6 +183,7 @@ export const PlanosPage: React.FC = () => {
                     <div>
                         <label style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>Nome do Plano</label>
                         <Input
+                            name="name"
                             placeholder="Ex: Plano Master"
                             value={form.name}
                             onChange={(e: any) => setForm(f => ({ ...f, name: e.target.value }))}
@@ -190,6 +192,7 @@ export const PlanosPage: React.FC = () => {
                     <div>
                         <label style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>Descrição (opcional)</label>
                         <Input
+                            name="description"
                             placeholder="O que este plano oferece?"
                             value={form.description}
                             onChange={(e: any) => setForm(f => ({ ...f, description: e.target.value }))}
@@ -199,6 +202,7 @@ export const PlanosPage: React.FC = () => {
                         <div>
                             <label style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>Preço (R$)</label>
                             <Input
+                                name="priceStr"
                                 placeholder="29,90"
                                 value={form.priceStr}
                                 onChange={(e: any) => setForm(f => ({ ...f, priceStr: e.target.value }))}
@@ -208,8 +212,9 @@ export const PlanosPage: React.FC = () => {
                             <div>
                                 <label style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '6px' }}>Intervalo (Dias)</label>
                                 <Input
+                                    name="intervalDays"
                                     type="number"
-                                    value={form.intervalDays}
+                                    value={form.intervalDays?.toString() || ''}
                                     onChange={(e: any) => setForm(f => ({ ...f, intervalDays: parseInt(e.target.value) }))}
                                 />
                             </div>
@@ -222,13 +227,13 @@ export const PlanosPage: React.FC = () => {
                                 className={`radio-option ${form.type === 'subscription' ? 'active' : ''}`}
                                 onClick={() => setForm(f => ({ ...f, type: 'subscription' }))}
                             >
-                                <h4>🔄 Assinatura</h4>
+                                <h4 className="flex justify-center items-center gap-2"><Repeat size={16} /> Assinatura</h4>
                             </button>
                             <button
                                 className={`radio-option ${form.type === 'one_time' ? 'active' : ''}`}
                                 onClick={() => setForm(f => ({ ...f, type: 'one_time' }))}
                             >
-                                <h4>💰 Pagamento Único</h4>
+                                <h4 className="flex justify-center items-center gap-2"><Banknote size={16} /> Pagamento Único</h4>
                             </button>
                         </div>
                     </div>

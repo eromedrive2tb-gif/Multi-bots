@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
-import type { OverviewMetrics } from '../../../core/analytics-types'
+import { Bot, ClipboardList, Rocket, CheckCircle2, TrendingUp, XCircle } from 'lucide-react'
+import type { OverviewMetrics } from '../../../../../engine/src/core/analytics-types'
 import { StatsGrid } from './StatsGrid'
 
 interface MetricsSummaryProps {
@@ -12,42 +13,42 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ metrics }) => {
         {
             label: 'Total Bots',
             value: metrics.totalBots,
-            icon: '🤖',
+            icon: <Bot size={24} />,
             trend: 'neutral' as const,
             trendValue: `${metrics.activeBots} online`
         },
         {
             label: 'Blueprints',
             value: metrics.totalBlueprints,
-            icon: '📋',
+            icon: <ClipboardList size={24} />,
             trend: 'neutral' as const,
             trendValue: `${metrics.activeBlueprints} ativos`
         },
         {
             label: 'Fluxos Iniciados',
             value: metrics.totalFlowStarts,
-            icon: '🚀',
+            icon: <Rocket size={24} />,
             trend: 'up' as const,
             trendValue: 'total'
         },
         {
             label: 'Fluxos Completos',
             value: metrics.totalFlowCompletions,
-            icon: '✅',
+            icon: <CheckCircle2 size={24} />,
             trend: metrics.completionRate >= 50 ? 'up' as const : 'down' as const,
             trendValue: `${metrics.completionRate}% conversão`
         },
         {
             label: 'Taxa de Conversão',
             value: `${metrics.completionRate}%`,
-            icon: '📈',
+            icon: <TrendingUp size={24} />,
             trend: metrics.completionRate >= 50 ? 'up' as const : 'down' as const,
             trendValue: 'início → fim'
         },
         {
             label: 'Erros',
             value: metrics.totalErrors,
-            icon: '❌',
+            icon: <XCircle size={24} />,
             trend: metrics.totalErrors === 0 ? 'up' as const : 'down' as const,
             trendValue: metrics.totalErrors === 0 ? 'nenhum!' : 'atenção'
         },

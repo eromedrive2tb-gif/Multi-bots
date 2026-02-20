@@ -9,6 +9,7 @@ import { useBlueprintsController } from '../client/hooks/useBlueprintsController
 import { useBlueprintsUI } from '../client/hooks/useBlueprintsUI'
 import type { Blueprint } from '../../../engine/src/core/types'
 import { BlueprintsTemplate } from '../components/templates'
+import { ClipboardList, UploadCloud, Plus } from 'lucide-react'
 
 export const BlueprintsPage: React.FC = () => {
     // 1. Logic Controller (Data & API)
@@ -88,13 +89,13 @@ export const BlueprintsPage: React.FC = () => {
             listSlot={
                 <>
                     <div className="section-header">
-                        <h2>📋 Seus Blueprints</h2>
+                        <h2 className="flex items-center gap-2 text-white font-bold"><ClipboardList size={20} className="text-cyan-neon" /> Seus Blueprints</h2>
                         <div className="header-actions">
                             <Button variant="secondary" onClick={() => openJsonModal()}>
-                                📤 Upload JSON
+                                <UploadCloud size={16} /> Upload JSON
                             </Button>
                             <Button variant="primary" onClick={handleCreateNew}>
-                                ➕ Novo Blueprint
+                                <Plus size={16} /> Novo Blueprint
                             </Button>
                         </div>
                     </div>

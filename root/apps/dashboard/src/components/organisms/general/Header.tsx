@@ -12,9 +12,9 @@ interface HeaderProps {
 
 export const Header: FC<HeaderProps> = ({ title, user }) => {
     return (
-        <header className="header">
+        <header className="header glass-panel border-b border-cyan-500/30" style={{ borderRight: 'none', borderLeft: 'none', borderTop: 'none' }}>
             <div className="header-left">
-                <h1 className="header-title">{title}</h1>
+                <h1 className="header-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{title}</h1>
             </div>
             <div className="header-right">
                 <UserAvatar name={user.name} size="sm" showDropdown />

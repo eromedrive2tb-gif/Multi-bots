@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { FormField } from '../../molecules/ui/FormField'
 import { Button } from '../../atoms/ui/Button'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
+import { Rocket } from 'lucide-react'
 
 interface RegisterFormProps {
     error?: string
@@ -52,8 +53,19 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ error: initialError 
     return (
         <Card className="auth-card">
             <CardHeader>
-                <h1 className="auth-title">Criar Conta</h1>
-                <p className="auth-subtitle">Configure sua dashboard multi-tenant</p>
+                <div className="flex flex-col items-center justify-center mb-6">
+                    <div className="logo-icon-wrap mb-4" style={{
+                        background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                        borderRadius: '16px',
+                        padding: '1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 25px rgba(6, 182, 212, 0.5)'
+                    }}>
+                        <Rocket size={32} color="white" />
+                    </div>
+                    <h1 className="auth-title text-center text-3xl font-black text-white">Criar Conta</h1>
+                    <p className="auth-subtitle text-center text-slate-400 mt-2">Configure sua dashboard multi-tenant</p>
+                </div>
             </CardHeader>
             <CardBody>
                 {error && (

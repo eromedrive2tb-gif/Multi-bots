@@ -35,7 +35,7 @@ export const BlueprintsTemplate: React.FC<BlueprintsTemplateProps> = ({
                 {/* Visual Editor Section Slot */}
                 <section className="editor-section">
                     <div className="section-header">
-                        <h2>🎨 Editor Visual</h2>
+                        <h2>Editor Visual</h2>
                     </div>
                     <div className="editor-canvas-container">
                         {editorSlot}

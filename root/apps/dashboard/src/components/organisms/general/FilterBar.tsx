@@ -1,7 +1,8 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
+import { Search } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { AnalyticsFilterParams, BlueprintMetric, BotMetric } from '../../../core/analytics-types'
+import type { AnalyticsFilterParams, BlueprintMetric, BotMetric } from '../../../../../engine/src/core/analytics-types'
 import { ClearMetricsButton } from '../../molecules/analytics/ClearMetricsButton'
 
 interface FilterBarProps {
@@ -109,8 +110,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({ bots, blueprints, currentF
                 />
             </div>
 
-            <button type="submit" className="btn btn-primary filter-btn">
-                🔍 Filtrar
+            <button type="submit" className="btn btn-primary filter-btn flex items-center justify-center gap-2">
+                <Search size={16} /> Filtrar
             </button>
 
             <div className="filter-separator" style={{ borderLeft: '1px solid var(--color-border)', height: '2rem', margin: '0 var(--space-sm)' }}></div>

@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
 import type { FC } from 'react'
+import { ChevronDown } from 'lucide-react'
 
 interface UserAvatarProps {
     name: string
@@ -30,7 +31,7 @@ export const UserAvatar: FC<UserAvatarProps> = ({
                     {email && <span className="avatar-email">{email}</span>}
                 </div>
             )}
-            {showDropdown && <span className="avatar-dropdown">▼</span>}
+            {showDropdown && <span className="avatar-dropdown"><ChevronDown size={14} /></span>}
         </div>
     )
 }

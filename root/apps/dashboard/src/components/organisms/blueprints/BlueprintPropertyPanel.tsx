@@ -3,6 +3,7 @@ import React, { type ChangeEvent } from 'react'
 import { ACTION_CATEGORIES, ACTION_LIBRARY, getActionByKey } from '../../../../../engine/src/lib/shared'
 import { BlueprintPropertyField } from '../../molecules/blueprints/BlueprintPropertyField'
 import type { StepNode, StepNodeData } from '../../atoms/blueprints/BlueprintNode'
+import { MousePointerClick, Settings, Lightbulb, Trash2 } from 'lucide-react'
 
 interface BlueprintPropertyPanelProps {
     node: StepNode | null
@@ -21,7 +22,7 @@ export const BlueprintPropertyPanel: React.FC<BlueprintPropertyPanelProps> = ({
         return (
             <div style={styles.container}>
                 <div style={styles.empty}>
-                    <span style={{ fontSize: '48px', opacity: 0.5 }}>👆</span>
+                    <span style={{ color: 'var(--text-secondary)' }}><MousePointerClick size={48} /></span>
                     <p>Selecione um nó para editar suas propriedades</p>
                 </div>
             </div>
@@ -60,8 +61,8 @@ export const BlueprintPropertyPanel: React.FC<BlueprintPropertyPanelProps> = ({
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <h3 style={styles.title}>
-                    {actionDef?.icon || '⚙️'} Propriedades
+                <h3 style={styles.title} className="flex items-center gap-2">
+                    {actionDef?.icon || <Settings size={18} />} Propriedades
                 </h3>
                 <button onClick={onClose} style={styles.closeBtn}>
                     ✕
@@ -113,17 +114,16 @@ export const BlueprintPropertyPanel: React.FC<BlueprintPropertyPanelProps> = ({
                     />
                 ))}
 
-                {/* Variables Help */}
                 <div style={styles.help}>
-                    <strong>💡 Variáveis disponíveis:</strong>
+                    <strong className="flex items-center gap-2"><Lightbulb size={14} className="text-warning" /> Variáveis disponíveis:</strong>
                     <code style={styles.code}>{'{{user_name}}'}</code>
                     <code style={styles.code}>{'{{tenant_id}}'}</code>
                     <code style={styles.code}>{'{{session.campo}}'}</code>
                 </div>
 
                 {/* Delete Button */}
-                <button onClick={() => onDelete(node.id)} style={styles.deleteBtn}>
-                    🗑️ Excluir Step
+                <button onClick={() => onDelete(node.id)} style={styles.deleteBtn} className="flex items-center justify-center gap-2">
+                    <Trash2 size={16} /> Excluir Step
                 </button>
             </div>
         </div>

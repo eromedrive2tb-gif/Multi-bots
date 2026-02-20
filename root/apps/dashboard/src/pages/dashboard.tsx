@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { DashboardLayout } from '../components/templates'
 import { StatsGrid } from '../components/organisms'
 import { SystemActivity } from '../components/organisms'
+import { Bot, MessageSquare, Users, CheckCircle, AlertTriangle } from 'lucide-react'
 import { useUser } from '../client/context/UserContext'
 import { useSocket } from '../client/context/SocketContext'
 import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics/analytics-aggregator'
@@ -39,28 +40,28 @@ export const DashboardPage: React.FC = () => {
         {
             label: 'Total Bots',
             value: overview.totalBots,
-            icon: '🤖',
+            icon: <Bot size={24} />,
             trend: (overview.activeBots > 0 ? 'up' : 'neutral') as 'up' | 'neutral' | 'down',
             trendValue: `${overview.activeBots} ativos`
         },
         {
             label: 'Fluxos Iniciados',
             value: overview.totalFlowStarts,
-            icon: '💬',
+            icon: <MessageSquare size={24} />,
             trend: 'up' as const,
             trendValue: 'Total'
         },
         {
             label: 'Usuários Totais',
             value: totalUsers,
-            icon: '👥',
+            icon: <Users size={24} />,
             trend: 'neutral' as const,
             trendValue: 'Total'
         },
         {
             label: 'Status Sistema',
             value: (overview.totalErrors === 0 ? 'Estável' : 'Alerta') as string,
-            icon: overview.totalErrors === 0 ? '✅' : '⚠️',
+            icon: overview.totalErrors === 0 ? <CheckCircle size={24} /> : <AlertTriangle size={24} />,
             trend: (overview.totalErrors === 0 ? 'up' : 'down') as 'up' | 'neutral' | 'down',
             trendValue: `${overview.totalErrors} erros`
         },
@@ -72,8 +73,8 @@ export const DashboardPage: React.FC = () => {
             currentPath="/dashboard"
         >
             <div className="dashboard-welcome">
-                <h2>Bem-vindo, {displayUser.name}! 👋</h2>
-                <p className="text-muted">Tenant ID: {displayTenantId}</p>
+                <h2 className="text-white text-3xl font-black">Bem-vindo, <span className="text-gradient-primary">{displayUser.name}</span>!</h2>
+                <p className="text-slate-400 mt-1">Tenant ID: {displayTenantId}</p>
             </div>
 
             {isLoading ? (

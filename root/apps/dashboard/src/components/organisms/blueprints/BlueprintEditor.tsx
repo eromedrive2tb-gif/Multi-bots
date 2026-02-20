@@ -49,7 +49,7 @@ export const BlueprintEditor: React.FC<BlueprintEditorProps> = ({
                         gap: '8px'
                     }}
                 >
-                    🧙‍♂️ Iniciante
+                    Iniciante
                 </button>
                 <button
                     onClick={() => setMode('visual')}
@@ -57,7 +57,7 @@ export const BlueprintEditor: React.FC<BlueprintEditorProps> = ({
                         padding: '8px 24px',
                         borderRadius: '6px',
                         border: 'none',
-                        background: mode === 'visual' ? '#6366f1' : 'transparent',
+                        background: mode === 'visual' ? '#06b6d4' : 'transparent',
                         color: 'white',
                         cursor: 'pointer',
                         fontWeight: 600,
@@ -67,7 +67,7 @@ export const BlueprintEditor: React.FC<BlueprintEditorProps> = ({
                         gap: '8px'
                     }}
                 >
-                    ⚡ Avançado
+                    Avançado
                 </button>
             </div>
 

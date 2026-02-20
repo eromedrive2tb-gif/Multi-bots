@@ -6,6 +6,7 @@ import { DashboardLayout } from '../components/templates'
 import { Button } from '../components/atoms/ui/Button'
 import { Spinner } from '../components/atoms/ui/Spinner'
 import { Input } from '../components/atoms/ui/Input'
+import { Send, Calendar, Handshake, Repeat, Image as ImageIcon, Video, UploadCloud, Link as LinkIcon } from 'lucide-react'
 
 type TabKey = 'enviar' | 'agendadas' | 'bemvindo' | 'repost'
 
@@ -90,11 +91,11 @@ export const PostagensPage: React.FC = () => {
 
     const removeButton = (i: number) => setDraft(d => ({ ...d, buttons: d.buttons.filter((_, idx) => idx !== i) }))
 
-    const tabs: { key: TabKey; label: string; icon: string }[] = [
-        { key: 'enviar', label: 'Enviar Agora', icon: '📨' },
-        { key: 'agendadas', label: 'Agendadas', icon: '📅' },
-        { key: 'bemvindo', label: 'Boas-vindas', icon: '👋' },
-        { key: 'repost', label: 'Repost', icon: '🔁' },
+    const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+        { key: 'enviar', label: 'Enviar Agora', icon: <Send size={16} /> },
+        { key: 'agendadas', label: 'Agendadas', icon: <Calendar size={16} /> },
+        { key: 'bemvindo', label: 'Boas-vindas', icon: <Handshake size={16} /> },
+        { key: 'repost', label: 'Repost', icon: <Repeat size={16} /> },
     ]
 
     const formatPreview = (text: string) => {
@@ -247,7 +248,7 @@ export const PostagensPage: React.FC = () => {
                 {/* Tabs */}
                 <div className="post-tabs">
                     {tabs.map(t => (
-                        <button key={t.key} className={`post-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+                        <button key={t.key} className={`post-tab flex items-center gap-2 ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
                             {t.icon} {t.label}
                         </button>
                     ))}
@@ -299,11 +300,11 @@ export const PostagensPage: React.FC = () => {
                             {/* Media Upload */}
                             <div>
                                 <div className="post-media-tabs">
-                                    <button className={`post-media-tab ${!draft.mediaType || draft.mediaType === 'image' ? 'active' : ''}`} onClick={() => setDraft(d => ({ ...d, mediaType: 'image' }))}>🖼️ Imagem (10MB)</button>
-                                    <button className={`post-media-tab ${draft.mediaType === 'video' ? 'active' : ''}`} onClick={() => setDraft(d => ({ ...d, mediaType: 'video' }))}>🎬 Vídeo/Áudio (50MB)</button>
+                                    <button className={`post-media-tab flex items-center gap-1 ${!draft.mediaType || draft.mediaType === 'image' ? 'active' : ''}`} onClick={() => setDraft(d => ({ ...d, mediaType: 'image' }))}><ImageIcon size={14} /> Imagem (10MB)</button>
+                                    <button className={`post-media-tab flex items-center gap-1 ${draft.mediaType === 'video' ? 'active' : ''}`} onClick={() => setDraft(d => ({ ...d, mediaType: 'video' }))}><Video size={14} /> Vídeo/Áudio (50MB)</button>
                                 </div>
                                 <div className="post-media-zone">
-                                    <div>📤</div>
+                                    <div className="flex justify-center mb-2"><UploadCloud size={32} /></div>
                                     <p style={{ margin: '8px 0 0', fontSize: '0.8rem' }}>Arraste ou clique para enviar</p>
                                     <Input name="mediaUrl" placeholder="ou cole uma URL de mídia" value={draft.mediaUrl} onChange={(e: any) => setDraft(d => ({ ...d, mediaUrl: e.target.value }))} />
                                 </div>
@@ -311,11 +312,11 @@ export const PostagensPage: React.FC = () => {
 
                             {/* Inline Buttons */}
                             <div className="post-buttons-section">
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 'var(--space-sm)' }}>⌨️ Botões Inline</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 'var(--space-sm)' }} className="flex items-center gap-2"><LinkIcon size={16} /> Botões Inline</div>
                                 <div className="post-buttons-list">
                                     {draft.buttons.map((btn, i) => (
                                         <div key={i} className="post-button-row">
-                                            <span style={{ flex: 1 }}>📎 {btn.text}</span>
+                                            <span style={{ flex: 1 }} className="flex items-center gap-2"><LinkIcon size={14} /> {btn.text}</span>
                                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{btn.url}</span>
                                             <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => removeButton(i)}>✕</button>
                                         </div>
@@ -333,13 +334,12 @@ export const PostagensPage: React.FC = () => {
                             </Button>
                         </div>
 
-                        {/* Live Preview */}
                         <div className="post-preview-panel">
-                            <div className="post-preview-header">📱 Pré-visualização</div>
+                            <div className="post-preview-header align-center flex gap-2"><span className="text-cyan-neon">👁️</span> Pré-visualização</div>
                             <div className="post-preview-phone">
                                 {draft.mediaUrl && (
                                     <div style={{ marginBottom: 'var(--space-sm)', background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-md)', padding: '20px', textAlign: 'center', fontSize: '2rem' }}>
-                                        {draft.mediaType === 'video' ? '🎬' : '🖼️'}
+                                        {draft.mediaType === 'video' ? <Video size={32} /> : <ImageIcon size={32} />}
                                     </div>
                                 )}
                                 {draft.content ? (
@@ -433,6 +433,6 @@ export const PostagensPage: React.FC = () => {
                     </div>
                 )}
             </div>
-        </DashboardLayout>
+        </DashboardLayout >
     )
 }

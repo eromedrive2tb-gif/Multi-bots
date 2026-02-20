@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { FormField } from '../../molecules/ui/FormField'
 import { Button } from '../../atoms/ui/Button'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
+import { Rocket } from 'lucide-react'
 
 interface LoginFormProps {
     error?: string
@@ -45,8 +46,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ error: initialError }) => 
     return (
         <Card className="auth-card">
             <CardHeader>
-                <h1 className="auth-title">Entrar</h1>
-                <p className="auth-subtitle">Acesse sua dashboard</p>
+                <div className="flex flex-col items-center justify-center mb-6">
+                    <div className="logo-icon-wrap mb-4" style={{
+                        background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                        borderRadius: '16px',
+                        padding: '1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 25px rgba(6, 182, 212, 0.5)'
+                    }}>
+                        <Rocket size={32} color="white" />
+                    </div>
+                    <h1 className="auth-title text-center text-3xl font-black text-white">Entrar</h1>
+                    <p className="auth-subtitle text-center text-slate-400 mt-2">Acesse sua dashboard</p>
+                </div>
             </CardHeader>
             <CardBody>
                 {error && (

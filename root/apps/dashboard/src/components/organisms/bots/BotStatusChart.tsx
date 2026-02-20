@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
-import type { BotMetric } from '../../../core/analytics-types'
+import { Bot, Smartphone, MessageSquare, Circle, CheckCircle2, AlertCircle } from 'lucide-react'
+import type { BotMetric } from '../../../../../engine/src/core/analytics-types'
 
 interface BotStatusChartProps {
     bots: BotMetric[]
@@ -14,9 +15,9 @@ export const BotStatusChart: React.FC<BotStatusChartProps> = ({ bots }) => {
 
     if (total === 0) {
         return (
-            <div className="empty-state">
-                <span className="empty-icon">🤖</span>
-                <h3>Nenhum bot configurado</h3>
+            <div className="empty-state flex flex-col items-center gap-2 text-slate-400">
+                <span className="empty-icon text-cyan-400"><Bot size={32} /></span>
+                <h3 className="text-white">Nenhum bot configurado</h3>
                 <p>Adicione um bot para ver as estatísticas</p>
             </div>
         )
@@ -78,9 +79,11 @@ export const BotStatusChart: React.FC<BotStatusChartProps> = ({ bots }) => {
             <div className="bots-list">
                 {bots.map(bot => (
                     <div key={bot.botId} className={`bot-item ${bot.status}`}>
-                        <div className="bot-info">
-                            <span className="bot-name">{bot.botName}</span>
-                            <span className="bot-provider">{bot.provider === 'telegram' ? '📱' : '💬'} {bot.provider}</span>
+                        <div className="bot-info flex items-center gap-2">
+                            <span className="bot-name text-white font-bold">{bot.botName}</span>
+                            <span className="bot-provider text-xs text-slate-400 flex items-center gap-1">
+                                {bot.provider === 'telegram' ? <Smartphone size={14} className="text-cyan-400" /> : <MessageSquare size={14} className="text-emerald-400" />} {bot.provider}
+                            </span>
                         </div>
                         <div className="bot-stats">
                             <span className="stat">
@@ -90,8 +93,8 @@ export const BotStatusChart: React.FC<BotStatusChartProps> = ({ bots }) => {
                                 <strong>{bot.totalUsers}</strong> usuários
                             </span>
                         </div>
-                        <span className={`bot-status-badge ${bot.status}`}>
-                            {bot.status === 'online' ? '🟢' : bot.status === 'error' ? '🔴' : '⚫'}
+                        <span className={`bot-status-badge ${bot.status} flex items-center`}>
+                            {bot.status === 'online' ? <CheckCircle2 size={16} className="text-emerald-400" /> : bot.status === 'error' ? <AlertCircle size={16} className="text-rose-400" /> : <Circle size={16} className="text-slate-500" />}
                         </span>
                     </div>
                 ))}

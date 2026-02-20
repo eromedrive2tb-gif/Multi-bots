@@ -4,6 +4,7 @@ import { useSocket } from '../../../client/context/SocketContext'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
 import { Button } from '../../atoms/ui/Button'
 import { StatusBadge, ProviderBadge } from '../../atoms/ui/StatusBadge'
+import { RefreshCw, Zap, Trash2 } from 'lucide-react'
 import { BotBlueprintsModal } from '../../organisms/blueprints/BotBlueprintsModal'
 import type { Bot } from '../../../../../engine/src/core/types'
 
@@ -74,14 +75,15 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
                     )}
                 </div>
 
-                <div className="bot-actions">
+                <div className="bot-actions flex gap-2 mt-4">
                     <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => handleAction('check')}
                         disabled={loading}
+                        className="flex-1"
                     >
-                        🔄 {loading ? '...' : 'Verificar'}
+                        {loading ? '...' : <><RefreshCw size={14} /> Verificar</>}
                     </Button>
 
                     <Button
@@ -89,8 +91,9 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
                         size="sm"
                         onClick={() => setShowBlueprintsModal(true)}
                         disabled={loading}
+                        className="flex-1 text-[10px]"
                     >
-                        ⚡ {loading ? '...' : 'Gerenciar Comandos'}
+                        {loading ? '...' : <><Zap size={14} /> Comandos</>}
                     </Button>
 
                     <Button
@@ -98,8 +101,9 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
                         size="sm"
                         onClick={() => handleAction('delete')}
                         disabled={loading}
+                        className="flex-none px-3"
                     >
-                        🗑️ {loading ? '...' : 'Remover'}
+                        {loading ? '...' : <Trash2 size={16} />}
                     </Button>
                 </div>
             </CardBody>

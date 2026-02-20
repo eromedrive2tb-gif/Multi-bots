@@ -31,7 +31,7 @@ const messagingActions: ActionDefinition[] = [
     {
         key: 'send_message',
         label: 'Enviar Mensagem',
-        icon: '💬',
+        icon: 'MessageSquare',
         description: 'Envia uma mensagem de texto',
         category: 'messaging',
         params: [
@@ -58,7 +58,7 @@ const messagingActions: ActionDefinition[] = [
     {
         key: 'send_photo',
         label: 'Enviar Foto',
-        icon: '🖼️',
+        icon: 'Image',
         description: 'Envia uma imagem',
         category: 'messaging',
         params: [
@@ -80,7 +80,7 @@ const messagingActions: ActionDefinition[] = [
     {
         key: 'send_voice',
         label: 'Enviar Áudio',
-        icon: '🎤',
+        icon: 'Mic',
         description: 'Envia uma mensagem de voz',
         category: 'messaging',
         params: [
@@ -96,7 +96,7 @@ const messagingActions: ActionDefinition[] = [
     {
         key: 'send_webapp',
         label: 'Enviar WebApp',
-        icon: '📱',
+        icon: 'Smartphone',
         description: 'Envia um botão para abrir um WebApp dinâmico',
         category: 'messaging',
         params: [
@@ -144,7 +144,7 @@ const logicActions: ActionDefinition[] = [
     {
         key: 'condition',
         label: 'Condição (IF)',
-        icon: '🔀',
+        icon: 'GitBranch',
         description: 'Executa lógica condicional',
         category: 'logic',
         params: [
@@ -172,7 +172,7 @@ const logicActions: ActionDefinition[] = [
     {
         key: 'wait',
         label: 'Aguardar',
-        icon: '⏱️',
+        icon: 'Clock',
         description: 'Pausa a execução por segundos',
         category: 'logic',
         params: [
@@ -189,7 +189,7 @@ const logicActions: ActionDefinition[] = [
     {
         key: 'log',
         label: 'Log',
-        icon: '📝',
+        icon: 'FileText',
         description: 'Registra uma mensagem no console',
         category: 'logic',
         params: [
@@ -212,7 +212,7 @@ const dataActions: ActionDefinition[] = [
     {
         key: 'set_variable',
         label: 'Definir Variável',
-        icon: '📦',
+        icon: 'Package',
         description: 'Salva um valor na sessão',
         category: 'data',
         params: [
@@ -235,7 +235,7 @@ const dataActions: ActionDefinition[] = [
     {
         key: 'collect_input',
         label: 'Coletar Resposta',
-        icon: '📥',
+        icon: 'Inbox',
         description: 'Aguarda e salva a próxima resposta do usuário',
         category: 'data',
         params: [
@@ -270,7 +270,7 @@ const httpActions: ActionDefinition[] = [
     {
         key: 'http_request',
         label: 'Requisição HTTP',
-        icon: '🌐',
+        icon: 'Globe',
         description: 'Faz uma chamada HTTP externa',
         category: 'http',
         params: [
@@ -324,7 +324,7 @@ const botActions: ActionDefinition[] = [
     {
         key: 'reply_keyboard',
         label: 'Teclado de Respostas',
-        icon: '⌨️',
+        icon: 'Keyboard',
         description: 'Mostra botões de resposta rápida',
         category: 'bot',
         params: [
@@ -353,7 +353,7 @@ const botActions: ActionDefinition[] = [
     {
         key: 'inline_keyboard',
         label: 'Botões Inline',
-        icon: '🔘',
+        icon: 'ToggleLeft',
         description: 'Mostra botões inline na mensagem',
         category: 'bot',
         params: [
@@ -383,7 +383,7 @@ const paymentActions: ActionDefinition[] = [
     {
         key: 'select_plan',
         label: 'Selecionar Plano',
-        icon: '💎',
+        icon: 'Gem',
         description: 'Exibe lista de planos para o usuário escolher',
         category: 'payment',
         params: [
@@ -399,7 +399,7 @@ const paymentActions: ActionDefinition[] = [
     {
         key: 'generate_pix',
         label: 'Gerar PIX',
-        icon: '💠',
+        icon: 'QrCode',
         description: 'Gera um código PIX para pagamento',
         category: 'payment',
         params: [
@@ -439,7 +439,7 @@ const flowActions: ActionDefinition[] = [
     {
         key: 'prompt',
         label: 'Pergunta (Prompt)',
-        icon: '❓',
+        icon: 'HelpCircle',
         description: 'Envia mensagem e aguarda resposta (com validação e desvio)',
         category: 'flow',
         params: [
@@ -486,7 +486,7 @@ const flowActions: ActionDefinition[] = [
     {
         key: 'chain',
         label: 'Corrente (Chain)',
-        icon: '🔗',
+        icon: 'Link',
         description: 'Executa múltiplos passos em sequência',
         category: 'flow',
         params: [
@@ -516,13 +516,13 @@ export const ACTION_LIBRARY: ActionDefinition[] = [
 ]
 
 export const ACTION_CATEGORIES = {
-    messaging: { label: 'Mensagens', icon: '💬', color: '#10b981' },
-    logic: { label: 'Lógica', icon: '🔀', color: '#6366f1' },
-    data: { label: 'Dados', icon: '📦', color: '#f59e0b' },
-    http: { label: 'HTTP', icon: '🌐', color: '#ec4899' },
-    bot: { label: 'Bot', icon: '🤖', color: '#8b5cf6' },
-    payment: { label: 'Pagamento', icon: '💳', color: '#22c55e' },
-    flow: { label: 'Fluxo (Pro)', icon: '⚡', color: '#ef4444' },
+    messaging: { label: 'Mensagens', icon: 'MessageSquare', color: '#10b981' },
+    logic: { label: 'Lógica', icon: 'GitBranch', color: '#6366f1' },
+    data: { label: 'Dados', icon: 'Database', color: '#f59e0b' },
+    http: { label: 'HTTP', icon: 'Globe', color: '#ec4899' },
+    bot: { label: 'Bot', icon: 'Bot', color: '#8b5cf6' },
+    payment: { label: 'Pagamento', icon: 'CreditCard', color: '#22c55e' },
+    flow: { label: 'Fluxo (Pro)', icon: 'Zap', color: '#ef4444' },
 } as const
 
 export function getActionByKey(key: string): ActionDefinition | undefined {

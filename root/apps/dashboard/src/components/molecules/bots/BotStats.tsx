@@ -1,5 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react'
+import { StatCard } from '../general/StatCard'
+import { Bot, CheckCircle2, AlertTriangle } from 'lucide-react'
 
 interface BotStatsProps {
     total: number
@@ -8,55 +10,29 @@ interface BotStatsProps {
 
 export const BotStats: React.FC<BotStatsProps> = ({ total, online }) => {
     return (
-        <div className="bots-stats">
-            <div className="stat-item">
-                <span className="stat-value">{total}</span>
-                <span className="stat-label">Total de Bots</span>
-            </div>
-            <div className="stat-item">
-                <span className="stat-value stat-online">{online}</span>
-                <span className="stat-label">Online</span>
-            </div>
-            <div className="stat-item">
-                <span className="stat-value stat-offline">{total - online}</span>
-                <span className="stat-label">Offline/Erro</span>
-            </div>
-
-            <style>{`
-                .bots-stats {
-                    display: flex;
-                    gap: 32px;
-                    background: var(--card-bg);
-                    padding: 24px;
-                    border-radius: 12px;
-                    border: 1px solid var(--border-color);
-                    margin-bottom: 24px;
-                }
-                
-                .stat-item {
-                    display: flex;
-                    flex-direction: column;
-                }
-                
-                .stat-value {
-                    font-size: 1.5rem;
-                    font-weight: 700;
-                    color: var(--text-primary);
-                }
-                
-                .stat-online {
-                    color: #10b981;
-                }
-                
-                .stat-offline {
-                    color: #ef4444;
-                }
-                
-                .stat-label {
-                    font-size: 0.875rem;
-                    color: var(--text-secondary);
-                }
-            `}</style>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+            <StatCard
+                label="Total de Bots"
+                value={total}
+                icon={<Bot size={24} />}
+                iconBg="rgba(6, 182, 212, 0.15)"
+            />
+            <StatCard
+                label="Online"
+                value={online}
+                icon={<CheckCircle2 size={24} />}
+                iconBg="rgba(16, 185, 129, 0.15)"
+                trend="up"
+                trendValue="Estável"
+            />
+            <StatCard
+                label="Offline / Erro"
+                value={total - online}
+                icon={<AlertTriangle size={24} />}
+                iconBg="rgba(239, 68, 68, 0.15)"
+                trend={total - online > 0 ? 'down' : 'neutral'}
+                trendValue="Atenção"
+            />
         </div>
     )
 }

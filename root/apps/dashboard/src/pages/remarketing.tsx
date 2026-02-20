@@ -8,6 +8,7 @@ import { Button } from '../components/atoms/ui/Button'
 import { Spinner } from '../components/atoms/ui/Spinner'
 import { Modal } from '../components/molecules/ui/Modal'
 import { Input } from '../components/atoms/ui/Input'
+import { Users, ShoppingCart, CheckCircle2, Banknote, Clock, UsersRound, TrendingUp, Target, Send, DollarSign, Rocket, ClipboardList } from 'lucide-react'
 
 interface Campaign {
     id: string; name: string; flowId: string; segment: string;
@@ -24,12 +25,12 @@ interface Bot {
 type WizardStep = 1 | 2 | 3
 
 const AUDIENCE_SEGMENTS = [
-    { value: 'all', label: 'Todos os Leads', icon: '👥', desc: 'Todas as pessoas na base' },
-    { value: 'not_purchased', label: 'Não Compraram', icon: '🛒', desc: 'Leads que não finalizaram compra' },
-    { value: 'purchased', label: 'Já Compraram', icon: '✅', desc: 'Clientes que já compraram' },
-    { value: 'pix_recovery', label: 'PIX Gerado', icon: '💰', desc: 'Geraram PIX mas não pagaram' },
-    { value: 'expired', label: 'Expirados', icon: '⏰', desc: 'PIX expirado sem pagamento' },
-    { value: 'group_members', label: 'Membros do Grupo', icon: '👨‍👧‍👦', desc: 'Membros de grupos/canais' },
+    { value: 'all', label: 'Todos os Leads', icon: <Users size={20} />, desc: 'Todas as pessoas na base' },
+    { value: 'not_purchased', label: 'Não Compraram', icon: <ShoppingCart size={20} />, desc: 'Leads que não finalizaram compra' },
+    { value: 'purchased', label: 'Já Compraram', icon: <CheckCircle2 size={20} />, desc: 'Clientes que já compraram' },
+    { value: 'pix_recovery', label: 'PIX Gerado', icon: <Banknote size={20} />, desc: 'Geraram PIX mas não pagaram' },
+    { value: 'expired', label: 'Expirados', icon: <Clock size={20} />, desc: 'PIX expirado sem pagamento' },
+    { value: 'group_members', label: 'Membros do Grupo', icon: <UsersRound size={20} />, desc: 'Membros de grupos/canais' },
 ]
 
 export const RemarketingPage: React.FC = () => {
@@ -251,28 +252,28 @@ export const RemarketingPage: React.FC = () => {
                 {/* Stats - 4 cards */}
                 <div className="rmk-stats">
                     <div className="rmk-stat">
-                        <div className="rmk-stat-icon" style={{ background: 'rgba(6,182,212,.15)' }}>🎯</div>
+                        <div className="rmk-stat-icon" style={{ background: 'rgba(6,182,212,.15)' }}><TrendingUp size={20} className="text-cyan-neon" /></div>
                         <div className="rmk-stat-info">
                             <span className="rmk-stat-label">TOTAL CAMPANHAS</span>
                             <span className="rmk-stat-value">{totalCampaigns}</span>
                         </div>
                     </div>
                     <div className="rmk-stat">
-                        <div className="rmk-stat-icon" style={{ background: 'rgba(234,179,8,.15)' }}>⚡</div>
+                        <div className="rmk-stat-icon" style={{ background: 'rgba(234,179,8,.15)' }}><Target size={20} className="text-warning" /></div>
                         <div className="rmk-stat-info">
                             <span className="rmk-stat-label">ATIVAS AGORA</span>
                             <span className="rmk-stat-value">{activeCampaigns}</span>
                         </div>
                     </div>
                     <div className="rmk-stat">
-                        <div className="rmk-stat-icon" style={{ background: 'rgba(139,92,246,.15)' }}>📨</div>
+                        <div className="rmk-stat-icon" style={{ background: 'rgba(139,92,246,.15)' }}><Send size={20} className="text-purple-500" /></div>
                         <div className="rmk-stat-info">
                             <span className="rmk-stat-label">MENSAGENS ENVIADAS</span>
                             <span className="rmk-stat-value">{totalMsgSent}</span>
                         </div>
                     </div>
                     <div className="rmk-stat">
-                        <div className="rmk-stat-icon" style={{ background: 'rgba(16,185,129,.15)' }}>💰</div>
+                        <div className="rmk-stat-icon" style={{ background: 'rgba(16,185,129,.15)' }}><DollarSign size={20} className="text-success" /></div>
                         <div className="rmk-stat-info">
                             <span className="rmk-stat-label">RECEITA TOTAL</span>
                             <span className="rmk-stat-value">{fmt(totalRevenue)}</span>
@@ -283,7 +284,7 @@ export const RemarketingPage: React.FC = () => {
                 {/* Filters: Search + Status + Sort */}
                 <div className="rmk-filters">
                     <div className="rmk-search">
-                        <Input name="search" placeholder="🔍 Buscar campanhas..." value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} />
+                        <Input name="search" placeholder="Buscar campanhas..." value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} />
                     </div>
                     <select className="rmk-filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                         <option value="all">Todos Status</option>
@@ -303,7 +304,7 @@ export const RemarketingPage: React.FC = () => {
                         {filtered.length === 0 ? (
                             <div className="rmk-empty">
                                 <div className="rmk-empty-dot" />
-                                <div className="rmk-empty-icon">🎯</div>
+                                <div className="rmk-empty-icon"><Target size={32} className="text-cyan-neon" /></div>
                                 <strong style={{ fontSize: '1.1rem' }}>Pronto para começar?</strong>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', maxWidth: 400, marginTop: 8 }}>
                                     Crie sua primeira campanha de remarketing e comece a recuperar vendas perdidas com mensagens personalizadas.
@@ -327,7 +328,7 @@ export const RemarketingPage: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="rmk-campaign-actions">
-                                            <button className="rmk-view-btn" onClick={() => setViewRecipientsId(c.id)}>📊 Relatório</button>
+                                            <button className="rmk-view-btn flex items-center gap-2" onClick={() => setViewRecipientsId(c.id)}><ClipboardList size={14} /> Relatório</button>
                                             {c.status === 'active' && <Button size="sm" variant="secondary" onClick={() => toggleMut.mutate({ id: c.id, action: 'pause' })}>{toggleMut.isPending ? '...' : 'Pausar'}</Button>}
                                             {c.status === 'paused' && <Button size="sm" variant="secondary" onClick={() => toggleMut.mutate({ id: c.id, action: 'activate' })}>{toggleMut.isPending ? '...' : 'Ativar'}</Button>}
                                             <Button size="sm" variant="danger" onClick={() => { if (confirm('Excluir campanha?')) deleteMut.mutate(c.id) }}>✕</Button>
@@ -443,7 +444,7 @@ export const RemarketingPage: React.FC = () => {
                                             checked={form.immediate}
                                             onChange={e => setForm(f => ({ ...f, immediate: e.target.checked }))}
                                         />
-                                        <span>🚀 Iniciar envio imediatamente após criar</span>
+                                        <span className="flex items-center gap-2"><Rocket size={14} className="text-cyan-neon" /> Iniciar envio imediatamente após criar</span>
                                     </label>
                                     <p style={{ margin: '4px 0 0 24px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                                         O envio começará gradualmente respeitando a estratégia Anti-Ban (Gotejamento).
@@ -479,7 +480,7 @@ export const RemarketingPage: React.FC = () => {
                     {wizardStep === 3 && (
                         <>
                             <div style={{ background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)' }}>
-                                <h4 style={{ margin: '0 0 var(--space-md)' }}>📋 Resumo da Campanha</h4>
+                                <h4 className="flex items-center gap-2" style={{ margin: '0 0 var(--space-md)' }}><ClipboardList size={16} /> Resumo da Campanha</h4>
                                 <div style={{ display: 'grid', gap: 8 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Nome:</span><span style={{ fontWeight: 600 }}>{form.name}</span></div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: 'var(--color-text-muted)' }}>Bot:</span><span style={{ fontWeight: 600 }}>{bots?.find(b => b.id === form.botId)?.name}</span></div>
@@ -539,7 +540,7 @@ const ReportModal: React.FC<{ campaignId: string | null, onClose: () => void }> 
     };
 
     return (
-        <Modal title="📊 Relatório Detalhado de Campanha" isOpen={!!campaignId} onClose={onClose}>
+        <Modal title="Relatório Detalhado de Campanha" isOpen={!!campaignId} onClose={onClose}>
             <div style={{ minWidth: '500px' }}>
                 {/* Stats Summary Bar */}
                 <div style={{

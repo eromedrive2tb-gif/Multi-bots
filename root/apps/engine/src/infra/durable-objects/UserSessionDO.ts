@@ -108,6 +108,18 @@ export class UserSessionDO extends DurableObject<Env> {
                     }));
                     break;
                 }
+                case 'FETCH_BLUEPRINT': {
+                    const service = new BlueprintService(this.env.DB, this.env.BLUEPRINTS_KV, tenantId);
+                    const result = await service.getBlueprint(payload.id);
+                    ws.send(JSON.stringify({
+                        type: 'response',
+                        reqId,
+                        success: result.success,
+                        data: result.success ? result.data : undefined,
+                        error: !result.success ? result.error : undefined
+                    }));
+                    break;
+                }
                 case 'SAVE_BLUEPRINT': {
                     const service = new BlueprintService(this.env.DB, this.env.BLUEPRINTS_KV, tenantId);
                     const result = await service.saveBlueprint(payload);

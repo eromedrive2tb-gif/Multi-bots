@@ -5,6 +5,7 @@
  */
 
 import React, { useCallback, useState, useEffect, type ChangeEvent } from 'react'
+import { Save, Plus } from 'lucide-react'
 import {
     ReactFlow,
     MiniMap,
@@ -233,13 +234,13 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
 
             if (onSave) {
                 await onSave(blueprint)
-                setMessage('✅ Salvo!')
+                setMessage('Salvo com sucesso!')
             } else {
                 await request('SAVE_BLUEPRINT', blueprint)
-                setMessage('✅ Salvo!')
+                setMessage('Salvo com sucesso!')
             }
         } catch (error) {
-            setMessage(`❌ ${error instanceof Error ? error.message : 'Erro'}`)
+            setMessage(`Erro: ${error instanceof Error ? error.message : 'Desconhecido'}`)
         } finally {
             setSaving(false)
             setTimeout(() => setMessage(''), 3000)
@@ -345,8 +346,8 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
                             flexWrap: 'wrap',
                             maxWidth: '400px',
                         }}>
-                            <span style={{ color: 'white', fontWeight: 600, width: '100%', marginBottom: '4px' }}>
-                                ➕ Adicionar Step
+                            <span style={{ color: 'white', fontWeight: 600, width: '100%', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Plus size={16} /> Adicionar Step
                             </span>
                             {Object.entries(ACTION_CATEGORIES).map(([catKey, cat]) => (
                                 <div key={catKey} style={{ position: 'relative' }}>

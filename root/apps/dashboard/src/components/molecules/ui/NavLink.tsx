@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 
 interface NavLinkProps {
     href: string
-    icon?: string
+    icon?: ReactNode
     active?: boolean
     className?: string
     children: ReactNode

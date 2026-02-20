@@ -5,36 +5,45 @@
 
 /* CSS Variables */
 :root {
-  /* Colors - Dark Theme */
-  --color-bg-primary: #0a0a0f;
-  --color-bg-secondary: #12121a;
-  --color-bg-tertiary: #1a1a24;
-  --color-bg-card: #16161e;
+  /* Colors - Premium Cyan/Slate Theme */
+  --color-bg-primary: #020617;
+  /* Slate 950 */
+  --color-bg-secondary: #0f172a;
+  /* Slate 900 */
+  --color-bg-tertiary: #1e293b;
+  /* Slate 800 */
+  --color-bg-card: rgba(2, 6, 23, 0.8);
+  /* Slate 950 */
 
   /* Accent Colors */
-  --color-primary: #6366f1;
-  --color-primary-hover: #4f46e5;
-  --color-primary-light: rgba(99, 102, 241, 0.1);
-  --color-secondary: #8b5cf6;
+  --color-primary: #06b6d4;
+  /* Cyan 500 */
+  --color-primary-hover: #0891b2;
+  /* Cyan 600 */
+  --color-primary-light: rgba(6, 182, 212, 0.1);
+  --color-secondary: #22d3ee;
+  /* Cyan 400 */
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
 
   /* Text Colors */
-  --color-text-primary: #f8fafc;
+  --color-text-primary: #ffffff;
   --color-text-secondary: #94a3b8;
+  /* Slate 400 */
   --color-text-muted: #64748b;
+  /* Slate 500 */
 
   /* Borders */
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-hover: rgba(255, 255, 255, 0.15);
+  --color-border: rgba(6, 182, 212, 0.3);
+  --color-border-hover: rgba(6, 182, 212, 0.6);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  --shadow-glow: 0 0 30px -5px rgba(6, 182, 212, 0.5);
 
   /* Spacing */
   --space-xs: 0.25rem;
@@ -200,14 +209,18 @@ code {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-  color: white;
-  box-shadow: var(--shadow-md), var(--shadow-glow);
+  background: linear-gradient(135deg, var(--color-secondary), var(--color-primary-hover));
+  color: var(--color-bg-primary);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  box-shadow: var(--shadow-glow);
+  position: relative;
+  overflow: hidden;
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg), 0 0 30px rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px -5px rgba(6, 182, 212, 0.7);
 }
 
 .btn-secondary {
@@ -218,7 +231,8 @@ code {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--color-bg-card);
-  border-color: var(--color-border-hover);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
 }
 
 .btn-ghost {
@@ -227,8 +241,8 @@ code {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .btn-danger {
@@ -261,6 +275,7 @@ code {
   border-radius: var(--radius-md);
   color: var(--color-text-primary);
   transition: all var(--transition-fast);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .input::placeholder {
@@ -270,7 +285,7 @@ code {
 .input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light);
+  box-shadow: 0 0 0 3px var(--color-primary-light), inset 0 0 10px rgba(6, 182, 212, 0.1);
 }
 
 .input-error {
@@ -285,9 +300,10 @@ code {
 /* Cards */
 .card {
   background: var(--color-bg-card);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md), inset 0 0 20px rgba(6, 182, 212, 0.02);
   overflow: hidden;
 }
 
@@ -579,9 +595,12 @@ code {
 }
 
 .auth-card {
-  background: rgba(22, 22, 30, 0.8);
+  background: rgba(2, 6, 23, 0.8);
+  /* Slate 950 */
   backdrop-filter: blur(20px);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glow);
 }
 
 .auth-title {
@@ -771,7 +790,9 @@ code {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-lg) var(--space-xl);
-  background: var(--color-bg-secondary);
+  background: rgba(15, 23, 42, 0.8);
+  /* Slate 900 */
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
@@ -977,11 +998,13 @@ code {
 /* Bot Card */
 .bot-card {
   transition: all var(--transition-normal);
+  border: 1px solid var(--color-border);
 }
 
 .bot-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow);
+  border-color: var(--color-primary);
 }
 
 .bot-card-header {
@@ -1739,6 +1762,7 @@ code {
   margin: 0;
   font-size: 0.875rem;
 }
+
 /* ============================================
    MODALS & OVERLAYS
    ============================================ */
@@ -1840,4 +1864,114 @@ code {
 .btn-clear-metrics:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* ============================================
+   UTILITIES (Premium Aesthetics, Cyan Neon & Glass)
+   ============================================ */
+
+/* Glass Panels */
+.glass-panel {
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.05);
+}
+
+/* Gradients */
+.text-gradient-primary {
+  background: linear-gradient(90deg, #22d3ee, #3b82f6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.3));
+}
+
+.text-cyan-neon {
+  color: #22d3ee;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.6));
+}
+
+/* Animated Ring Effects */
+.ring-neon-1,
+.ring-neon-2 {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  pointer-events: none;
+}
+
+.ring-neon-1 {
+  transform: scale(1.25);
+  animation: pingModal infinite 3s linear;
+}
+
+.ring-neon-2 {
+  transform: scale(1.1);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+@keyframes pingModal {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Neon Dot Indicator */
+.neon-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #06b6d4;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+  animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+  }
+
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 4px rgba(6, 182, 212, 0.4);
+  }
+}
+
+/* Primary Button Enhancements */
+.btn-shimmer-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-100%);
+  transition: transform 1s ease-in-out;
+  pointer-events: none;
+}
+
+.btn-primary:hover .btn-shimmer,
+.btn-shimmer-wrap:hover .btn-shimmer {
+  transform: translateX(100%);
+}
+
+.btn-icon-spin:hover {
+  transform: rotate(180deg);
+}
+
+.btn-icon-spin {
+  transition: transform 0.7s;
 }

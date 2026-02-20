@@ -10,6 +10,7 @@ import { MetricsSummary } from '../components/organisms'
 import { BlueprintMetricsTable } from '../components/organisms'
 import { BotStatusChart } from '../components/organisms'
 import { QuickInsights } from '../components/organisms'
+import { TrendingUp, ClipboardList, Bot } from 'lucide-react'
 import type { AnalyticsDashboardData } from '../../../engine/src/lib/molecules/analytics/analytics-aggregator'
 import type { AnalyticsFilterParams } from '../../../engine/src/core/analytics-types'
 
@@ -56,7 +57,7 @@ export const AnalyticsPage: React.FC = () => {
                 {/* Page Header */}
                 <div className="analytics-header">
                     <div className="header-content">
-                        <h2>📈 Analytics Dashboard</h2>
+                        <h2 className="flex items-center gap-2"><TrendingUp size={24} className="text-cyan-neon" /> Analytics Dashboard</h2>
                         <p className="text-muted">
                             Visualize e gerencie métricas dos seus bots
                         </p>
@@ -84,7 +85,7 @@ export const AnalyticsPage: React.FC = () => {
                     {/* Blueprint Metrics Table */}
                     <Card className="analytics-card main">
                         <CardHeader>
-                            <h3>📋 Métricas por Blueprint</h3>
+                            <h3 className="flex items-center gap-2"><ClipboardList size={18} className="text-cyan-neon" /> Métricas por Blueprint</h3>
                         </CardHeader>
                         <CardBody>
                             <BlueprintMetricsTable blueprints={data.blueprints} />
@@ -94,7 +95,7 @@ export const AnalyticsPage: React.FC = () => {
                     {/* Bot Status Chart */}
                     <Card className="analytics-card side">
                         <CardHeader>
-                            <h3>🤖 Status dos Bots</h3>
+                            <h3 className="flex items-center gap-2"><Bot size={18} className="text-cyan-neon" /> Status dos Bots</h3>
                         </CardHeader>
                         <CardBody>
                             <BotStatusChart bots={data.bots} />

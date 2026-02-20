@@ -1,8 +1,10 @@
 /** @jsxImportSource react */
+/** @jsxImportSource react */
 import React from 'react'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
 import { InsightItem } from '../../molecules/analytics/InsightItem'
-import type { BlueprintMetric, OverviewMetrics } from '../../../core/analytics-types'
+import { Lightbulb, Trophy, TrendingUp, Activity, AlertTriangle } from 'lucide-react'
+import type { BlueprintMetric, OverviewMetrics } from '../../../../../engine/src/core/analytics-types'
 
 interface QuickInsightsProps {
     overview: OverviewMetrics
@@ -22,13 +24,13 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({ overview, blueprin
     return (
         <Card className="analytics-card insights">
             <CardHeader>
-                <h3>💡 Insights Rápidos</h3>
+                <h3 className="flex items-center gap-2"><Lightbulb size={18} className="text-warning" /> Insights Rápidos</h3>
             </CardHeader>
             <CardBody>
                 <div className="insights-grid">
                     {/* Top Blueprint */}
                     <InsightItem
-                        icon="🏆"
+                        icon={<Trophy size={16} className="text-warning" />}
                         label="Blueprint mais usado"
                         value={topBlueprint?.blueprintName || '-'}
                     />
@@ -36,7 +38,7 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({ overview, blueprin
                     {/* Best Conversion */}
                     {bestConversion && (
                         <InsightItem
-                            icon="📈"
+                            icon={<TrendingUp size={16} className="text-emerald-400" />}
                             label="Melhor conversão"
                             value={`${bestConversion.blueprintName} (${bestConversion.completionRate}%)`}
                         />
@@ -44,7 +46,7 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({ overview, blueprin
 
                     {/* Active Bots */}
                     <InsightItem
-                        icon="🟢"
+                        icon={<Activity size={16} className="text-cyan-400" />}
                         label="Bots ativos"
                         value={`${overview.activeBots} de ${overview.totalBots}`}
                     />
@@ -52,7 +54,7 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({ overview, blueprin
                     {/* Error Alert */}
                     {overview.totalErrors > 0 && (
                         <InsightItem
-                            icon="⚠️"
+                            icon={<AlertTriangle size={16} className="text-rose-400" />}
                             label="Erros detectados"
                             value={`${overview.totalErrors} erros registrados`}
                             variant="alert"
