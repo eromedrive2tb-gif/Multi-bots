@@ -58,5 +58,22 @@
         }
       ]
     }
-  ]
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "WEBHOOK_QUEUE",
+        "queue": "multi-bots-webhooks"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "multi-bots-webhooks",
+        "max_batch_size": 10,
+        "max_concurrency": 1,
+        "max_retries": 3,
+        "dead_letter_queue": "multi-bots-webhooks-dlq"
+      }
+    ]
+  }
 }

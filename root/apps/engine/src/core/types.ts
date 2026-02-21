@@ -286,6 +286,7 @@ export interface Env {
     PAGES_KV: KVNamespace
     AUTH_SECRET: string
     WEBHOOK_BASE_URL?: string  // Override webhook URL for production
+    WEBHOOK_QUEUE: Queue       // Cloudflare Queue for async webhook processing
     CAMPAIGN_SCHEDULER_DO: DurableObjectNamespace
     USER_SESSION_DO: DurableObjectNamespace
 }

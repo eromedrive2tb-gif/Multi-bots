@@ -14,6 +14,7 @@ import { registerRoutes } from '../../engine/src/routes'
 import { DashboardPage } from './pages/dashboard'
 import { SettingsPage } from './pages/settings'
 import { setupRegistry } from '../../engine/src/lib/molecules'
+import { setupEventSubscribers } from '../../engine/src/infra/events/subscriber-setup'
 import { pagesRoutes } from './routes/pages.routes'
 import { getPage } from '../../engine/src/lib/molecules/kv-page-manager'
 import { WebAppPage } from '../../engine/src/core/types'
@@ -24,6 +25,9 @@ import { WebAppPage } from '../../engine/src/core/types'
 
 // Initialize Action Registry (DIP Composition Root)
 setupRegistry()
+
+// Initialize Event Bus Subscribers
+setupEventSubscribers()
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -112,7 +116,20 @@ app.get('*', async (c) => {
   return c.render(<div id="root"></div>)
 })
 
-export default app
+import { handleQueue } from '../../engine/src/infra/queue/queue-consumer'
+import type { WebhookQueueMessage } from '../../engine/src/infra/queue/queue-consumer'
+
+// ============================================
+// WORKER MODULE EXPORT
+// ============================================
+
+export default {
+  fetch: app.fetch,
+  queue: async (batch: MessageBatch<WebhookQueueMessage>, env: Env, ctx: ExecutionContext) => {
+    await handleQueue(batch, env, ctx)
+  }
+}
+
 export { CampaignSchedulerDO } from '../../engine/src/features/remarketing/infrastructure/durable-objects/CampaignSchedulerDO'
 export { UserSessionDO } from '../../engine/src/infra/durable-objects/UserSessionDO'
-// Force Rebuild Trigger: 1
+// Force Rebuild Trigger: 2

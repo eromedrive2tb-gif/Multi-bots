@@ -1,77 +1,33 @@
 /**
  * ORGANISM: TelegramWebhookHandler
- * Responsabilidade: Processa webhooks do Telegram via Engine data-driven
- * Orquestra: Engine, Session, tg-handle-update, Analytics, CRM
+ * Responsabilidade: Validate → Process (async) → HTTP 200 IMMEDIATELY
  * 
- * REFACTORED: All command logic moved to Blueprint JSONs
+ * Strategy:
+ * - ALWAYS returns HTTP 200 immediately to Telegram.
+ * - Parallelizes initial bot validation and trigger matching.
+ * - Processing runs in ctx.waitUntil() for instant response.
+ * - Event Bus handles all side-effects (CRM, Analytics, VipGroups) with protection against duplicates.
  */
 
 import { tgHandleUpdate, type TelegramUpdate } from '../../atoms'
 import { dbGetBotById } from '../../atoms'
-import { dbLogAnalyticsEvent } from '../../atoms'
 import { executeFromTrigger, type FlowExecutionResult } from '../'
-import { getBlueprintByTriggerFromKv, getBlueprintFromKv } from '../../molecules'
-import { upsertCustomer, logCustomerSnapshot } from '../../molecules'  // Import CRM molecule
+import { getBlueprintByTriggerFromKv } from '../../molecules'
 import type {
     TelegramCredentials,
     UniversalContext,
     Env
 } from '../../../core/types'
-
-// ============================================
-// ANALYTICS LOGGING HELPER
-// ============================================
-
-/**
- * Log analytics events after flow execution
- */
-async function logFlowAnalytics(
-    db: D1Database,
-    tenantId: string,
-    botId: string,
-    blueprintId: string,
-    userId: string,
-    flowResult: FlowExecutionResult
-): Promise<void> {
-    try {
-        // Log flow_complete event
-        if (flowResult.success && flowResult.stepsExecuted > 0 && !flowResult.lastStepId) {
-            // Flow completed (reached null next_step)
-            await dbLogAnalyticsEvent({
-                db,
-                tenantId,
-                botId,
-                blueprintId,
-                stepId: 'flow_complete',
-                userId,
-                eventType: 'flow_complete',
-                eventData: {
-                    stepsExecuted: flowResult.stepsExecuted,
-                }
-            })
-        }
-
-        // Log flow error if present
-        if (flowResult.error) {
-            await dbLogAnalyticsEvent({
-                db,
-                tenantId,
-                botId,
-                blueprintId,
-                stepId: flowResult.lastStepId || 'unknown',
-                userId,
-                eventType: 'step_error',
-                eventData: {
-                    error: flowResult.error,
-                    stepsExecuted: flowResult.stepsExecuted
-                }
-            })
-        }
-    } catch (error) {
-        // Don't fail the webhook if analytics logging fails
-        console.error('[Analytics] Error logging flow analytics:', error)
-    }
-}
+import { DomainEventType, createDomainEvent } from '../../../core/domain-events'
+import type {
+    BotGroupPayload,
+    UserGroupPayload,
+    UserMessageInGroupPayload,
+    UserInteractedPayload,
+    FlowCompletedPayload,
+    FlowErrorPayload,
+} from '../../../core/domain-events'
+import { dispatcher } from '../../../infra/events/EventDispatcher'
 
 // ============================================
 // WEBHOOK CONTEXT
@@ -91,39 +47,159 @@ export interface WebhookResult {
 }
 
 // ============================================
-// CONTEXT BUILDER
+// CORE PROCESSING (runs inside waitUntil)
 // ============================================
 
-/**
- * Converts a Telegram update to UniversalContext
- */
-function buildUniversalContext(
+async function processUpdate(
     update: TelegramUpdate,
-    tenantId: string,
-    botToken: string,
-    db: D1Database,
-    botId: string
-): UniversalContext | null {
-    const parsed = tgHandleUpdate(update)
+    context: WebhookContext,
+    token: string,
+    initialBlueprintId?: string
+): Promise<void> {
+    const { env, botId, tenantId, waitUntil } = context
 
-    if (!parsed.message) {
-        return null
+    // 1. Group events → Event Bus
+    if (update.my_chat_member) {
+        const m = update.my_chat_member
+        const newStatus = m.new_chat_member.status
+        const eventPayload: BotGroupPayload = {
+            chatId: String(m.chat.id),
+            chatTitle: m.chat.title || `Group ${m.chat.id}`,
+            chatType: m.chat.type,
+            botId,
+            fromUserId: String(m.from.id),
+            fromUsername: m.from.username,
+            fromFirstName: m.from.first_name,
+            date: m.date,
+            raw: update,
+        }
+        const eventType = ['member', 'administrator', 'creator'].includes(newStatus)
+            ? DomainEventType.BOT_ADDED_TO_GROUP
+            : DomainEventType.BOT_REMOVED_FROM_GROUP
+        dispatcher.emit(createDomainEvent(eventType, tenantId, botId, 'tg', eventPayload), env, waitUntil)
+        return
     }
 
-    return {
+    if (update.chat_member) {
+        const m = update.chat_member
+        const newStatus = m.new_chat_member.status
+        const eventPayload: UserGroupPayload = {
+            chatId: String(m.chat.id),
+            userId: String(m.new_chat_member.user.id),
+            status: newStatus,
+            username: m.new_chat_member.user.username,
+            firstName: m.new_chat_member.user.first_name,
+            botId,
+        }
+        const eventType = ['member', 'administrator', 'creator'].includes(newStatus)
+            ? DomainEventType.USER_JOINED_GROUP
+            : DomainEventType.USER_LEFT_GROUP
+        dispatcher.emit(createDomainEvent(eventType, tenantId, botId, 'tg', eventPayload), env, waitUntil)
+        return
+    }
+
+    // 2. Passive member upsert for group messages (in background)
+    if (update.message && ['group', 'supergroup'].includes(update.message.chat.type)) {
+        const msg = update.message
+        const eventPayload: UserMessageInGroupPayload = {
+            chatId: String(msg.chat.id),
+            userId: String(msg.from.id),
+            username: msg.from.username,
+            fullName: [msg.from.first_name, (msg.from as any).last_name].filter(Boolean).join(' ') || 'Unknown',
+            botId,
+        }
+        dispatcher.emit(createDomainEvent(DomainEventType.USER_MESSAGE_IN_GROUP, tenantId, botId, 'tg', eventPayload), env, waitUntil)
+    }
+
+    // 3. Build context for engine
+    const parsed = tgHandleUpdate(update)
+    if (!parsed.message) return
+
+    const ctx: UniversalContext = {
         provider: 'tg',
         tenantId,
         userId: parsed.message.from.id,
         chatId: parsed.message.chatId,
-        botToken,
+        botToken: token,
         botId,
-        db,
+        db: env.DB,
+        waitUntil,
         metadata: {
             userName: parsed.message.from.name,
             lastInput: parsed.message.text,
             command: parsed.isCommand ? parsed.command : undefined,
             raw: update,
         },
+    }
+
+    // 4. CRM: USER_INTERACTED (non-blocking)
+    dispatcher.emit(
+        createDomainEvent<UserInteractedPayload>(DomainEventType.USER_INTERACTED, tenantId, botId, 'tg', { ctx }),
+        env, waitUntil
+    )
+
+    // 5. Trigger Resolution + Deep Linking
+    let blueprintId = initialBlueprintId || 'unknown'
+
+    if (blueprintId === 'unknown' && ctx.metadata.command) {
+        let trigger = `/${ctx.metadata.command}`
+
+        // Support for /start promo → /promo
+        if (ctx.metadata.command === 'start' && ctx.metadata.lastInput) {
+            const parts = ctx.metadata.lastInput.trim().split(/\s+/)
+            if (parts.length >= 2) {
+                const payload = parts[1]
+                const potentialTrigger = payload.startsWith('/') ? payload : `/${payload}`
+                const bpResult = await getBlueprintByTriggerFromKv(env.BLUEPRINTS_KV, tenantId, potentialTrigger)
+                if (bpResult.success && bpResult.data) {
+                    blueprintId = bpResult.data.id
+                    ctx.metadata.command = potentialTrigger.replace('/', '')
+                    ctx.metadata.lastInput = potentialTrigger
+                }
+            }
+        }
+
+        // Final check if not resolved by deep link
+        if (blueprintId === 'unknown') {
+            const bpResult = await getBlueprintByTriggerFromKv(env.BLUEPRINTS_KV, tenantId, trigger)
+            if (bpResult.success && bpResult.data) {
+                blueprintId = bpResult.data.id
+            }
+        }
+    }
+
+    // 6. Run Engine
+    const result = await executeFromTrigger(
+        { blueprints: env.BLUEPRINTS_KV, sessions: env.SESSIONS_KV },
+        ctx
+    )
+
+    blueprintId = result.blueprintId || blueprintId
+
+    // 7. Post-execution events (Analytics)
+    if (blueprintId !== 'unknown') {
+        if (result.success && !result.lastStepId) {
+            dispatcher.emit(
+                createDomainEvent<FlowCompletedPayload>(
+                    DomainEventType.FLOW_COMPLETED, tenantId, botId, 'tg',
+                    { ctx, blueprintId, stepsExecuted: result.stepsExecuted }
+                ),
+                env, waitUntil
+            )
+        } else if (result.error) {
+            dispatcher.emit(
+                createDomainEvent<FlowErrorPayload>(
+                    DomainEventType.FLOW_ERROR, tenantId, botId, 'tg',
+                    {
+                        ctx, blueprintId,
+                        error: result.error,
+                        stepsExecuted: result.stepsExecuted,
+                        lastStepId: result.lastStepId,
+                    }
+                ),
+                env, waitUntil
+            )
+        }
     }
 }
 
@@ -132,245 +208,43 @@ function buildUniversalContext(
 // ============================================
 
 /**
- * Handle incoming Telegram webhook - Data-driven
+ * Handle incoming Telegram webhook — Parallel Validate → Background Process → HTTP 200
  */
 export async function handleTelegramWebhook(
     update: TelegramUpdate,
     context: WebhookContext
 ): Promise<WebhookResult> {
-    console.log('[Telegram Debug] Incoming Webhook Update:', JSON.stringify(update))
     try {
-        // 1. Get bot credentials
-        const bot = await dbGetBotById({ db: context.env.DB, id: context.botId })
+        const { botId, env, waitUntil, tenantId } = context
+
+        // 1. Parallel Lookups: Bot credentials (D1) + Initial Trigger check (KV)
+        // Shaves off ~100-200ms of sequential latency
+        const [bot, bpResult] = await Promise.all([
+            dbGetBotById({ db: env.DB, id: botId }),
+            update.message?.text?.startsWith('/')
+                ? getBlueprintByTriggerFromKv(env.BLUEPRINTS_KV, tenantId, update.message.text.split(' ')[0])
+                : Promise.resolve(null)
+        ])
+
         if (!bot) {
-            return {
-                handled: false,
-                error: 'Bot not found'
-            }
+            return { handled: false, error: 'Bot not found' }
         }
 
         const credentials = bot.credentials as TelegramCredentials
         const token = credentials.token
 
-        // 1.5 Handle my_chat_member (Bot added/removed from group)
-        if (update.my_chat_member) {
-            const memberUpdate = update.my_chat_member
-            const newStatus = memberUpdate.new_chat_member.status
-            const chatId = String(memberUpdate.chat.id)
-            const chatTitle = memberUpdate.chat.title || `Group ${chatId}`
-            const chatType = memberUpdate.chat.type
+        // Extract blueprintId safely from Result
+        const initialBlueprintId = bpResult && bpResult.success ? bpResult.data?.id : undefined
 
-            console.log(`[Telegram] my_chat_member update: ${newStatus} for chat ${chatId} (${chatTitle})`)
-
-            const { VipGroupService } = await import('../groups/VipGroupService')
-            const vipService = new VipGroupService(context.env.DB, context.tenantId)
-
-            if (['member', 'administrator', 'creator'].includes(newStatus)) {
-                // Bot added to group/channel
-                console.log(`[Telegram] Auto-registering group ${chatId}`)
-                const groupRes = await vipService.registerGroup({
-                    name: chatTitle,
-                    provider: 'telegram',
-                    providerId: chatId,
-                    type: chatType === 'channel' ? 'channel' : 'group',
-                    botId: context.botId,
-                    metadata: {
-                        auto_added: true,
-                        added_by: memberUpdate.from.id,
-                        date: memberUpdate.date
-                    }
-                })
-
-                // Also add the user who added it as a member/admin
-                if (groupRes.success && groupRes.data) {
-                    await vipService.addMember({
-                        groupId: groupRes.data.id,
-                        customerId: String(memberUpdate.from.id),
-                        status: 'administrator',
-                        provider: 'tg',
-                        tenantId: context.tenantId,
-                        name: memberUpdate.from.first_name,
-                        username: memberUpdate.from.username
-                    })
-                }
-            } else if (['left', 'kicked'].includes(newStatus)) {
-                // Bot removed from group
-                console.log(`[Telegram] Auto-removing group ${chatId}`)
-                const groups = await vipService.listGroups()
-                if (groups.success && groups.data) {
-                    const group = groups.data.find(g => g.providerId === chatId && g.provider === 'telegram')
-                    if (group) {
-                        await vipService.deleteGroup(group.id)
-                    }
-                }
-            }
-
-            return { handled: true }
-        }
-
-        // 1.6 Handle chat_member (User joined/left)
-        if (update.chat_member) {
-            const memberUpdate = update.chat_member
-            const newStatus = memberUpdate.new_chat_member.status
-            const chatId = String(memberUpdate.chat.id)
-            const userId = String(memberUpdate.new_chat_member.user.id)
-
-            console.log(`[Telegram] chat_member update: ${newStatus} for user ${userId} in chat ${chatId}`)
-
-            const { VipGroupService } = await import('../groups/VipGroupService')
-            const vipService = new VipGroupService(context.env.DB, context.tenantId)
-
-            // Find the internal group ID
-            const groups = await vipService.listGroups()
-            if (groups.success && groups.data) {
-                const group = groups.data.find(g => g.providerId === chatId && g.provider === 'telegram')
-
-                if (group) {
-                    if (['member', 'administrator', 'creator'].includes(newStatus)) {
-                        await vipService.addMember({
-                            groupId: group.id,
-                            customerId: userId,
-                            status: newStatus as any,
-                            provider: 'tg',
-                            tenantId: context.tenantId,
-                            username: memberUpdate.new_chat_member.user.username,
-                            name: memberUpdate.new_chat_member.user.first_name || 'Unknown'
-                        })
-                    } else if (['left', 'kicked'].includes(newStatus)) {
-                        await vipService.updateMemberStatus(group.id, userId, newStatus as any)
-                    }
-                }
-            }
-
-            return { handled: true }
-        }
-
-        // 1.7 Passive Member Upsert (Message in Group)
-        // If it's a message in a group/supergroup, upsert the member
-        if (update.message && ['group', 'supergroup'].includes(update.message.chat.type)) {
-            const chatId = String(update.message.chat.id)
-            const userId = String(update.message.from.id)
-
-            // Run in background to not block response
-            context.waitUntil((async () => {
-                const { VipGroupService } = await import('../groups/VipGroupService')
-                const vipService = new VipGroupService(context.env.DB, context.tenantId)
-
-                // We need to check if this group is tracked.
-                // Optimisation: querying listGroups every message is heavy.
-                // Ideally we'd have a KV cache or simple "is this a VIP group" check.
-                // For now, we stick to the DB check but wrapped in waitUntil.
-                const groups = await vipService.listGroups()
-                if (groups.success && groups.data) {
-                    const group = groups.data.find(g => g.providerId === chatId && g.provider === 'telegram')
-                    if (group) {
-                        await vipService.addMember({
-                            groupId: group.id,
-                            customerId: userId,
-                            status: 'member', // Assumed member if talking
-                            provider: 'tg',
-                            tenantId: context.tenantId,
-                            username: update.message!.from.username,
-                            name: [update.message!.from.first_name, (update.message!.from as any).last_name].filter(Boolean).join(' ') || 'Unknown'
-                        })
-                    }
-                }
-            })())
-        }
-
-        // 2. Build UniversalContext
-        const ctx = buildUniversalContext(update, context.tenantId, token, context.env.DB, context.botId)
-
-        if (!ctx) {
-            return { handled: false }
-        }
-
-        // 2.1 CRM: Upsert Customer (Background)
-        // Fire and forget, no await
-        context.waitUntil(upsertCustomer(ctx, context.env))
-
-        // 3. Try to get the blueprintId for analytics (before execution for starting flows)
-        let blueprintId = 'unknown'
-        if (ctx.metadata.command) {
-            let trigger = `/${ctx.metadata.command}`
-
-            // FIX: Deep Linking Support
-            // If command is /start and has arguments, specifically check if those arguments match a trigger
-            // e.g. t.me/Bot?start=promo -> /start promo -> trigger: /promo
-            if (ctx.metadata.command === 'start' && ctx.metadata.lastInput) {
-                const parts = ctx.metadata.lastInput.trim().split(/\s+/)
-                if (parts.length >= 2) {
-                    const payload = parts[1]
-                    // If payload starts with / use it, else prepend /
-                    const potentialTrigger = payload.startsWith('/') ? payload : `/${payload}`
-
-                    // Check if this specific trigger exists
-                    const bpResult = await getBlueprintByTriggerFromKv(context.env.BLUEPRINTS_KV, context.tenantId, potentialTrigger)
-                    if (bpResult.success && bpResult.data) {
-                        trigger = potentialTrigger
-                        // Update context command to match the deep link trigger so engine executes it
-                        // We need to hack the context logic slightly or just rely on executeFromTrigger handling it?
-                        // executeFromTrigger uses ctx.metadata.command usually... or it uses the trigger passed to it?
-                        // Actually executeFromTrigger calculates trigger internally from ctx.metadata.command.
-                        // We might need to update ctx.metadata.command to the new command.
-                        ctx.metadata.command = potentialTrigger.replace('/', '')
-                        ctx.metadata.lastInput = potentialTrigger // Pretend user typed /promo
-                    }
-                }
-            }
-
-            const bpResult = await getBlueprintByTriggerFromKv(context.env.BLUEPRINTS_KV, context.tenantId, trigger)
-            if (bpResult.success && bpResult.data) {
-                blueprintId = bpResult.data.id
-            }
-        }
-
-        // 4. Run Engine
-        const result = await executeFromTrigger(
-            {
-                blueprints: context.env.BLUEPRINTS_KV,
-                sessions: context.env.SESSIONS_KV,
-            },
-            ctx
+        // 2. Process in background via waitUntil — Returns HTTP 200 immediately to TG
+        waitUntil(
+            processUpdate(update, context, token, initialBlueprintId).catch(err =>
+                console.error('[Telegram Handler] Background processing error:', err)
+            )
         )
 
-        // Update blueprintId from execution result if available
-        if (result.blueprintId) {
-            blueprintId = result.blueprintId
-        }
-
-        // 5. Log analytics events
-        if (blueprintId !== 'unknown') {
-            await logFlowAnalytics(
-                context.env.DB,
-                context.tenantId,
-                context.botId,
-                blueprintId,
-                String(ctx.userId),
-                result
-            )
-
-            // 5.1 CRM: Log history snapshot if flow completed successfully
-            if (result.success && !result.lastStepId) {
-                // Fetch latest session data again to ensure we have all vars
-                const { getOrCreateSessionAt } = await import('../../molecules')
-                const sessionRes = await getOrCreateSessionAt(context.env.SESSIONS_KV, context.tenantId, ctx.provider, String(ctx.userId))
-
-                if (sessionRes.success) {
-                    context.waitUntil(logCustomerSnapshot(
-                        ctx,
-                        context.env,
-                        blueprintId,
-                        sessionRes.data.collectedData
-                    ))
-                }
-            }
-        }
-
-        return {
-            handled: true,
-            flowResult: result
-        }
+        // 3. Return immediately
+        return { handled: true }
     } catch (error) {
         console.error('[Telegram Handler] Error:', error)
         return {

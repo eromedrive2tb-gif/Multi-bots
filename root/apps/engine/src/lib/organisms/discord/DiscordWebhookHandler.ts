@@ -1,12 +1,14 @@
 /**
  * ORGANISM: DiscordWebhookHandler
  * Responsabilidade: Processa webhooks do Discord via Engine data-driven
- * Orquestra: Engine, Session, dc-handle-interaction, dc-verify-signature
+ * 
+ * REFACTORED (EDA):
+ * - CRM and Analytics logic moved to Event Subscribers
+ * - Handler emits Domain Events instead of inline logic
  */
 
 import { dcHandleInteraction, InteractionType, type DiscordInteraction } from '../../atoms'
 import { dbGetBotById } from '../../atoms'
-import { dbLogAnalyticsEvent } from '../../atoms'
 import { executeFromTrigger, type FlowExecutionResult } from '../'
 import { getBlueprintByTriggerFromKv } from '../../molecules'
 import type {
@@ -14,70 +16,13 @@ import type {
     Env,
     DiscordCredentials,
 } from '../../../core/types'
-import { ErrorSeverity } from '../../../core/analytics-types'
-import { upsertCustomer } from '../../molecules'
-
-// ============================================
-// ANALYTICS LOGGING HELPER
-// ============================================
-
-/**
- * Log analytics events after flow execution
- */
-async function logFlowAnalytics(
-    db: D1Database,
-    tenantId: string,
-    botId: string,
-    blueprintId: string,
-    userId: string,
-    flowResult: FlowExecutionResult
-): Promise<void> {
-    try {
-        // Log flow_complete event
-        if (flowResult.success && flowResult.stepsExecuted > 0 && !flowResult.lastStepId) {
-            // Flow completed (reached null next_step)
-            await dbLogAnalyticsEvent({
-                db,
-                tenantId,
-                botId,
-                blueprintId,
-                stepId: 'flow_complete',
-                userId,
-                eventType: 'flow_complete',
-                eventData: {
-                    stepsExecuted: flowResult.stepsExecuted,
-                }
-            })
-        }
-
-        // Log flow error if present
-        if (flowResult.error) {
-            // Determine Severity
-            let severity = ErrorSeverity.CRITICAL // Default to Level 4
-
-            if (typeof flowResult.error === 'string' && flowResult.error.includes('Command trigger mismatch')) {
-                severity = ErrorSeverity.LOW
-            }
-
-            await dbLogAnalyticsEvent({
-                db,
-                tenantId,
-                botId,
-                blueprintId,
-                stepId: flowResult.lastStepId || 'unknown',
-                userId,
-                eventType: 'step_error',
-                eventData: {
-                    error: flowResult.error,
-                    stepsExecuted: flowResult.stepsExecuted,
-                    severity: severity
-                }
-            })
-        }
-    } catch (error) {
-        console.error('[Analytics] Error logging flow analytics:', error)
-    }
-}
+import { DomainEventType, createDomainEvent } from '../../../core/domain-events'
+import type {
+    UserInteractedPayload,
+    FlowCompletedPayload,
+    FlowErrorPayload,
+} from '../../../core/domain-events'
+import { dispatcher } from '../../../infra/events/EventDispatcher'
 
 // ============================================
 // WEBHOOK CONTEXT
@@ -112,7 +57,8 @@ function buildUniversalContext(
     tenantId: string,
     botToken: string,
     db: D1Database,
-    botId: string
+    botId: string,
+    waitUntil: (promise: Promise<any>) => void
 ): UniversalContext | null {
 
     if (!parsed.message) {
@@ -127,6 +73,7 @@ function buildUniversalContext(
         botToken,
         botId,
         db,
+        waitUntil,
         metadata: {
             userName: parsed.message.from.name,
             lastInput: parsed.message.text,
@@ -141,7 +88,7 @@ function buildUniversalContext(
 // ============================================
 
 /**
- * Handle incoming Discord webhook - Data-driven
+ * Handle incoming Discord webhook - Event-Driven Architecture
  */
 export async function handleDiscordWebhook(
     interaction: DiscordInteraction,
@@ -150,10 +97,7 @@ export async function handleDiscordWebhook(
     try {
         // 1. Handle PING immediately
         if (interaction.type === InteractionType.PING) {
-            return {
-                handled: true,
-                response: { type: 1 } // PONG
-            }
+            return { handled: true, response: { type: 1 } }
         }
 
         // 2. Get bot credentials
@@ -161,28 +105,30 @@ export async function handleDiscordWebhook(
         if (!bot) {
             bot = await dbGetBotById({ db: context.env.DB, id: context.botId })
         }
-
         if (!bot) {
-            return {
-                handled: false,
-                error: 'Bot not found'
-            }
+            return { handled: false, error: 'Bot not found' }
         }
 
         const credentials = bot.credentials as DiscordCredentials
         const token = credentials.token
 
-        // 3. Parse Interaction (Unify logic)
+        // 3. Parse Interaction
         const parsed = dcHandleInteraction(interaction)
-        const ctx = buildUniversalContext(parsed, interaction, context.tenantId, token, context.env.DB, context.botId)
+        const ctx = buildUniversalContext(parsed, interaction, context.tenantId, token, context.env.DB, context.botId, context.waitUntil)
 
         if (!ctx) {
             return { handled: false }
         }
 
-        // 3.1 CRM: Upsert Customer (Background)
-        // Fire and forget, no await
-        context.waitUntil(upsertCustomer(ctx, context.env))
+        // 3.1 CRM: Emit USER_INTERACTED (replaces inline upsertCustomer)
+        dispatcher.emit(
+            createDomainEvent<UserInteractedPayload>(
+                DomainEventType.USER_INTERACTED, context.tenantId, context.botId, 'dc',
+                { ctx }
+            ),
+            context.env,
+            context.waitUntil
+        )
 
         // 4. Determine Response Content
         let response: any = { type: 5 } // DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
@@ -241,10 +187,7 @@ export async function handleDiscordWebhook(
                     }
 
                     const result = await executeFromTrigger(
-                        {
-                            blueprints: context.env.BLUEPRINTS_KV,
-                            sessions: context.env.SESSIONS_KV,
-                        },
+                        { blueprints: context.env.BLUEPRINTS_KV, sessions: context.env.SESSIONS_KV },
                         ctx
                     )
 
@@ -252,27 +195,32 @@ export async function handleDiscordWebhook(
                         blueprintId = result.blueprintId
                     }
 
-                    await logFlowAnalytics(
-                        context.env.DB,
-                        context.tenantId,
-                        context.botId,
-                        blueprintId,
-                        String(ctx.userId),
-                        result
-                    )
-
-                    // 5.1 CRM: Log history snapshot if flow completed successfully
-                    if (result.success && !result.lastStepId) {
-                        const { logCustomerSnapshot, getOrCreateSessionAt } = await import('../../molecules')
-                        const sessionRes = await getOrCreateSessionAt(context.env.SESSIONS_KV, context.tenantId, ctx.provider, String(ctx.userId))
-
-                        if (sessionRes.success) {
-                            context.waitUntil(logCustomerSnapshot(
-                                ctx,
+                    // Emit post-execution events
+                    if (blueprintId !== 'unknown') {
+                        if (result.success && !result.lastStepId) {
+                            dispatcher.emit(
+                                createDomainEvent<FlowCompletedPayload>(
+                                    DomainEventType.FLOW_COMPLETED, context.tenantId, context.botId, 'dc',
+                                    { ctx, blueprintId, stepsExecuted: result.stepsExecuted }
+                                ),
                                 context.env,
-                                blueprintId,
-                                sessionRes.data.collectedData
-                            ))
+                                context.waitUntil
+                            )
+                        } else if (result.error) {
+                            dispatcher.emit(
+                                createDomainEvent<FlowErrorPayload>(
+                                    DomainEventType.FLOW_ERROR, context.tenantId, context.botId, 'dc',
+                                    {
+                                        ctx,
+                                        blueprintId,
+                                        error: result.error,
+                                        stepsExecuted: result.stepsExecuted,
+                                        lastStepId: result.lastStepId,
+                                    }
+                                ),
+                                context.env,
+                                context.waitUntil
+                            )
                         }
                     }
 
@@ -284,11 +232,7 @@ export async function handleDiscordWebhook(
             })()
         }
 
-        return {
-            handled: true,
-            response,
-            executionPromise
-        }
+        return { handled: true, response, executionPromise }
     } catch (error) {
         console.error('[Discord Handler] Error:', error)
         return {
