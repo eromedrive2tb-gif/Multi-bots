@@ -2,6 +2,7 @@
 export * from './general/Header'
 export * from './general/Sidebar'
 export * from './general/FilterBar'
+export * from './general/MaintenanceNotice'
 
 // Organisms - Auth
 export * from './auth/LoginForm'
