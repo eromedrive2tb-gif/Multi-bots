@@ -2,14 +2,17 @@ import { z } from 'zod'
 
 // ============================================
 // DYNAMIC WEBAPPS - DOMAIN TYPES
+// Multi-Paradigm Rendering Engine
 // ============================================
 
 /**
- * Page rendering mode:
- * - 'composed': HTML, CSS, JS stored separately and assembled at serve time
- * - 'singlefile': Full HTML document stored as-is (vite-plugin-singlefile output)
+ * Page rendering mode (4 categories):
+ * - 'classic':      HTML + CSS + JS separados — o modo tradicional
+ * - 'singlefile':   HTML completo (vite-plugin-singlefile output) — zero-overhead
+ * - 'declarative':  HTML + CSS only — Alpine.js injetado automaticamente via CDN
+ * - 'htmx':         HTML + CSS only — HTMX injetado automaticamente via CDN
  */
-export type WebAppPageMode = 'composed' | 'singlefile'
+export type WebAppPageMode = 'classic' | 'singlefile' | 'declarative' | 'htmx'
 
 /**
  * WebAppPage Entity
@@ -19,11 +22,11 @@ export interface WebAppPage {
     id: string
     name: string
     mode: WebAppPageMode
-    /** Body HTML content (composed mode) */
+    /** Body HTML content (classic, declarative, htmx modes) */
     html: string
-    /** CSS styles (composed mode) */
+    /** CSS styles (classic, declarative, htmx modes) */
     css: string
-    /** JavaScript code (composed mode) */
+    /** JavaScript code (classic mode only) */
     js: string
     /** Full HTML document (singlefile mode — vite-plugin-singlefile output) */
     singleFileHtml?: string
@@ -46,23 +49,28 @@ export interface WebAppPageMeta {
 // ZOD SCHEMAS
 // ============================================
 
-export const webAppPageModeSchema = z.enum(['composed', 'singlefile'])
+export const webAppPageModeSchema = z.enum(['classic', 'singlefile', 'declarative', 'htmx'])
 
-/**
- * Schema for composed mode pages (HTML + CSS + JS separately)
- */
-const composedPageSchema = z.object({
+/** Shared base fields for all non-singlefile modes */
+const basePageFields = {
     id: z.string().min(3).regex(/^[a-z0-9-]+$/, 'ID deve conter apenas letras minúsculas, números e hífens'),
     name: z.string().min(1, 'Nome é obrigatório'),
-    mode: z.literal('composed').default('composed'),
     html: z.string(),
     css: z.string(),
-    js: z.string(),
     singleFileHtml: z.undefined().optional(),
+}
+
+/**
+ * Classic mode: HTML + CSS + JS (traditional approach)
+ */
+const classicPageSchema = z.object({
+    ...basePageFields,
+    mode: z.literal('classic').default('classic'),
+    js: z.string(),
 })
 
 /**
- * Schema for singlefile mode pages (full HTML document)
+ * Singlefile mode: full HTML document (vite-plugin-singlefile)
  */
 const singlefilePageSchema = z.object({
     id: z.string().min(3).regex(/^[a-z0-9-]+$/, 'ID deve conter apenas letras minúsculas, números e hífens'),
@@ -75,11 +83,31 @@ const singlefilePageSchema = z.object({
 })
 
 /**
+ * Declarative mode: HTML + CSS only (Alpine.js injected by Engine)
+ */
+const declarativePageSchema = z.object({
+    ...basePageFields,
+    mode: z.literal('declarative'),
+    js: z.string().default(''),
+})
+
+/**
+ * HTMX mode: HTML + CSS only (HTMX injected by Engine)
+ */
+const htmxPageSchema = z.object({
+    ...basePageFields,
+    mode: z.literal('htmx'),
+    js: z.string().default(''),
+})
+
+/**
  * Discriminated union schema: validates based on mode field
  */
 export const webAppPageSchema = z.discriminatedUnion('mode', [
-    composedPageSchema,
+    classicPageSchema,
     singlefilePageSchema,
+    declarativePageSchema,
+    htmxPageSchema,
 ])
 
 export type WebAppPageInput = z.infer<typeof webAppPageSchema>

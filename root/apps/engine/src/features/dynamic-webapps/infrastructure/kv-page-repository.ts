@@ -69,9 +69,9 @@ export class KvPageRepository {
                 return { success: false, error: 'Página não encontrada' }
             }
 
-            // Backward compatibility: pages without mode default to 'composed'
+            // Backward compatibility: pages without mode default to 'classic'
             if (!data.mode) {
-                data.mode = 'composed'
+                data.mode = 'classic'
             }
 
             return { success: true, data }
@@ -103,7 +103,7 @@ export class KvPageRepository {
                         pages.push({
                             id: page.id,
                             name: page.name,
-                            mode: page.mode || 'composed',
+                            mode: page.mode || 'classic',
                             tenantId: page.tenantId,
                             updatedAt: page.updatedAt,
                         })

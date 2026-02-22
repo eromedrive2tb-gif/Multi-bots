@@ -23,7 +23,7 @@ export const savePageHandler: CommandHandler = async (env, payload, meta): Promi
     const repo = new KvPageRepository((env as Env).PAGES_KV)
     const page = {
         ...payload,
-        mode: payload.mode || 'composed',
+        mode: payload.mode || 'classic',
         tenantId: meta.tenantId,
         updatedAt: Date.now(),
     }

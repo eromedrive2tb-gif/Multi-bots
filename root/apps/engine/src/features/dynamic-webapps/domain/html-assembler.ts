@@ -1,64 +1,91 @@
 /**
- * DOMAIN: HTML Assembler
+ * DOMAIN: HTML Assembler — Multi-Paradigm Rendering Engine
+ * 
  * Builds the final HTML document from a WebAppPage entity.
- * Two strategies: 'composed' (assemble from parts) and 'singlefile' (zero-overhead passthrough).
+ * 4 strategies based on mode:
+ * - 'classic':      HTML + CSS + JS assembled with sanitization
+ * - 'singlefile':   Zero-overhead passthrough (vite-plugin-singlefile)
+ * - 'declarative':  HTML + CSS + Alpine.js CDN injection
+ * - 'htmx':         HTML + CSS + HTMX CDN injection
+ * 
+ * GOLDEN RULE: The webapp is 100% isolated. The CRM Engine only stores and delivers the HTML.
  */
 
 import type { WebAppPage } from './types'
 import { escapeHtml, sanitizeCss, auditJs } from './html-sanitizer'
 
 // ============================================
-// ASSEMBLED HTML (Composed Mode)
+// CDN CONSTANTS (pinned versions for stability)
+// ============================================
+
+const CDN_ALPINEJS = 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js'
+const CDN_HTMX = 'https://unpkg.com/htmx.org@1.9.10'
+const CDN_TELEGRAM = 'https://telegram.org/js/telegram-web-app.js'
+
+// ============================================
+// BASE TEMPLATE
 // ============================================
 
 /**
- * Assembles a full HTML document from separate HTML/CSS/JS parts.
- * Applies sanitization to page.name (title) and page.css.
- * JS runs in the user's own page context, so we audit but don't block.
+ * Generates the full HTML document shell.
+ * All modes except singlefile share this structure.
  */
-function assembleComposed(page: WebAppPage): string {
-    const safeName = escapeHtml(page.name)
-    const safeCss = sanitizeCss(page.css)
-
-    // Audit JS for suspicious patterns (log only)
-    const jsWarnings = auditJs(page.js, page.id)
-    if (jsWarnings.length > 0) {
-        console.warn('[WebApp Assembler]', ...jsWarnings)
-    }
-
+function renderDocument(opts: {
+    name: string
+    css: string
+    html: string
+    headScripts: string
+    bodyScripts: string
+}): string {
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${safeName}</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"><\/script>
+    <title>${opts.name}</title>
+    <script src="${CDN_TELEGRAM}"><\/script>
+${opts.headScripts}
     <style>
         body { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        ${safeCss}
+        ${opts.css}
     </style>
 </head>
 <body>
-    ${page.html}
-    <script type="module">
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.ready();
-        }
-        ${page.js}
-    <\/script>
+    ${opts.html}
+${opts.bodyScripts}
 </body>
 </html>`
 }
 
 // ============================================
-// SINGLEFILE MODE (Zero-overhead passthrough)
+// MODE: CLASSIC (HTML + CSS + JS)
 // ============================================
 
-/**
- * Returns the singlefile HTML directly — zero processing.
- * Designed for vite-plugin-singlefile outputs where HTML/CSS/JS
- * are already minified and embedded.
- */
+function assembleClassic(page: WebAppPage): string {
+    const safeName = escapeHtml(page.name)
+    const safeCss = sanitizeCss(page.css)
+
+    const jsWarnings = auditJs(page.js, page.id)
+    if (jsWarnings.length > 0) {
+        console.warn('[WebApp Assembler]', ...jsWarnings)
+    }
+
+    return renderDocument({
+        name: safeName,
+        css: safeCss,
+        html: page.html,
+        headScripts: '',
+        bodyScripts: `    <script type="module">
+        if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.ready(); }
+        ${page.js}
+    <\/script>`,
+    })
+}
+
+// ============================================
+// MODE: SINGLEFILE (Zero-overhead passthrough)
+// ============================================
+
 function assembleSinglefile(page: WebAppPage): string {
     if (!page.singleFileHtml) {
         throw new Error(`[WebApp:${page.id}] singleFileHtml is required in singlefile mode`)
@@ -67,26 +94,76 @@ function assembleSinglefile(page: WebAppPage): string {
 }
 
 // ============================================
+// MODE: DECLARATIVE (Alpine.js CDN injection)
+// ============================================
+
+function assembleDeclarative(page: WebAppPage): string {
+    const safeName = escapeHtml(page.name)
+    const safeCss = sanitizeCss(page.css)
+
+    return renderDocument({
+        name: safeName,
+        css: safeCss,
+        html: page.html,
+        headScripts: `    <script defer src="${CDN_ALPINEJS}"><\/script>`,
+        bodyScripts: `    <script>
+        if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.ready(); }
+    <\/script>`,
+    })
+}
+
+// ============================================
+// MODE: HTMX (HTMX CDN injection)
+// ============================================
+
+function assembleHtmx(page: WebAppPage): string {
+    const safeName = escapeHtml(page.name)
+    const safeCss = sanitizeCss(page.css)
+
+    return renderDocument({
+        name: safeName,
+        css: safeCss,
+        html: page.html,
+        headScripts: `    <script src="${CDN_HTMX}"><\/script>`,
+        bodyScripts: `    <script>
+        if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.ready(); }
+    <\/script>`,
+    })
+}
+
+// ============================================
 // PUBLIC API
 // ============================================
 
 /**
  * Assembles the final HTML for a WebAppPage based on its mode.
- * - 'composed': builds HTML from separate parts with sanitization
- * - 'singlefile': passes through the embedded HTML document as-is
+ * Strict switch/case — no fallthrough, no ambiguity.
  */
 export function assembleHtml(page: WebAppPage): string {
     switch (page.mode) {
+        case 'classic':
+            return assembleClassic(page)
         case 'singlefile':
             return assembleSinglefile(page)
-        case 'composed':
-        default:
-            return assembleComposed(page)
+        case 'declarative':
+            return assembleDeclarative(page)
+        case 'htmx':
+            return assembleHtmx(page)
+        default: {
+            // Backward compatibility: old 'composed' entries still work
+            const fallback = page as any
+            if (fallback.mode === 'composed') {
+                return assembleClassic(page)
+            }
+            console.warn(`[WebApp Assembler] Unknown mode "${page.mode}", falling back to classic`)
+            return assembleClassic(page)
+        }
     }
 }
 
 /**
  * Security headers for serving dynamic webapps at the Edge.
+ * CSP allows Alpine.js, HTMX, and Telegram SDK CDNs + external API calls via connect-src.
  */
 export function getServeHeaders(): Record<string, string> {
     return {
@@ -96,7 +173,7 @@ export function getServeHeaders(): Record<string, string> {
         'X-Frame-Options': 'ALLOWALL',
         'Content-Security-Policy': [
             "default-src 'self' 'unsafe-inline' https://telegram.org",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://cdn.jsdelivr.net https://unpkg.com",
             "style-src 'self' 'unsafe-inline'",
             "img-src * data: blob:",
             "connect-src *",

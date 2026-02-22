@@ -6,16 +6,78 @@ import { useSocket } from '../context/SocketContext'
 import Editor from '@monaco-editor/react'
 import { Card, CardHeader, CardBody } from '../../components/atoms/ui/Card'
 import { Button } from '../../components/atoms/ui/Button'
-import { Save, ArrowLeft, Play, Layout, FileJson, Code as CodeIcon, Globe, Upload } from 'lucide-react'
+import { Save, ArrowLeft, Play, Layout, FileJson, Code as CodeIcon, Globe, Upload, Zap, Layers } from 'lucide-react'
 import type { WebAppPage } from '../../../../engine/src/core/types'
 import { DashboardLayout } from '../../components/templates/DashboardLayout'
 import { useUser } from '../context/UserContext'
 import { DisclaimerBanner } from '../../components/atoms/ui/DisclaimerBanner'
 
-type Tab = 'html' | 'css' | 'js' | 'singlefile'
-type PageMode = 'composed' | 'singlefile'
+// ============================================
+// TYPES & CONSTANTS
+// ============================================
 
-const WEBAPP_DISCLAIMER = '⚠️ Esta opção é otimizada para SPAs pequenas (HTML puro, HTMX, Alpine.js) ou projetos Vite enxutos. Projetos grandes, de alta densidade de arquivos e funções complexas (como e-commerces pesados em React), sofrerão penalidades severas de performance no dispositivo do usuário (Client-Side) e em SEO se não forem rigorosamente otimizados com micro-frontends ou Edge-Rendering.'
+type EditorTab = 'html' | 'css' | 'js'
+type PageMode = 'classic' | 'singlefile' | 'declarative' | 'htmx'
+
+interface ModeConfig {
+    label: string
+    icon: React.ReactNode
+    tabs: EditorTab[]
+    hint: string
+    hintVariant: 'warning' | 'info' | 'caution'
+    hintTitle: string
+}
+
+const MODE_CONFIG: Record<PageMode, ModeConfig> = {
+    classic: {
+        label: 'Classic',
+        icon: <CodeIcon className="h-4 w-4" />,
+        tabs: ['html', 'css', 'js'],
+        hintTitle: '⚡ Modo Clássico — HTML + CSS + JS',
+        hint: 'O modo mais versátil. Escreva HTML, CSS e JavaScript separados, montados automaticamente pela Engine. Ideal para landing pages de vendas, páginas de captura e mini-apps com lógica customizada. Use para campanhas de tráfego direto onde cada milissegundo de carregamento impacta a conversão.',
+        hintVariant: 'info',
+    },
+    singlefile: {
+        label: 'Single File',
+        icon: <Upload className="h-4 w-4" />,
+        tabs: [],
+        hintTitle: '🚀 Modo Single File — Output do Vite',
+        hint: 'Importe o HTML gerado pelo vite-plugin-singlefile. Zero processamento na Edge — o arquivo é servido exatamente como foi gerado. Performance máxima para SPAs enxutas. Projetos pesados (React + muitas libs) sofrerão penalidades severas de SEO e carregamento no dispositivo do cliente se não forem rigorosamente otimizados.',
+        hintVariant: 'warning',
+    },
+    declarative: {
+        label: 'Alpine.js',
+        icon: <Layers className="h-4 w-4" />,
+        tabs: ['html', 'css'],
+        hintTitle: '🏔️ Modo Declarativo — Alpine.js Injetado',
+        hint: 'Apenas HTML e CSS. A Engine injeta o Alpine.js automaticamente via CDN. Perfeito para interatividade local (modais, toggles, tabs, accordions) sem precisar escrever JavaScript imperativo. Ideal para páginas de FAQ, catálogos de produtos e formulários dinâmicos em nichos de infoprodutos e afiliados. Use x-data, x-show, x-on e @click diretamente no HTML.',
+        hintVariant: 'info',
+    },
+    htmx: {
+        label: 'HTMX',
+        icon: <Zap className="h-4 w-4" />,
+        tabs: ['html', 'css'],
+        hintTitle: '🔌 Modo HTMX — Comunicação com APIs Externas',
+        hint: 'Apenas HTML e CSS. A Engine injeta o HTMX automaticamente via CDN. Use EXCLUSIVAMENTE para o cliente final se comunicar com webhooks e APIs de terceiros (n8n, Make, Gateways de pagamento). O HTMX faz requisições HTTP diretamente do HTML — sem JS, sem build. Ideal para checkout flows, formulários de pagamento e integrações com automações externas. O CRM permanece 100% isolado.',
+        hintVariant: 'caution',
+    },
+}
+
+const TAB_ICONS: Record<EditorTab, React.ReactNode> = {
+    html: <Layout className="h-4 w-4 mr-2" />,
+    css: <FileJson className="h-4 w-4 mr-2" />,
+    js: <CodeIcon className="h-4 w-4 mr-2" />,
+}
+
+const TAB_LABELS: Record<EditorTab, string> = {
+    html: 'HTML',
+    css: 'CSS',
+    js: 'JS',
+}
+
+// ============================================
+// COMPONENT
+// ============================================
 
 export function WebAppEditorPage() {
     const { id } = useParams()
@@ -31,11 +93,13 @@ export function WebAppEditorPage() {
     const [css, setCss] = useState('/* Seu CSS aqui */\n.container { padding: 20px; text-align: center; }\nbutton { padding: 10px 20px; background: #0088cc; color: white; border: none; border-radius: 4px; }')
     const [js, setJs] = useState('// Seu JS aqui\ndocument.getElementById("btn").addEventListener("click", () => {\n  if (window.Telegram && window.Telegram.WebApp) {\n    window.Telegram.WebApp.showAlert("Olá do botão!");\n  } else {\n    alert("Olá do botão (fora do Telegram)!");\n  }\n});')
 
-    const [activeTab, setActiveTab] = useState<Tab>('html')
+    const [pageMode, setPageMode] = useState<PageMode>('classic')
+    const [activeTab, setActiveTab] = useState<EditorTab>('html')
     const [saving, setSaving] = useState(false)
-    const [previewKey, setPreviewKey] = useState(0) // Force iframe reload
-    const [pageMode, setPageMode] = useState<PageMode>('composed')
+    const [previewKey, setPreviewKey] = useState(0)
     const [singleFileHtml, setSingleFileHtml] = useState('')
+
+    const currentConfig = MODE_CONFIG[pageMode]
 
     // Fetch existing page
     useEffect(() => {
@@ -44,13 +108,15 @@ export function WebAppEditorPage() {
         }
     }, [id, isNew, isConnected])
 
-    const fetchPage = async (pageId: string) => {
+    const fetchPage = async (fetchId: string) => {
         try {
-            const data = await request<WebAppPage>('FETCH_PAGE', { id: pageId })
+            const data = await request<WebAppPage>('FETCH_PAGE', { id: fetchId })
             if (data) {
                 setName(data.name)
                 setPageId(data.id)
-                setPageMode((data as any).mode || 'composed')
+                // Backward compat: old 'composed' → 'classic'
+                const mode = ((data as any).mode || 'classic') as PageMode
+                setPageMode(mode === ('composed' as any) ? 'classic' : mode)
                 setHtml(data.html)
                 setCss(data.css)
                 setJs(data.js)
@@ -63,6 +129,15 @@ export function WebAppEditorPage() {
         }
     }
 
+    // When switching modes, ensure the active tab is valid for the new mode
+    const switchMode = (newMode: PageMode) => {
+        setPageMode(newMode)
+        const config = MODE_CONFIG[newMode]
+        if (config.tabs.length > 0 && !config.tabs.includes(activeTab)) {
+            setActiveTab(config.tabs[0])
+        }
+    }
+
     const handleSave = async () => {
         if (!name || !pageId) {
             alert('Por favor, preencha o Nome e o ID da página.')
@@ -71,26 +146,25 @@ export function WebAppEditorPage() {
 
         setSaving(true)
         try {
-            const payload = {
+            const payload: Record<string, any> = {
                 id: pageId,
                 name,
                 mode: pageMode,
                 html,
                 css,
-                js,
-                ...(pageMode === 'singlefile' ? { singleFileHtml } : {})
+                js: pageMode === 'classic' ? js : '',
             }
 
-            const success = await request('SAVE_PAGE', payload)
+            if (pageMode === 'singlefile') {
+                payload.singleFileHtml = singleFileHtml
+            }
 
-            if (success) {
-                if (isNew) {
-                    navigate(`/dashboard/webapps/${pageId}`)
-                } else {
-                    setPreviewKey(prev => prev + 1)
-                }
+            await request('SAVE_PAGE', payload)
+
+            if (isNew) {
+                navigate(`/dashboard/webapps/${pageId}`)
             } else {
-                alert(`Erro ao salvar página.`)
+                setPreviewKey(prev => prev + 1)
             }
         } catch (error) {
             console.error('Error saving:', error)
@@ -100,17 +174,35 @@ export function WebAppEditorPage() {
         }
     }
 
+    // Get current editor value based on active tab
+    const getEditorValue = (): string => {
+        switch (activeTab) {
+            case 'html': return html
+            case 'css': return css
+            case 'js': return js
+        }
+    }
+
+    const getEditorLanguage = (): string => {
+        return activeTab === 'js' ? 'javascript' : activeTab
+    }
+
+    const handleEditorChange = (value: string | undefined) => {
+        const v = value || ''
+        switch (activeTab) {
+            case 'html': setHtml(v); break
+            case 'css': setCss(v); break
+            case 'js': setJs(v); break
+        }
+    }
+
+    // ============================================
+    // RENDER
+    // ============================================
+
     return (
         <DashboardLayout title={isNew ? 'Novo WebApp' : 'Editar WebApp'} currentPath="/dashboard/webapps">
             <div className="editor-container">
-                {isNew && (
-                    <DisclaimerBanner
-                        variant="warning"
-                        title="Aviso de Performance"
-                        message={WEBAPP_DISCLAIMER}
-                        dismissible
-                    />
-                )}
 
                 {/* Header Actions */}
                 <div className="editor-header">
@@ -146,7 +238,7 @@ export function WebAppEditorPage() {
                     <div className="header-right">
                         <Button onClick={() => setPreviewKey(prev => prev + 1)} variant="secondary">
                             <Play className="h-4 w-4 mr-2" />
-                            Atualizar Preview
+                            Preview
                         </Button>
                         <Button onClick={handleSave} disabled={saving}>
                             <Save className="h-4 w-4 mr-2" />
@@ -155,45 +247,35 @@ export function WebAppEditorPage() {
                     </div>
                 </div>
 
+                {/* Mode Selector */}
+                <div className="mode-selector">
+                    {(Object.keys(MODE_CONFIG) as PageMode[]).map(mode => (
+                        <button
+                            key={mode}
+                            onClick={() => switchMode(mode)}
+                            className={`mode-button ${pageMode === mode ? 'active' : ''}`}
+                        >
+                            {MODE_CONFIG[mode].icon}
+                            <span>{MODE_CONFIG[mode].label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Mode Hint */}
+                <DisclaimerBanner
+                    variant={currentConfig.hintVariant}
+                    title={currentConfig.hintTitle}
+                    message={currentConfig.hint}
+                    dismissible
+                />
+
                 {/* Main Content */}
                 <div className="editor-main-grid">
                     {/* Editor Column */}
                     <Card className="editor-card">
-                        <div className="tab-menu">
-                            <button
-                                onClick={() => setActiveTab('html')}
-                                className={`tab-button ${activeTab === 'html' ? 'active' : ''}`}
-                            >
-                                <Layout className="h-4 w-4 mr-2" />
-                                HTML
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('css')}
-                                className={`tab-button ${activeTab === 'css' ? 'active' : ''}`}
-                            >
-                                <FileJson className="h-4 w-4 mr-2" />
-                                CSS
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('js')}
-                                className={`tab-button ${activeTab === 'js' ? 'active' : ''}`}
-                            >
-                                <CodeIcon className="h-4 w-4 mr-2" />
-                                JS
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setActiveTab('singlefile')
-                                    setPageMode('singlefile')
-                                }}
-                                className={`tab-button ${activeTab === 'singlefile' ? 'active' : ''}`}
-                            >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Single File
-                            </button>
-                        </div>
-                        <div className="editor-wrapper">
-                            {activeTab === 'singlefile' ? (
+                        {pageMode === 'singlefile' ? (
+                            /* Singlefile Mode: Upload area */
+                            <>
                                 <div className="singlefile-upload-area">
                                     <div className="singlefile-info">
                                         <Upload className="h-8 w-8" style={{ color: 'var(--color-primary)' }} />
@@ -212,7 +294,6 @@ export function WebAppEditorPage() {
                                                     const reader = new FileReader()
                                                     reader.onload = (ev) => {
                                                         setSingleFileHtml(ev.target?.result as string ?? '')
-                                                        setPageMode('singlefile')
                                                     }
                                                     reader.readAsText(file)
                                                 }
@@ -240,33 +321,45 @@ export function WebAppEditorPage() {
                                                 wordWrap: 'on',
                                                 scrollBeyondLastLine: false,
                                                 automaticLayout: true,
-                                                readOnly: false,
                                             }}
                                         />
                                     )}
                                 </div>
-                            ) : (
-                                <Editor
-                                    height="100%"
-                                    defaultLanguage={activeTab === 'js' ? 'javascript' : activeTab}
-                                    language={activeTab === 'js' ? 'javascript' : activeTab}
-                                    theme="vs-dark"
-                                    value={activeTab === 'html' ? html : activeTab === 'css' ? css : js}
-                                    onChange={(value) => {
-                                        if (activeTab === 'html') { setHtml(value || ''); setPageMode('composed') }
-                                        else if (activeTab === 'css') { setCss(value || ''); setPageMode('composed') }
-                                        else { setJs(value || ''); setPageMode('composed') }
-                                    }}
-                                    options={{
-                                        minimap: { enabled: false },
-                                        fontSize: 13,
-                                        wordWrap: 'on',
-                                        scrollBeyondLastLine: false,
-                                        automaticLayout: true
-                                    }}
-                                />
-                            )}
-                        </div>
+                            </>
+                        ) : (
+                            /* Classic / Declarative / HTMX: Tab-based editor */
+                            <>
+                                <div className="tab-menu">
+                                    {currentConfig.tabs.map(tab => (
+                                        <button
+                                            key={tab}
+                                            onClick={() => setActiveTab(tab)}
+                                            className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+                                        >
+                                            {TAB_ICONS[tab]}
+                                            {TAB_LABELS[tab]}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="editor-wrapper">
+                                    <Editor
+                                        height="100%"
+                                        defaultLanguage={getEditorLanguage()}
+                                        language={getEditorLanguage()}
+                                        theme="vs-dark"
+                                        value={getEditorValue()}
+                                        onChange={handleEditorChange}
+                                        options={{
+                                            minimap: { enabled: false },
+                                            fontSize: 13,
+                                            wordWrap: 'on',
+                                            scrollBeyondLastLine: false,
+                                            automaticLayout: true,
+                                        }}
+                                    />
+                                </div>
+                            </>
+                        )}
                     </Card>
 
                     {/* Preview Column */}
@@ -299,13 +392,13 @@ export function WebAppEditorPage() {
                         display: flex;
                         flex-direction: column;
                         height: calc(100vh - 160px);
-                        gap: 16px;
+                        gap: 12px;
                     }
                     .editor-header {
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        padding-bottom: 8px;
+                        padding-bottom: 4px;
                     }
                     .header-left {
                         display: flex;
@@ -344,6 +437,43 @@ export function WebAppEditorPage() {
                         color: var(--color-text-muted);
                         outline: none;
                     }
+
+                    /* Mode Selector */
+                    .mode-selector {
+                        display: flex;
+                        gap: 6px;
+                        padding: 4px;
+                        background: var(--color-bg-secondary);
+                        border-radius: 10px;
+                        border: 1px solid var(--color-border);
+                    }
+                    .mode-button {
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 8px 16px;
+                        font-size: 0.8rem;
+                        font-weight: 500;
+                        background: transparent;
+                        border: none;
+                        border-radius: 8px;
+                        color: var(--color-text-secondary);
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        flex: 1;
+                        justify-content: center;
+                    }
+                    .mode-button:hover {
+                        background: var(--color-bg-tertiary);
+                        color: var(--color-text-primary);
+                    }
+                    .mode-button.active {
+                        background: var(--color-primary);
+                        color: white;
+                        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+                    }
+
+                    /* Editor Grid */
                     .editor-main-grid {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
@@ -416,6 +546,29 @@ export function WebAppEditorPage() {
                         background: #f8fafc;
                     }
 
+                    /* Singlefile Upload */
+                    .singlefile-upload-area {
+                        display: flex;
+                        flex-direction: column;
+                        height: 100%;
+                        overflow: auto;
+                    }
+                    .singlefile-info {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 12px;
+                        padding: 32px 24px;
+                        text-align: center;
+                    }
+                    .singlefile-info h3 {
+                        font-size: 1rem;
+                        font-weight: 600;
+                        color: var(--color-text-primary);
+                        margin: 0;
+                    }
+
                     @media (max-width: 1024px) {
                         .editor-main-grid {
                             grid-template-columns: 1fr;
@@ -427,34 +580,12 @@ export function WebAppEditorPage() {
                         .editor-card, .preview-card {
                             height: 500px;
                         }
-                    }
-
-                    .singlefile-upload-area {
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                        overflow: auto;
-                    }
-
-                    .singlefile-info {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 12px;
-                        padding: 32px 24px;
-                        text-align: center;
-                    }
-
-                    .singlefile-info h3 {
-                        font-size: 1rem;
-                        font-weight: 600;
-                        color: var(--color-text-primary);
-                        margin: 0;
+                        .mode-selector {
+                            flex-wrap: wrap;
+                        }
                     }
                 `}</style>
             </div>
         </DashboardLayout>
     )
 }
-
