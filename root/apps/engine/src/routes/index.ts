@@ -18,6 +18,7 @@ import { broadcastRoutes } from './broadcasts.routes'
 import { redirectRoutes } from './redirects.routes'
 import { vipGroupsRoutes } from './vip-groups.routes'
 import remarketingRoutes from '../features/remarketing/interface/RemarketingController'
+import { webappsController } from '../features/dynamic-webapps'
 
 /**
  * Registers all route modules on the main app
@@ -37,6 +38,7 @@ export function registerRoutes(app: Hono<{ Bindings: Env }>) {
     app.route('/', redirectRoutes)
     app.route('/', vipGroupsRoutes)
     app.route('/', remarketingRoutes)
+    app.route('/', webappsController)
 }
 
 // Export individual routes for testing

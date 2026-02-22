@@ -6,12 +6,16 @@ import { useSocket } from '../context/SocketContext'
 import Editor from '@monaco-editor/react'
 import { Card, CardHeader, CardBody } from '../../components/atoms/ui/Card'
 import { Button } from '../../components/atoms/ui/Button'
-import { Save, ArrowLeft, Play, Layout, FileJson, Code as CodeIcon, Globe } from 'lucide-react'
+import { Save, ArrowLeft, Play, Layout, FileJson, Code as CodeIcon, Globe, Upload } from 'lucide-react'
 import type { WebAppPage } from '../../../../engine/src/core/types'
 import { DashboardLayout } from '../../components/templates/DashboardLayout'
 import { useUser } from '../context/UserContext'
+import { DisclaimerBanner } from '../../components/atoms/ui/DisclaimerBanner'
 
-type Tab = 'html' | 'css' | 'js'
+type Tab = 'html' | 'css' | 'js' | 'singlefile'
+type PageMode = 'composed' | 'singlefile'
+
+const WEBAPP_DISCLAIMER = '⚠️ Esta opção é otimizada para SPAs pequenas (HTML puro, HTMX, Alpine.js) ou projetos Vite enxutos. Projetos grandes, de alta densidade de arquivos e funções complexas (como e-commerces pesados em React), sofrerão penalidades severas de performance no dispositivo do usuário (Client-Side) e em SEO se não forem rigorosamente otimizados com micro-frontends ou Edge-Rendering.'
 
 export function WebAppEditorPage() {
     const { id } = useParams()
@@ -30,6 +34,8 @@ export function WebAppEditorPage() {
     const [activeTab, setActiveTab] = useState<Tab>('html')
     const [saving, setSaving] = useState(false)
     const [previewKey, setPreviewKey] = useState(0) // Force iframe reload
+    const [pageMode, setPageMode] = useState<PageMode>('composed')
+    const [singleFileHtml, setSingleFileHtml] = useState('')
 
     // Fetch existing page
     useEffect(() => {
@@ -44,9 +50,13 @@ export function WebAppEditorPage() {
             if (data) {
                 setName(data.name)
                 setPageId(data.id)
+                setPageMode((data as any).mode || 'composed')
                 setHtml(data.html)
                 setCss(data.css)
                 setJs(data.js)
+                if ((data as any).singleFileHtml) {
+                    setSingleFileHtml((data as any).singleFileHtml)
+                }
             }
         } catch (error) {
             console.error('Error loading page:', error)
@@ -64,9 +74,11 @@ export function WebAppEditorPage() {
             const payload = {
                 id: pageId,
                 name,
+                mode: pageMode,
                 html,
                 css,
-                js
+                js,
+                ...(pageMode === 'singlefile' ? { singleFileHtml } : {})
             }
 
             const success = await request('SAVE_PAGE', payload)
@@ -91,6 +103,15 @@ export function WebAppEditorPage() {
     return (
         <DashboardLayout title={isNew ? 'Novo WebApp' : 'Editar WebApp'} currentPath="/dashboard/webapps">
             <div className="editor-container">
+                {isNew && (
+                    <DisclaimerBanner
+                        variant="warning"
+                        title="Aviso de Performance"
+                        message={WEBAPP_DISCLAIMER}
+                        dismissible
+                    />
+                )}
+
                 {/* Header Actions */}
                 <div className="editor-header">
                     <div className="header-left">
@@ -160,27 +181,91 @@ export function WebAppEditorPage() {
                                 <CodeIcon className="h-4 w-4 mr-2" />
                                 JS
                             </button>
+                            <button
+                                onClick={() => {
+                                    setActiveTab('singlefile')
+                                    setPageMode('singlefile')
+                                }}
+                                className={`tab-button ${activeTab === 'singlefile' ? 'active' : ''}`}
+                            >
+                                <Upload className="h-4 w-4 mr-2" />
+                                Single File
+                            </button>
                         </div>
                         <div className="editor-wrapper">
-                            <Editor
-                                height="100%"
-                                defaultLanguage={activeTab === 'js' ? 'javascript' : activeTab}
-                                language={activeTab === 'js' ? 'javascript' : activeTab}
-                                theme="vs-dark"
-                                value={activeTab === 'html' ? html : activeTab === 'css' ? css : js}
-                                onChange={(value) => {
-                                    if (activeTab === 'html') setHtml(value || '')
-                                    else if (activeTab === 'css') setCss(value || '')
-                                    else setJs(value || '')
-                                }}
-                                options={{
-                                    minimap: { enabled: false },
-                                    fontSize: 13,
-                                    wordWrap: 'on',
-                                    scrollBeyondLastLine: false,
-                                    automaticLayout: true
-                                }}
-                            />
+                            {activeTab === 'singlefile' ? (
+                                <div className="singlefile-upload-area">
+                                    <div className="singlefile-info">
+                                        <Upload className="h-8 w-8" style={{ color: 'var(--color-primary)' }} />
+                                        <h3>Importar HTML (vite-plugin-singlefile)</h3>
+                                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                                            Cole o HTML completo gerado pelo Vite ou importe um arquivo .html
+                                        </p>
+                                        <input
+                                            type="file"
+                                            accept=".html,.htm"
+                                            style={{ display: 'none' }}
+                                            id="singlefile-input"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0]
+                                                if (file) {
+                                                    const reader = new FileReader()
+                                                    reader.onload = (ev) => {
+                                                        setSingleFileHtml(ev.target?.result as string ?? '')
+                                                        setPageMode('singlefile')
+                                                    }
+                                                    reader.readAsText(file)
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => document.getElementById('singlefile-input')?.click()}
+                                        >
+                                            <Upload className="h-4 w-4 mr-2" />
+                                            Carregar arquivo .html
+                                        </Button>
+                                    </div>
+                                    {singleFileHtml && (
+                                        <Editor
+                                            height="300px"
+                                            defaultLanguage="html"
+                                            language="html"
+                                            theme="vs-dark"
+                                            value={singleFileHtml}
+                                            onChange={(v) => setSingleFileHtml(v || '')}
+                                            options={{
+                                                minimap: { enabled: false },
+                                                fontSize: 13,
+                                                wordWrap: 'on',
+                                                scrollBeyondLastLine: false,
+                                                automaticLayout: true,
+                                                readOnly: false,
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            ) : (
+                                <Editor
+                                    height="100%"
+                                    defaultLanguage={activeTab === 'js' ? 'javascript' : activeTab}
+                                    language={activeTab === 'js' ? 'javascript' : activeTab}
+                                    theme="vs-dark"
+                                    value={activeTab === 'html' ? html : activeTab === 'css' ? css : js}
+                                    onChange={(value) => {
+                                        if (activeTab === 'html') { setHtml(value || ''); setPageMode('composed') }
+                                        else if (activeTab === 'css') { setCss(value || ''); setPageMode('composed') }
+                                        else { setJs(value || ''); setPageMode('composed') }
+                                    }}
+                                    options={{
+                                        minimap: { enabled: false },
+                                        fontSize: 13,
+                                        wordWrap: 'on',
+                                        scrollBeyondLastLine: false,
+                                        automaticLayout: true
+                                    }}
+                                />
+                            )}
                         </div>
                     </Card>
 
@@ -343,8 +428,33 @@ export function WebAppEditorPage() {
                             height: 500px;
                         }
                     }
+
+                    .singlefile-upload-area {
+                        display: flex;
+                        flex-direction: column;
+                        height: 100%;
+                        overflow: auto;
+                    }
+
+                    .singlefile-info {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 12px;
+                        padding: 32px 24px;
+                        text-align: center;
+                    }
+
+                    .singlefile-info h3 {
+                        font-size: 1rem;
+                        font-weight: 600;
+                        color: var(--color-text-primary);
+                        margin: 0;
+                    }
                 `}</style>
             </div>
         </DashboardLayout>
     )
 }
+

@@ -15,9 +15,6 @@ import { DashboardPage } from './pages/dashboard'
 import { SettingsPage } from './pages/settings'
 import { setupRegistry } from '../../engine/src/lib/molecules'
 import { setupEventSubscribers } from '../../engine/src/infra/events/subscriber-setup'
-import { pagesRoutes } from './routes/pages.routes'
-import { getPage } from '../../engine/src/lib/molecules/kv-page-manager'
-import { WebAppPage } from '../../engine/src/core/types'
 
 // ============================================
 // APP INITIALIZATION
@@ -35,63 +32,10 @@ const app = new Hono<{ Bindings: Env }>()
 app.use('*', renderer)
 
 // ============================================
-// REGISTER API ROUTES
+// REGISTER API ROUTES (includes Dynamic WebApps via webappsController)
 // ============================================
 
 registerRoutes(app)
-app.route('/', pagesRoutes)
-
-// ============================================
-// PUBLIC WEBAPP VIEW ROUTE
-// ============================================
-
-app.get('/view/:tenantId/:pageId', async (c) => {
-  const { tenantId, pageId } = c.req.param()
-
-  // Fetch page from KV
-  const result = await getPage(c.env, tenantId, pageId)
-
-  if (!result.success) {
-    return c.html('<h1>Página não encontrada</h1>', 404)
-  }
-
-  const page = result.data as WebAppPage
-
-  // Construct the HTML document
-  const html = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${page.name}</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        /* Reset basico */
-        body { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        
-        /* Custom CSS */
-        ${page.css}
-    </style>
-</head>
-<body>
-    ${page.html}
-
-    <script type="module">
-        // Initialize Telegram WebApp
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.ready();
-        }
-
-        // Custom JS
-        ${page.js}
-    </script>
-</body>
-</html>
-    `
-
-  return c.html(html)
-})
 
 // ============================================
 // HEALTH CHECK
@@ -132,4 +76,5 @@ export default {
 
 export { CampaignSchedulerDO } from '../../engine/src/features/remarketing/infrastructure/durable-objects/CampaignSchedulerDO'
 export { UserSessionDO } from '../../engine/src/infra/durable-objects/UserSessionDO'
-// Force Rebuild Trigger: 2
+// Force Rebuild Trigger: 3
+

@@ -5,9 +5,12 @@ import { useSocket } from '../context/SocketContext'
 import { Link } from 'react-router-dom'
 import { Card, CardHeader, CardBody } from '../../components/atoms/ui/Card'
 import { Button } from '../../components/atoms/ui/Button'
-import { Plus, Code, Globe, Calendar } from 'lucide-react'
+import { Plus, Code, Globe, Calendar, Trash2 } from 'lucide-react'
 import type { WebAppPage } from '../../../../engine/src/core/types'
 import { DashboardLayout } from '../../components/templates/DashboardLayout'
+import { DisclaimerBanner } from '../../components/atoms/ui/DisclaimerBanner'
+
+const WEBAPP_DISCLAIMER = '⚠️ Esta opção é otimizada para SPAs pequenas (HTML puro, HTMX, Alpine.js) ou projetos Vite enxutos. Projetos grandes, de alta densidade de arquivos e funções complexas (como e-commerces pesados em React), sofrerão penalidades severas de performance no dispositivo do usuário (Client-Side) e em SEO se não forem rigorosamente otimizados com micro-frontends ou Edge-Rendering.'
 
 export function WebAppsPage() {
     const [pages, setPages] = useState<WebAppPage[]>([])
@@ -33,6 +36,22 @@ export function WebAppsPage() {
         }
     }
 
+    const handleDelete = async (id: string, name: string) => {
+        if (!window.confirm(`Tem certeza que deseja excluir o WebApp "${name}"? Esta ação é irreversível e removerá todos os dados da página.`)) {
+            return
+        }
+
+        try {
+            await request<any>('DELETE_PAGE', { id })
+            setPages(prev => prev.filter(p => p.id !== id))
+        } catch (error) {
+            console.error('Failed to delete page', error)
+            alert('Erro ao excluir página: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+        }
+    }
+
+
+
     return (
         <DashboardLayout title="WebApps" currentPath="/dashboard/webapps">
             <div className="webapps-container">
@@ -50,6 +69,13 @@ export function WebAppsPage() {
                         </Button>
                     </Link>
                 </div>
+
+                <DisclaimerBanner
+                    variant="warning"
+                    title="Aviso de Performance"
+                    message={WEBAPP_DISCLAIMER}
+                    dismissible
+                />
 
                 {loading ? (
                     <div className="loading-state">Carregando...</div>
@@ -98,10 +124,17 @@ export function WebAppsPage() {
                                             rel="noopener noreferrer"
                                             className="action-link"
                                         >
-                                            <Button variant="secondary" className="w-full">
-                                                Visualizar
+                                            <Button variant="secondary">
+                                                <Globe className="h-4 w-4" />
                                             </Button>
                                         </a>
+                                        <Button
+                                            variant="secondary"
+                                            className="action-delete"
+                                            onClick={() => { handleDelete(page.id, page.name) }}
+                                        >
+                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                        </Button>
                                     </div>
                                 </CardBody>
                             </Card>
@@ -193,10 +226,22 @@ export function WebAppsPage() {
                     .webapp-actions {
                         display: flex;
                         gap: 8px;
+                        margin-top: auto;
                     }
                     .action-link {
                         flex: 1;
                         text-decoration: none;
+                    }
+                    .action-delete {
+                        padding: 8px;
+                        border-color: rgba(239, 68, 68, 0.2);
+                    }
+                    .action-delete:hover {
+                        background: rgba(239, 68, 68, 0.05);
+                        border-color: rgba(239, 68, 68, 0.4);
+                    }
+                    .text-red-500 {
+                        color: #ef4444;
                     }
                     .w-full {
                         width: 100%;

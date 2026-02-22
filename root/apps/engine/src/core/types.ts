@@ -246,18 +246,10 @@ export interface BlueprintListItem {
 }
 
 // ============================================
-// WEBAPP PAGES
+// WEBAPP PAGES (re-exported from feature module)
 // ============================================
 
-export interface WebAppPage {
-    id: string
-    name: string
-    html: string
-    css: string
-    js: string
-    tenantId: string
-    updatedAt: number
-}
+export type { WebAppPage, WebAppPageMeta, WebAppPageMode } from '../features/dynamic-webapps/domain/types'
 
 // ============================================
 // RESULT PATTERN

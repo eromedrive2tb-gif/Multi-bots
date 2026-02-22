@@ -5,6 +5,12 @@ import { dcSendLinkButton } from '../../atoms/discord/dc-send-link-button'
 import { htmlToMarkdown } from '../../shared'
 
 /**
+ * Default dashboard URL fallback.
+ * In production, this should be overridden via ctx.metadata.dashboardUrl.
+ */
+const DEFAULT_DASHBOARD_URL = 'https://multibotcrmdev.vitrine.top'
+
+/**
  * send_webapp - Universal WebApp action
  * On Telegram: Sends a WebApp button
  * On Discord/Others: Sends a URL button (fallback)
@@ -18,20 +24,20 @@ export async function sendWebApp(
     const pageId = String(params.page_id ?? '')
     const parseMode = params.parse_mode as string | undefined
 
-    // Determine Dashboard URL (Internal policy)
-    // In production, this would be an environment variable
-    const dashboardUrl = 'https://multibotcrmdev.vitrine.top'
+    // Determine Dashboard URL — prefer injected, fallback to default
+    const dashboardUrl = (ctx.metadata as any).dashboardUrl ?? DEFAULT_DASHBOARD_URL
     const fullUrl = `${dashboardUrl}/view/${ctx.tenantId}/${pageId}`
 
     try {
         switch (ctx.provider) {
             case 'tg': {
-                // Use the Telegram atom
+                // Use the Telegram atom — pass dashboardUrl through params
                 return await tgSendWebApp(ctx, {
                     text,
                     button_text: buttonText,
                     page_id: pageId,
-                    parse_mode: parseMode
+                    parse_mode: parseMode,
+                    dashboard_url: dashboardUrl,
                 })
             }
 
@@ -64,3 +70,4 @@ export async function sendWebApp(
         }
     }
 }
+

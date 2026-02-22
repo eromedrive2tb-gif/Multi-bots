@@ -25,7 +25,7 @@ import {
     fetchGroups, fetchGroup, saveVipGroup, deleteVipGroup,
     syncGroups, syncGroupMembers, fetchGroupMembers, kickMember
 } from './handlers/groups.handler'
-import { fetchPages, savePageHandler } from './handlers/pages.handler'
+import { fetchPages, savePageHandler, deletePageHandler } from './handlers/pages.handler'
 import {
     fetchPaymentsSummary, fetchPlans, createPlan, deletePlan, fetchTransactions
 } from './handlers/payments.handler'
@@ -100,6 +100,7 @@ export function setupCommandRegistry(): void {
     // Pages
     registerCommand('FETCH_PAGES', fetchPages)
     registerCommand('SAVE_PAGE', savePageHandler)
+    registerCommand('DELETE_PAGE', deletePageHandler)
 
     // Payments
     registerCommand('FETCH_PAYMENTS_SUMMARY', fetchPaymentsSummary)
