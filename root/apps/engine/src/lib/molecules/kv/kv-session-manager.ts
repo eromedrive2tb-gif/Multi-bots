@@ -96,3 +96,31 @@ export async function updateSessionAt(
 
     return { success: true, data: updated }
 }
+
+/**
+ * Limpa todas as sessões de um tenant (usado no CLEAR_CUSTOMERS)
+ */
+export async function kvClearTenantSessions(
+    kv: KVNamespace,
+    tenantId: string
+): Promise<Result<void>> {
+    try {
+        const prefix = `tenant:${tenantId}:user:`
+        let cursor: string | undefined
+
+        // List and delete in loops to handle more than 1000 keys
+        do {
+            const list: any = await kv.list({ prefix, cursor, limit: 1000 })
+
+            for (const key of list.keys) {
+                await kv.delete(key.name)
+            }
+
+            cursor = list.cursor
+        } while (cursor)
+
+        return { success: true, data: undefined }
+    } catch (error) {
+        return { success: false, error: `Failed to clear tenant sessions: ${error}` }
+    }
+}

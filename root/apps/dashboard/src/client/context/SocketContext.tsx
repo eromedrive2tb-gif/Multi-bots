@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useUser } from './UserContext';
 import { SessionTimeoutModal } from '../../components/molecules/modals/SessionTimeoutModal';
@@ -55,7 +56,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isIdleRef.current = isIdle;
     }, [isIdle]);
 
-    const activityThrottler = useRef<NodeJS.Timeout | null>(null);
+    const activityThrottler = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Activity Tracking & Timeout Logic
     useEffect(() => {
@@ -115,6 +116,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
     }, []); // Empty dependency array because we mainly use refs or stable handlers
 
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const connect = useCallback(() => {
         if (!tenantId || isIdleRef.current) return;
 
@@ -167,7 +170,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Use setTimeout to allow state to settle if needed, but Ref is immediate
             if (!isIdleRef.current) {
                 console.log('[Socket] Reconnecting in 5s...');
-                setTimeout(connect, 5000);
+                reconnectTimeoutRef.current = setTimeout(connect, 5000);
             } else {
                 console.log('[Socket] Not reconnecting because user is idle.');
             }
@@ -181,10 +184,14 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             connect();
         }
         return () => {
-            // Cleanup socket on unmount
+            // Cleanup socket and pending reconnects on unmount to prevent Zombie connections
             if (socketRef.current) {
                 socketRef.current.close();
                 socketRef.current = null;
+            }
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
             }
         };
     }, [connect, isIdle]);

@@ -21,8 +21,8 @@ export class BlueprintService {
     /**
      * Lista todos os blueprints
      */
-    async listBlueprints(): Promise<Result<BlueprintListItem[]>> {
-        return dbGetBlueprints({ db: this.db, tenantId: this.tenantId })
+    async listBlueprints(includeContent = false): Promise<Result<(BlueprintListItem & Partial<Blueprint>)[]>> {
+        return dbGetBlueprints({ db: this.db, tenantId: this.tenantId, includeContent })
     }
 
     /**

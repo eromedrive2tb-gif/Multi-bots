@@ -79,3 +79,12 @@ export const fetchGroupMembers: CommandHandler = async (env, payload, meta): Pro
         error: !result.success ? result.error : undefined
     }
 }
+
+export const kickMember: CommandHandler = async (env, payload, meta): Promise<CommandResult> => {
+    const service = new VipGroupService(env.DB, meta.tenantId)
+    const result = await service.updateMemberStatus(payload.groupId, payload.customerId, 'kicked')
+    return {
+        success: result.success,
+        error: !result.success ? result.error : undefined
+    }
+}

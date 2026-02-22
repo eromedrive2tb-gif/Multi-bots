@@ -36,3 +36,12 @@ export const saveBlueprint: CommandHandler = async (env, payload, meta): Promise
         error: !result.success ? result.error : undefined
     }
 }
+
+export const deleteBlueprint: CommandHandler = async (env, payload, meta): Promise<CommandResult> => {
+    const service = new BlueprintService(env.DB, env.BLUEPRINTS_KV, meta.tenantId)
+    const result = await service.deleteBlueprint(payload.id)
+    return {
+        success: result.success,
+        error: !result.success ? result.error : undefined
+    }
+}

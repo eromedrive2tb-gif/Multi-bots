@@ -10,6 +10,9 @@ import { setupCommandRegistry } from './commands/command-setup';
 setupCommandRegistry()
 
 export class UserSessionDO extends DurableObject<Env> {
+    // Tracks active WebSocket connections to prevent memory leaks and zombie connections
+    private sessions: Map<WebSocket, { userId?: string, tenantId?: string, connectedAt: number }> = new Map();
+
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
     }
@@ -28,6 +31,9 @@ export class UserSessionDO extends DurableObject<Env> {
 
             this.ctx.acceptWebSocket(server);
 
+            // Register new connection for tracking
+            this.sessions.set(server, { connectedAt: Date.now() });
+
             return new Response(null, { status: 101, webSocket: client });
         }
 
@@ -40,6 +46,14 @@ export class UserSessionDO extends DurableObject<Env> {
         try {
             const data = JSON.parse(message);
             const { action, reqId, payload, tenantId, userId } = data;
+
+            // Update session tracking with user identity from first message
+            const session = this.sessions.get(ws);
+            if (session) {
+                session.tenantId = tenantId || session.tenantId;
+                session.userId = userId || session.userId;
+                this.sessions.set(ws, session);
+            }
 
             if (!action) return;
 
@@ -90,11 +104,24 @@ export class UserSessionDO extends DurableObject<Env> {
     }
 
     async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
-        console.log(`[UserSessionDO] WebSocket closed (code: ${code}, reason: ${reason})`);
-        // Here we could emit a DOMAIN_EVENT.USER_OFFLINE if tracked
+        const session = this.sessions.get(ws);
+        const userId = session?.userId || 'unknown';
+
+        console.log(`[UserSessionDO] WebSocket closed (code: ${code}, reason: ${reason}, user: ${userId})`);
+
+        // Real memory cleanup of zombie connections
+        this.sessions.delete(ws);
+
+        // Note: Future feature: Could dispatch DOMAIN_EVENT.USER_OFFLINE here
     }
 
     async webSocketError(ws: WebSocket, error: any) {
-        console.error('[UserSessionDO] WebSocket error:', error);
+        const session = this.sessions.get(ws);
+        const userId = session?.userId || 'unknown';
+
+        console.error(`[UserSessionDO] WebSocket error (user: ${userId}):`, error);
+
+        // Ensure cleanup on sudden errors
+        this.sessions.delete(ws);
     }
 }

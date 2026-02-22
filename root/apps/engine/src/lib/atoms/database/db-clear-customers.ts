@@ -15,14 +15,17 @@ export async function dbClearCustomers({
     tenantId
 }: DbClearCustomersProps): Promise<Result<void>> {
     try {
-        const result = await db.prepare(`
-            DELETE FROM customers 
-            WHERE tenant_id = ?
-        `).bind(tenantId).run()
+        // We clear all related tables to ensure no "leftover" metadata or identified data remains.
+        // Some tables have CASCADE, but 'transactions' does not, so we clear them all explicitly.
+        const batch = [
+            db.prepare(`DELETE FROM customer_history WHERE tenant_id = ?`).bind(tenantId),
+            db.prepare(`DELETE FROM vip_group_members WHERE tenant_id = ?`).bind(tenantId),
+            db.prepare(`DELETE FROM transactions WHERE tenant_id = ?`).bind(tenantId),
+            db.prepare(`DELETE FROM remarketing_logs WHERE tenant_id = ?`).bind(tenantId),
+            db.prepare(`DELETE FROM customers WHERE tenant_id = ?`).bind(tenantId)
+        ]
 
-        if (!result.success) {
-            return { success: false, error: result.error || 'Failed to clear customers' }
-        }
+        const results = await db.batch(batch)
 
         return { success: true, data: undefined }
     } catch (error) {

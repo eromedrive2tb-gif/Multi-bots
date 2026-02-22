@@ -32,6 +32,7 @@ import type { TelegramCredentials, UniversalContext } from '../../core/types'
 // ============================================
 
 export interface WebhookQueueMessage {
+    type?: string
     provider: 'telegram' | 'discord'
     botId: string
     tenantId: string
@@ -314,16 +315,30 @@ async function processSingleMessage(
             return
         }
 
-        // 2. Route by provider
-        switch (msg.provider) {
-            case 'telegram':
-                await processTelegramUpdate(msg, env, ctx.waitUntil.bind(ctx))
-                break
-            case 'discord':
-                console.warn('[QueueConsumer] Discord events should not be queued')
-                break
-            default:
-                console.error(`[QueueConsumer] Unknown provider: ${msg.provider}`)
+        // 2. Route by event type or provider
+        const msgType = (msg as any).type
+
+        if (msgType === 'PROCESS_BROADCAST') {
+            console.log(`[QueueConsumer] Processing Broadcast: ${msg.idempotencyKey}`)
+            const { broadcastId } = msg.payload as { broadcastId: string }
+            const { BroadcastService } = await import('../../lib/organisms/broadcast/BroadcastService')
+            const service = new BroadcastService(env.DB, msg.tenantId)
+
+            const result = await service.sendBroadcastNow(broadcastId)
+            if (!result.success) {
+                throw new Error(`Broadcast failed: ${result.error}`)
+            }
+        } else {
+            switch (msg.provider) {
+                case 'telegram':
+                    await processTelegramUpdate(msg, env, ctx.waitUntil.bind(ctx))
+                    break
+                case 'discord':
+                    console.warn('[QueueConsumer] Discord events should not be queued')
+                    break
+                default:
+                    console.error(`[QueueConsumer] Unknown provider: ${msg.provider}`)
+            }
         }
 
         // 3. Success -> Mark as completed

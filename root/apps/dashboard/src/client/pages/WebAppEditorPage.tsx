@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
