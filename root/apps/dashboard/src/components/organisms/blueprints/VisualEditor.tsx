@@ -71,84 +71,89 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
         // Helper to find all connections from a step
         const getStepConnections = (step: any) => {
             const conns: { target: string, type: 'success' | 'error', label?: string }[] = []
-            const negativeKeys = ['no', 'cancel', 'error', 'false', 'rejeitar', 'negativo']
+            const negativeKeys = ['no', 'cancel', 'error', 'false', 'rejeitar', 'negativo', 'negative']
 
-            if (step.next_step) conns.push({ target: step.next_step, type: 'success' })
-            if (step.on_error) conns.push({ target: step.on_error, type: 'error' })
-
-            // Action specific connections
-            if (step.action === 'condition') {
-                if (step.params?.true_step) conns.push({ target: step.params.true_step, type: 'success', label: 'true' })
-                if (step.params?.false_step) conns.push({ target: step.params.false_step, type: 'error', label: 'false' })
+            // Utility to only add connections with valid targets
+            const addConn = (target: any, type: 'success' | 'error', label?: string) => {
+                if (typeof target === 'string' && target.trim() !== '' && initialBlueprint.steps[target]) {
+                    conns.push({ target, type, label })
+                }
             }
 
-            if (step.action === 'prompt' && step.params?.branches) {
-                Object.entries(step.params.branches).forEach(([key, target]) => {
-                    const isNegative = negativeKeys.includes(key.toLowerCase())
-                    conns.push({
-                        target: target as string,
-                        type: isNegative ? 'error' : 'success',
-                        label: key
-                    })
+            // 1. Standard paths
+            addConn(step.next_step, 'success')
+            addConn(step.on_error, 'error')
+
+            // 2. Conditional branches
+            if (step.action === 'condition') {
+                addConn(step.params?.true_step, 'success', 'true')
+                addConn(step.params?.false_step, 'error', 'false')
+            }
+
+            // 3. Multi-choice branches (Prompt/Keyboard)
+            const branches = step.params?.branches || step.params?.options_branches
+            if (branches && typeof branches === 'object') {
+                Object.entries(branches).forEach(([key, target]) => {
+                    const isNegative = negativeKeys.some(nk => key.toLowerCase().includes(nk))
+                    addConn(target, isNegative ? 'error' : 'success', key)
                 })
             }
 
             return conns
         }
 
-        // Layout algorithm: Breadth-First Search to determine levels
+        // Safe, loop-free DFS layout algorithm with cycle detection to avoid crashes
         const levels: Record<string, number> = {}
-        const levelItems: Record<number, string[]> = {}
-        const queue: { id: string, level: number }[] = []
-
-        if (initialBlueprint.entry_step) {
-            queue.push({ id: initialBlueprint.entry_step, level: 0 })
-            levels[initialBlueprint.entry_step] = 0
-        }
-
         const processed = new Set<string>()
 
-        while (queue.length > 0) {
-            const { id, level } = queue.shift()!
-            if (processed.has(id)) continue
-            processed.add(id)
+        const assignLevel = (id: string, currentLevel: number, path: Set<string>) => {
+            if (path.has(id)) return // Cycle detected, stop traversing this branch
 
-            if (!levelItems[level]) levelItems[level] = []
-            if (!levelItems[level].includes(id)) levelItems[level].push(id)
+            if (levels[id] === undefined || levels[id] < currentLevel) {
+                levels[id] = currentLevel
+                processed.add(id)
 
-            const step = initialBlueprint.steps[id]
-            if (step) {
-                const conns = getStepConnections(step)
-                conns.forEach(c => {
-                    if (levels[c.target] === undefined || levels[c.target] < level + 1) {
-                        levels[c.target] = level + 1
-                        queue.push({ id: c.target, level: level + 1 })
-                    }
-                })
+                const step = initialBlueprint.steps[id]
+                if (step) {
+                    const newPath = new Set(path)
+                    newPath.add(id)
+                    const conns = getStepConnections(step)
+                    conns.forEach(c => {
+                        assignLevel(c.target, currentLevel + 1, newPath)
+                    })
+                }
             }
         }
 
-        // Add unvisited nodes (orphans)
+        if (initialBlueprint.entry_step && initialBlueprint.steps[initialBlueprint.entry_step]) {
+            assignLevel(initialBlueprint.entry_step, 0, new Set())
+        }
+
+        // Add orphans
         Object.keys(initialBlueprint.steps).forEach(id => {
             if (!processed.has(id)) {
-                levels[id] = 0
-                if (!levelItems[0]) levelItems[0] = []
-                levelItems[0].push(id)
+                assignLevel(id, 0, new Set())
             }
         })
 
-        // Create Nodes with calculated positions
+        const levelItems: Record<number, string[]> = {}
+        Object.entries(levels).forEach(([id, level]) => {
+            if (!levelItems[level]) levelItems[level] = []
+            levelItems[level].push(id)
+        })
+
+        // Create Nodes with calculated hierarchical positions
         const NODE_WIDTH = 250
-        const NODE_HEIGHT = 220
-        const HORIZONTAL_GAP = 100
-        const VERTICAL_GAP = 150
+        const NODE_HEIGHT = 180
+        const HORIZONTAL_GAP = 140
+        const VERTICAL_GAP = 160
 
         Object.entries(initialBlueprint.steps).forEach(([stepId, step]) => {
             const level = levels[stepId] || 0
             const itemsInLevel = levelItems[level] || [stepId]
             const indexInLevel = itemsInLevel.indexOf(stepId)
 
-            // Calculate X to center the level
+            // Centered hierarchy layout
             const levelWidth = itemsInLevel.length * (NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP
             const startX = -levelWidth / 2
             const x = startX + indexInLevel * (NODE_WIDTH + HORIZONTAL_GAP)
@@ -177,6 +182,7 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
                     target: conn.target,
                     sourceHandle: conn.type,
                     animated: true,
+                    type: 'smoothstep', // Gives orthogonal cleaner lines
                     style: {
                         stroke: isError ? '#ef4444' : '#10b981',
                         strokeWidth: 3,
@@ -184,7 +190,7 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
                     },
                     label: conn.label,
                     labelStyle: conn.label ? { fill: isError ? '#ef4444' : '#10b981', fontSize: 10, fontWeight: 700 } : undefined,
-                    labelBgStyle: conn.label ? { fill: '#1e293b', fillOpacity: 0.8 } : undefined
+                    labelBgStyle: conn.label ? { fill: '#0f172a', fillOpacity: 0.9, rx: 6, ry: 6 } : undefined
                 })
             })
         })

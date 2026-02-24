@@ -150,38 +150,38 @@ export const BlueprintNode: React.FC<NodeProps<StepNode>> = ({ data, selected })
             </div>
 
             {/* Output Handles */}
-            <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '0', display: 'flex', justifyContent: 'space-around' }}>
-                <Handle
-                    type="source"
-                    position={Position.Bottom}
-                    id="success"
-                    style={{
-                        background: '#10b981',
-                        width: 10,
-                        height: 10,
-                        border: '2px solid #0f172a',
-                        position: 'relative',
-                        left: 'auto',
-                        transform: 'translateY(-50%)',
-                        boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)'
-                    }}
-                />
-                <Handle
-                    type="source"
-                    position={Position.Bottom}
-                    id="error"
-                    style={{
-                        background: '#ef4444',
-                        width: 10,
-                        height: 10,
-                        border: '2px solid #0f172a',
-                        position: 'relative',
-                        left: 'auto',
-                        transform: 'translateY(-50%)',
-                        boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-                    }}
-                />
-            </div>
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                id="success"
+                style={{
+                    background: '#10b981',
+                    width: 12,
+                    height: 12,
+                    border: '2px solid #0f172a',
+                    left: '30%',
+                    bottom: -6,
+                    boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
+                    cursor: 'crosshair',
+                    zIndex: 10
+                }}
+            />
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                id="error"
+                style={{
+                    background: '#ef4444',
+                    width: 12,
+                    height: 12,
+                    border: '2px solid #0f172a',
+                    left: '70%',
+                    bottom: -6,
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                    cursor: 'crosshair',
+                    zIndex: 10
+                }}
+            />
         </div>
     )
 }

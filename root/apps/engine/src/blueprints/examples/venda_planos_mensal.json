@@ -1,10 +1,8 @@
 {
     "id": "venda_planos_mensal",
-    "name": "Venda de Planos Mensal - Exemplo Completo",
-    "description": "Blueprint de exemplo demonstrando um fluxo completo de auto-atendimento para venda de planos mensais. Inclui: boas-vindas, coleta de dados, seleção de plano, confirmação e link de pagamento.",
+    "name": "venda_planos_mensal",
     "trigger": "/planos",
     "entry_step": "welcome",
-    "version": "1.0.0",
     "steps": {
         "welcome": {
             "type": "molecule",
@@ -35,7 +33,8 @@
                 "message": "📝 Nome coletado: {{session.customer_name}}",
                 "level": "info"
             },
-            "next_step": "ask_email"
+            "next_step": "ask_email",
+            "on_error": null
         },
         "ask_email": {
             "type": "molecule",
@@ -44,7 +43,8 @@
                 "text": "Ótimo, {{session.customer_name}}! 👋\n\nAgora preciso do seu <b>email</b> para enviar a confirmação do plano:",
                 "parse_mode": "HTML"
             },
-            "next_step": "collect_email"
+            "next_step": "collect_email",
+            "on_error": null
         },
         "collect_email": {
             "type": "molecule",
@@ -65,7 +65,8 @@
                 "message": "📧 Email coletado: {{session.customer_email}} | Cliente: {{session.customer_name}}",
                 "level": "info"
             },
-            "next_step": "ask_phone"
+            "next_step": "ask_phone",
+            "on_error": null
         },
         "ask_phone": {
             "type": "molecule",
@@ -74,7 +75,8 @@
                 "text": "Perfeito! 📧\n\nAgora, qual seu <b>telefone com DDD</b>?\n\n<i>(Ex: 11999998888)</i>",
                 "parse_mode": "HTML"
             },
-            "next_step": "collect_phone"
+            "next_step": "collect_phone",
+            "on_error": null
         },
         "collect_phone": {
             "type": "molecule",
@@ -95,7 +97,8 @@
                 "message": "📱 Telefone coletado: {{session.customer_phone}} | Cliente: {{session.customer_name}} ({{session.customer_email}})",
                 "level": "info"
             },
-            "next_step": "show_plans"
+            "next_step": "show_plans",
+            "on_error": null
         },
         "show_plans": {
             "type": "molecule",
@@ -138,7 +141,9 @@
                 "expression": "{{session.selected_plan}} == 'plan_basic'",
                 "true_step": "set_plan_basic",
                 "false_step": "check_plan_pro"
-            }
+            },
+            "next_step": null,
+            "on_error": null
         },
         "set_plan_basic": {
             "type": "atom",
@@ -147,7 +152,8 @@
                 "variable": "plan_name",
                 "value": "Plano Básico"
             },
-            "next_step": "set_plan_basic_price"
+            "next_step": "set_plan_basic_price",
+            "on_error": null
         },
         "set_plan_basic_price": {
             "type": "atom",
@@ -156,7 +162,8 @@
                 "variable": "plan_price",
                 "value": "29,90"
             },
-            "next_step": "confirm_order"
+            "next_step": "confirm_order",
+            "on_error": null
         },
         "check_plan_pro": {
             "type": "molecule",
@@ -165,7 +172,9 @@
                 "expression": "{{session.selected_plan}} == 'plan_pro'",
                 "true_step": "set_plan_pro",
                 "false_step": "set_plan_enterprise"
-            }
+            },
+            "next_step": null,
+            "on_error": null
         },
         "set_plan_pro": {
             "type": "atom",
@@ -174,7 +183,8 @@
                 "variable": "plan_name",
                 "value": "Plano Pro"
             },
-            "next_step": "set_plan_pro_price"
+            "next_step": "set_plan_pro_price",
+            "on_error": null
         },
         "set_plan_pro_price": {
             "type": "atom",
@@ -183,7 +193,8 @@
                 "variable": "plan_price",
                 "value": "79,90"
             },
-            "next_step": "confirm_order"
+            "next_step": "confirm_order",
+            "on_error": null
         },
         "set_plan_enterprise": {
             "type": "atom",
@@ -192,7 +203,8 @@
                 "variable": "plan_name",
                 "value": "Plano Enterprise"
             },
-            "next_step": "set_plan_enterprise_price"
+            "next_step": "set_plan_enterprise_price",
+            "on_error": null
         },
         "set_plan_enterprise_price": {
             "type": "atom",
@@ -201,7 +213,8 @@
                 "variable": "plan_price",
                 "value": "199,90"
             },
-            "next_step": "confirm_order"
+            "next_step": "confirm_order",
+            "on_error": null
         },
         "confirm_order": {
             "type": "molecule",
@@ -210,7 +223,8 @@
                 "message": "🛒 PEDIDO CRIADO | Plano: {{session.plan_name}} | Preço: R${{session.plan_price}} | Cliente: {{session.customer_name}} | Email: {{session.customer_email}} | Tel: {{session.customer_phone}}",
                 "level": "info"
             },
-            "next_step": "show_confirmation"
+            "next_step": "show_confirmation",
+            "on_error": null
         },
         "show_confirmation": {
             "type": "molecule",
@@ -219,7 +233,8 @@
                 "text": "📋 <b>CONFIRMAÇÃO DO PEDIDO</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n👤 <b>Dados do Cliente:</b>\n• Nome: {{session.customer_name}}\n• Email: {{session.customer_email}}\n• Telefone: {{session.customer_phone}}\n\n━━━━━━━━━━━━━━━━━━━━━\n📦 <b>Plano Selecionado:</b>\n• {{session.plan_name}}\n• Valor: <b>R$ {{session.plan_price}}/mês</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ <i>Confira os dados acima antes de prosseguir.</i>",
                 "parse_mode": "HTML"
             },
-            "next_step": "ask_confirmation"
+            "next_step": "ask_confirmation",
+            "on_error": null
         },
         "ask_confirmation": {
             "type": "molecule",
@@ -241,7 +256,8 @@
                     }
                 ]
             },
-            "next_step": "collect_confirmation"
+            "next_step": "collect_confirmation",
+            "on_error": null
         },
         "collect_confirmation": {
             "type": "molecule",
@@ -261,7 +277,9 @@
                 "expression": "{{session.confirmation_choice}} == 'confirm_yes'",
                 "true_step": "generate_payment",
                 "false_step": "check_cancel"
-            }
+            },
+            "next_step": null,
+            "on_error": null
         },
         "check_cancel": {
             "type": "molecule",
@@ -270,7 +288,9 @@
                 "expression": "{{session.confirmation_choice}} == 'confirm_no'",
                 "true_step": "cancel_order",
                 "false_step": "restart_plan_selection"
-            }
+            },
+            "next_step": null,
+            "on_error": null
         },
         "cancel_order": {
             "type": "molecule",
@@ -279,7 +299,8 @@
                 "message": "❌ PEDIDO CANCELADO | Cliente: {{session.customer_name}} | Email: {{session.customer_email}}",
                 "level": "warning"
             },
-            "next_step": "send_cancel_message"
+            "next_step": "send_cancel_message",
+            "on_error": null
         },
         "send_cancel_message": {
             "type": "molecule",
@@ -288,7 +309,8 @@
                 "text": "😢 Pedido cancelado.\n\nSe mudar de ideia, é só digitar /planos novamente!\n\nTerremos o melhor plano esperando por você. 💙",
                 "parse_mode": "HTML"
             },
-            "next_step": null
+            "next_step": null,
+            "on_error": null
         },
         "restart_plan_selection": {
             "type": "molecule",
@@ -297,7 +319,8 @@
                 "text": "🔄 Sem problemas! Vamos escolher outro plano.",
                 "parse_mode": "HTML"
             },
-            "next_step": "show_plans"
+            "next_step": "show_plans",
+            "on_error": null
         },
         "generate_payment": {
             "type": "molecule",
@@ -306,7 +329,8 @@
                 "message": "💳 PAGAMENTO INICIADO | Plano: {{session.plan_name}} | Valor: R${{session.plan_price}} | Cliente: {{session.customer_name}} ({{session.customer_email}})",
                 "level": "info"
             },
-            "next_step": "send_payment_link"
+            "next_step": "send_payment_link",
+            "on_error": null
         },
         "send_payment_link": {
             "type": "molecule",
@@ -314,10 +338,11 @@
             "params": {
                 "text": "🎉 <b>Excelente escolha, {{session.customer_name}}!</b>\n\n━━━━━━━━━━━━━━━━━━━━━\n💳 <b>PAGAMENTO</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n📦 Plano: <b>{{session.plan_name}}</b>\n💰 Valor: <b>R$ {{session.plan_price}}/mês</b>\n\nClique no botão abaixo para concluir o pagamento com segurança:\n\n━━━━━━━━━━━━━━━━━━━━━\n\n⏰ Este link expira em <b>30 minutos</b>.\n📧 Após o pagamento, você receberá a confirmação no email informado.",
                 "button_text": "💳 PAGAR AGORA",
-                "page_id": "pagamento-exemplo",
+                "page_id": "teste-page",
                 "parse_mode": "HTML"
             },
-            "next_step": "final_log"
+            "next_step": "final_log",
+            "on_error": null
         },
         "final_log": {
             "type": "atom",
@@ -326,7 +351,8 @@
                 "message": "✅ FLUXO COMPLETO | Cliente: {{session.customer_name}} | Email: {{session.customer_email}} | Tel: {{session.customer_phone}} | Plano: {{session.plan_name}} | Valor: R${{session.plan_price}}",
                 "level": "info"
             },
-            "next_step": null
+            "next_step": null,
+            "on_error": null
         },
         "error_handler": {
             "type": "molecule",
@@ -335,7 +361,8 @@
                 "message": "❌ ERRO NO FLUXO | Step atual: {{session.currentStepId}} | Usuário: {{ctx.userId}}",
                 "level": "error"
             },
-            "next_step": "send_error_message"
+            "next_step": "send_error_message",
+            "on_error": null
         },
         "send_error_message": {
             "type": "molecule",
@@ -344,7 +371,8 @@
                 "text": "😕 Ops! Algo deu errado.\n\nPor favor, tente novamente digitando /planos\n\nSe o problema persistir, entre em contato com nosso suporte: /ajuda",
                 "parse_mode": "HTML"
             },
-            "next_step": null
+            "next_step": null,
+            "on_error": null
         },
         "timeout_handler": {
             "type": "molecule",
@@ -353,19 +381,9 @@
                 "text": "⏰ O tempo para sua escolha expirou.\n\nSe ainda deseja continuar, digite /planos para recomeçar.\n\nEstamos aqui quando precisar! 💙",
                 "parse_mode": "HTML"
             },
-            "next_step": null
+            "next_step": null,
+            "on_error": null
         }
     },
-    "metadata": {
-        "author": "Sistema",
-        "category": "vendas",
-        "tags": [
-            "planos",
-            "assinatura",
-            "pagamento",
-            "coleta-dados"
-        ],
-        "estimated_duration_minutes": 3,
-        "complexity": "advanced"
-    }
+    "version": "1.0"
 }
