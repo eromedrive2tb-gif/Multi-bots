@@ -13,7 +13,9 @@ export const BlueprintPropertyField: React.FC<BlueprintPropertyFieldProps> = ({
     value,
     onChange,
 }) => {
-    const strValue = value !== undefined ? String(value) : param.defaultValue !== undefined ? String(param.defaultValue) : ''
+    const strValue = value !== undefined
+        ? (typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value))
+        : (param.defaultValue !== undefined ? String(param.defaultValue) : '')
 
     const renderInput = () => {
         switch (param.type) {

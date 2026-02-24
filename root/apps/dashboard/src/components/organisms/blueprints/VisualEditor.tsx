@@ -61,19 +61,103 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
     const [saving, setSaving] = useState(false)
     const [message, setMessage] = useState('')
 
-    // Load initial blueprint
+    // Load initial blueprint with auto-layout
     useEffect(() => {
         if (!initialBlueprint) return
 
         const newNodes: StepNode[] = []
         const newEdges: Edge[] = []
-        let y = 0
+
+        // Helper to find all connections from a step
+        const getStepConnections = (step: any) => {
+            const conns: { target: string, type: 'success' | 'error', label?: string }[] = []
+            const negativeKeys = ['no', 'cancel', 'error', 'false', 'rejeitar', 'negativo']
+
+            if (step.next_step) conns.push({ target: step.next_step, type: 'success' })
+            if (step.on_error) conns.push({ target: step.on_error, type: 'error' })
+
+            // Action specific connections
+            if (step.action === 'condition') {
+                if (step.params?.true_step) conns.push({ target: step.params.true_step, type: 'success', label: 'true' })
+                if (step.params?.false_step) conns.push({ target: step.params.false_step, type: 'error', label: 'false' })
+            }
+
+            if (step.action === 'prompt' && step.params?.branches) {
+                Object.entries(step.params.branches).forEach(([key, target]) => {
+                    const isNegative = negativeKeys.includes(key.toLowerCase())
+                    conns.push({
+                        target: target as string,
+                        type: isNegative ? 'error' : 'success',
+                        label: key
+                    })
+                })
+            }
+
+            return conns
+        }
+
+        // Layout algorithm: Breadth-First Search to determine levels
+        const levels: Record<string, number> = {}
+        const levelItems: Record<number, string[]> = {}
+        const queue: { id: string, level: number }[] = []
+
+        if (initialBlueprint.entry_step) {
+            queue.push({ id: initialBlueprint.entry_step, level: 0 })
+            levels[initialBlueprint.entry_step] = 0
+        }
+
+        const processed = new Set<string>()
+
+        while (queue.length > 0) {
+            const { id, level } = queue.shift()!
+            if (processed.has(id)) continue
+            processed.add(id)
+
+            if (!levelItems[level]) levelItems[level] = []
+            if (!levelItems[level].includes(id)) levelItems[level].push(id)
+
+            const step = initialBlueprint.steps[id]
+            if (step) {
+                const conns = getStepConnections(step)
+                conns.forEach(c => {
+                    if (levels[c.target] === undefined || levels[c.target] < level + 1) {
+                        levels[c.target] = level + 1
+                        queue.push({ id: c.target, level: level + 1 })
+                    }
+                })
+            }
+        }
+
+        // Add unvisited nodes (orphans)
+        Object.keys(initialBlueprint.steps).forEach(id => {
+            if (!processed.has(id)) {
+                levels[id] = 0
+                if (!levelItems[0]) levelItems[0] = []
+                levelItems[0].push(id)
+            }
+        })
+
+        // Create Nodes with calculated positions
+        const NODE_WIDTH = 250
+        const NODE_HEIGHT = 220
+        const HORIZONTAL_GAP = 100
+        const VERTICAL_GAP = 150
 
         Object.entries(initialBlueprint.steps).forEach(([stepId, step]) => {
+            const level = levels[stepId] || 0
+            const itemsInLevel = levelItems[level] || [stepId]
+            const indexInLevel = itemsInLevel.indexOf(stepId)
+
+            // Calculate X to center the level
+            const levelWidth = itemsInLevel.length * (NODE_WIDTH + HORIZONTAL_GAP) - HORIZONTAL_GAP
+            const startX = -levelWidth / 2
+            const x = startX + indexInLevel * (NODE_WIDTH + HORIZONTAL_GAP)
+            const y = level * (NODE_HEIGHT + VERTICAL_GAP)
+
             newNodes.push({
                 id: stepId,
                 type: 'step',
-                position: { x: 250, y },
+                position: { x, y },
                 data: {
                     label: stepId,
                     action: step.action,
@@ -83,31 +167,26 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
                 },
             })
 
-            if (step.next_step) {
+            // Create Edges
+            const conns = getStepConnections(step)
+            conns.forEach((conn, idx) => {
+                const isError = conn.type === 'error'
                 newEdges.push({
-                    id: `${stepId}-${step.next_step}`,
+                    id: `${stepId}-${conn.target}-${idx}`,
                     source: stepId,
-                    target: step.next_step,
-                    sourceHandle: 'success',
+                    target: conn.target,
+                    sourceHandle: conn.type,
                     animated: true,
-                    style: { stroke: '#10b981', strokeWidth: 3 },
+                    style: {
+                        stroke: isError ? '#ef4444' : '#10b981',
+                        strokeWidth: 3,
+                        strokeDasharray: isError ? '5,5' : undefined
+                    },
+                    label: conn.label,
+                    labelStyle: conn.label ? { fill: isError ? '#ef4444' : '#10b981', fontSize: 10, fontWeight: 700 } : undefined,
+                    labelBgStyle: conn.label ? { fill: '#1e293b', fillOpacity: 0.8 } : undefined
                 })
-            }
-
-            if (step.on_error) {
-                newEdges.push({
-                    id: `${stepId}-error-${step.on_error}`,
-                    source: stepId,
-                    target: step.on_error,
-                    sourceHandle: 'error',
-                    animated: true,
-                    style: { stroke: '#ef4444', strokeWidth: 3, strokeDasharray: '5,5' },
-                    label: 'erro',
-                    labelStyle: { fill: '#ef4444', fontSize: 10, fontWeight: 700 },
-                })
-            }
-
-            y += 200
+            })
         })
 
         setNodes(newNodes)
@@ -137,7 +216,8 @@ export const VisualEditor: React.FC<BlueprintEditorProps> = ({
                     animated: true,
                     style: edgeStyle,
                     label: isError ? 'erro' : undefined,
-                    labelStyle: isError ? { fill: '#ef4444', fontSize: 10, fontWeight: 700 } : undefined
+                    labelStyle: isError ? { fill: '#ef4444', fontSize: 10, fontWeight: 700 } : undefined,
+                    labelBgStyle: { fill: '#1e293b', fillOpacity: 0.8 }
                 }, eds)
             )
         },
