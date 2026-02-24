@@ -121,6 +121,7 @@ app.post('/api/pages', authMiddleware, zValidator('json', webAppPageSchema), asy
     const page: WebAppPage = {
         ...body,
         html: body.html ?? '',
+        head: body.head ?? '',
         css: body.css ?? '',
         js: body.js ?? '',
         tenantId: tenant.tenantId,

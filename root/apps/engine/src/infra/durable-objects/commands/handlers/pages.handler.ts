@@ -19,6 +19,17 @@ export const fetchPages: CommandHandler = async (env, payload, meta): Promise<Co
     }
 }
 
+export const fetchPageHandler: CommandHandler = async (env, payload, meta): Promise<CommandResult> => {
+    const repo = new KvPageRepository((env as Env).PAGES_KV)
+    const pageId = String(payload.id || '')
+    const result = await repo.get(meta.tenantId, pageId)
+    return {
+        success: result.success,
+        data: result.success ? result.data : undefined,
+        error: !result.success ? (result as any).error : undefined
+    }
+}
+
 export const savePageHandler: CommandHandler = async (env, payload, meta): Promise<CommandResult> => {
     const repo = new KvPageRepository((env as Env).PAGES_KV)
     const page = {

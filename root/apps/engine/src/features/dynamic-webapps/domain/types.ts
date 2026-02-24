@@ -9,10 +9,9 @@ import { z } from 'zod'
  * Page rendering mode (4 categories):
  * - 'classic':      HTML + CSS + JS separados — o modo tradicional
  * - 'singlefile':   HTML completo (vite-plugin-singlefile output) — zero-overhead
- * - 'declarative':  HTML + CSS only — Alpine.js injetado automaticamente via CDN
- * - 'htmx':         HTML + CSS only — HTMX injetado automaticamente via CDN
+ * - 'hypermedia': HTML + CSS + Head (Alpine.js and HTMX injected automatically)
  */
-export type WebAppPageMode = 'classic' | 'singlefile' | 'declarative' | 'htmx'
+export type WebAppPageMode = 'classic' | 'singlefile' | 'hypermedia'
 
 /**
  * WebAppPage Entity
@@ -22,9 +21,11 @@ export interface WebAppPage {
     id: string
     name: string
     mode: WebAppPageMode
-    /** Body HTML content (classic, declarative, htmx modes) */
+    /** Body HTML content (classic, hypermedia modes) */
     html: string
-    /** CSS styles (classic, declarative, htmx modes) */
+    /** Head HTML content for additional tags like scripts/meta (hypermedia mode) */
+    head?: string
+    /** CSS styles (classic, hypermedia modes) */
     css: string
     /** JavaScript code (classic mode only) */
     js: string
@@ -40,7 +41,7 @@ export interface WebAppPage {
 export interface WebAppPageMeta {
     id: string
     name: string
-    mode: WebAppPageMode
+    mode: WebAppPageMode | 'declarative' | 'htmx' | 'composed' // keeping legacy modes for safe frontend cast
     tenantId: string
     updatedAt: number
 }
@@ -49,13 +50,14 @@ export interface WebAppPageMeta {
 // ZOD SCHEMAS
 // ============================================
 
-export const webAppPageModeSchema = z.enum(['classic', 'singlefile', 'declarative', 'htmx'])
+export const webAppPageModeSchema = z.enum(['classic', 'singlefile', 'hypermedia', 'declarative', 'htmx', 'composed'])
 
 /** Shared base fields for all non-singlefile modes */
 const basePageFields = {
     id: z.string().min(3).regex(/^[a-z0-9-]+$/, 'ID deve conter apenas letras minúsculas, números e hífens'),
     name: z.string().min(1, 'Nome é obrigatório'),
     html: z.string(),
+    head: z.string().optional().default(''),
     css: z.string(),
     singleFileHtml: z.undefined().optional(),
 }
@@ -77,26 +79,18 @@ const singlefilePageSchema = z.object({
     name: z.string().min(1, 'Nome é obrigatório'),
     mode: z.literal('singlefile'),
     html: z.string().default(''),
+    head: z.string().default(''),
     css: z.string().default(''),
     js: z.string().default(''),
     singleFileHtml: z.string().min(1, 'HTML do single file é obrigatório'),
 })
 
 /**
- * Declarative mode: HTML + CSS only (Alpine.js injected by Engine)
+ * Hypermedia mode: HTML (Head + Body) + CSS (Alpine.js and HTMX injected by Engine)
  */
-const declarativePageSchema = z.object({
+const hypermediaPageSchema = z.object({
     ...basePageFields,
-    mode: z.literal('declarative'),
-    js: z.string().default(''),
-})
-
-/**
- * HTMX mode: HTML + CSS only (HTMX injected by Engine)
- */
-const htmxPageSchema = z.object({
-    ...basePageFields,
-    mode: z.literal('htmx'),
+    mode: z.literal('hypermedia'),
     js: z.string().default(''),
 })
 
@@ -106,8 +100,7 @@ const htmxPageSchema = z.object({
 export const webAppPageSchema = z.discriminatedUnion('mode', [
     classicPageSchema,
     singlefilePageSchema,
-    declarativePageSchema,
-    htmxPageSchema,
+    hypermediaPageSchema,
 ])
 
 export type WebAppPageInput = z.infer<typeof webAppPageSchema>

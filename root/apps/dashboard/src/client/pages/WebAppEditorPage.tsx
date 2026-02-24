@@ -16,8 +16,8 @@ import { DisclaimerBanner } from '../../components/atoms/ui/DisclaimerBanner'
 // TYPES & CONSTANTS
 // ============================================
 
-type EditorTab = 'html' | 'css' | 'js'
-type PageMode = 'classic' | 'singlefile' | 'declarative' | 'htmx'
+type EditorTab = 'head' | 'html' | 'css' | 'js'
+type PageMode = 'classic' | 'singlefile' | 'hypermedia'
 
 interface ModeConfig {
     label: string
@@ -45,32 +45,26 @@ const MODE_CONFIG: Record<PageMode, ModeConfig> = {
         hint: 'Importe o HTML gerado pelo vite-plugin-singlefile. Zero processamento na Edge — o arquivo é servido exatamente como foi gerado. Performance máxima para SPAs enxutas. Projetos pesados (React + muitas libs) sofrerão penalidades severas de SEO e carregamento no dispositivo do cliente se não forem rigorosamente otimizados.',
         hintVariant: 'warning',
     },
-    declarative: {
-        label: 'Alpine.js',
-        icon: <Layers className="h-4 w-4" />,
-        tabs: ['html', 'css'],
-        hintTitle: '🏔️ Modo Declarativo — Alpine.js Injetado',
-        hint: 'Apenas HTML e CSS. A Engine injeta o Alpine.js automaticamente via CDN. Perfeito para interatividade local (modais, toggles, tabs, accordions) sem precisar escrever JavaScript imperativo. Ideal para páginas de FAQ, catálogos de produtos e formulários dinâmicos em nichos de infoprodutos e afiliados. Use x-data, x-show, x-on e @click diretamente no HTML.',
-        hintVariant: 'info',
-    },
-    htmx: {
-        label: 'HTMX',
+    hypermedia: {
+        label: 'Hypermedia (HAST)',
         icon: <Zap className="h-4 w-4" />,
-        tabs: ['html', 'css'],
-        hintTitle: '🔌 Modo HTMX — Comunicação com APIs Externas',
-        hint: 'Apenas HTML e CSS. A Engine injeta o HTMX automaticamente via CDN. Use EXCLUSIVAMENTE para o cliente final se comunicar com webhooks e APIs de terceiros (n8n, Make, Gateways de pagamento). O HTMX faz requisições HTTP diretamente do HTML — sem JS, sem build. Ideal para checkout flows, formulários de pagamento e integrações com automações externas. O CRM permanece 100% isolado.',
-        hintVariant: 'caution',
+        tabs: ['head', 'html', 'css'],
+        hintTitle: '🌐 Modo Hypermedia (HAST) — HTMX + Alpine.js',
+        hint: 'Permite manipular a <body> e o <head> do HTML, com Alpine.js e HTMX injetados automaticamente. Ideal para criar lógicas interativas complexas sem precisar escrever JS imperativo. Use Alpine (@click, x-data) para interface, e HTMX (hx-get, hx-post) para se comunicar diretamente com APIs externas e Webhooks.',
+        hintVariant: 'info',
     },
 }
 
 const TAB_ICONS: Record<EditorTab, React.ReactNode> = {
+    head: <Globe className="h-4 w-4 mr-2" />,
     html: <Layout className="h-4 w-4 mr-2" />,
     css: <FileJson className="h-4 w-4 mr-2" />,
     js: <CodeIcon className="h-4 w-4 mr-2" />,
 }
 
 const TAB_LABELS: Record<EditorTab, string> = {
-    html: 'HTML',
+    head: 'Head',
+    html: 'Body HTML',
     css: 'CSS',
     js: 'JS',
 }
@@ -89,6 +83,7 @@ export function WebAppEditorPage() {
     // State
     const [name, setName] = useState('')
     const [pageId, setPageId] = useState('')
+    const [head, setHead] = useState('<!-- Meta Tags, Scripts e Styles Externos (Injetados no <head>) -->\n<meta name="theme-color" content="#ffffff">')
     const [html, setHtml] = useState('<!-- Seu HTML aqui -->\n<div class="container">\n  <h1>Olá Mundo</h1>\n  <button id="btn">Clique-me</button>\n</div>')
     const [css, setCss] = useState('/* Seu CSS aqui */\n.container { padding: 20px; text-align: center; }\nbutton { padding: 10px 20px; background: #0088cc; color: white; border: none; border-radius: 4px; }')
     const [js, setJs] = useState('// Seu JS aqui\ndocument.getElementById("btn").addEventListener("click", () => {\n  if (window.Telegram && window.Telegram.WebApp) {\n    window.Telegram.WebApp.showAlert("Olá do botão!");\n  } else {\n    alert("Olá do botão (fora do Telegram)!");\n  }\n});')
@@ -114,9 +109,15 @@ export function WebAppEditorPage() {
             if (data) {
                 setName(data.name)
                 setPageId(data.id)
-                // Backward compat: old 'composed' → 'classic'
-                const mode = ((data as any).mode || 'classic') as PageMode
-                setPageMode(mode === ('composed' as any) ? 'classic' : mode)
+                // Backward compat: old modes -> hypermedia or classic
+                const rawMode = ((data as any).mode || 'classic') as string
+                let mappedMode: PageMode = 'classic'
+                if (['declarative', 'htmx', 'hypermedia'].includes(rawMode)) mappedMode = 'hypermedia'
+                else if (rawMode === 'singlefile') mappedMode = 'singlefile'
+                else mappedMode = 'classic'
+
+                setPageMode(mappedMode)
+                setHead((data as any).head || '')
                 setHtml(data.html)
                 setCss(data.css)
                 setJs(data.js)
@@ -151,6 +152,7 @@ export function WebAppEditorPage() {
                 name,
                 mode: pageMode,
                 html,
+                head: pageMode === 'hypermedia' ? head : '',
                 css,
                 js: pageMode === 'classic' ? js : '',
             }
@@ -177,6 +179,7 @@ export function WebAppEditorPage() {
     // Get current editor value based on active tab
     const getEditorValue = (): string => {
         switch (activeTab) {
+            case 'head': return head
             case 'html': return html
             case 'css': return css
             case 'js': return js
@@ -184,12 +187,14 @@ export function WebAppEditorPage() {
     }
 
     const getEditorLanguage = (): string => {
+        if (activeTab === 'head') return 'html'
         return activeTab === 'js' ? 'javascript' : activeTab
     }
 
     const handleEditorChange = (value: string | undefined) => {
         const v = value || ''
         switch (activeTab) {
+            case 'head': setHead(v); break
             case 'html': setHtml(v); break
             case 'css': setCss(v); break
             case 'js': setJs(v); break
@@ -249,16 +254,21 @@ export function WebAppEditorPage() {
 
                 {/* Mode Selector */}
                 <div className="mode-selector">
-                    {(Object.keys(MODE_CONFIG) as PageMode[]).map(mode => (
-                        <button
-                            key={mode}
-                            onClick={() => switchMode(mode)}
-                            className={`mode-button ${pageMode === mode ? 'active' : ''}`}
-                        >
-                            {MODE_CONFIG[mode].icon}
-                            <span>{MODE_CONFIG[mode].label}</span>
-                        </button>
-                    ))}
+                    {(Object.keys(MODE_CONFIG) as PageMode[]).map(mode => {
+                        const isDisabled = !isNew && pageMode !== mode;
+                        return (
+                            <button
+                                key={mode}
+                                onClick={() => { if (!isDisabled) switchMode(mode) }}
+                                className={`mode-button ${pageMode === mode ? 'active' : ''}`}
+                                disabled={isDisabled}
+                                title={isDisabled ? "Não é possível alterar a categoria de um WebApp já existente." : ""}
+                            >
+                                {MODE_CONFIG[mode].icon}
+                                <span>{MODE_CONFIG[mode].label}</span>
+                            </button>
+                        )
+                    })}
                 </div>
 
                 {/* Mode Hint */}
@@ -463,7 +473,7 @@ export function WebAppEditorPage() {
                         flex: 1;
                         justify-content: center;
                     }
-                    .mode-button:hover {
+                    .mode-button:hover:not(:disabled) {
                         background: var(--color-bg-tertiary);
                         color: var(--color-text-primary);
                     }
@@ -471,6 +481,10 @@ export function WebAppEditorPage() {
                         background: var(--color-primary);
                         color: white;
                         box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+                    }
+                    .mode-button:disabled {
+                        opacity: 0.5;
+                        cursor: not-allowed;
                     }
 
                     /* Editor Grid */

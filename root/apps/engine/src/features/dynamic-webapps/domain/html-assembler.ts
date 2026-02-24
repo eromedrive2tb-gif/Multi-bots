@@ -5,8 +5,7 @@
  * 4 strategies based on mode:
  * - 'classic':      HTML + CSS + JS assembled with sanitization
  * - 'singlefile':   Zero-overhead passthrough (vite-plugin-singlefile)
- * - 'declarative':  HTML + CSS + Alpine.js CDN injection
- * - 'htmx':         HTML + CSS + HTMX CDN injection
+ * - 'hypermedia':   HTML + CSS + Head + Alpine.js & HTMX injected via CDN
  * 
  * GOLDEN RULE: The webapp is 100% isolated. The CRM Engine only stores and delivers the HTML.
  */
@@ -94,42 +93,29 @@ function assembleSinglefile(page: WebAppPage): string {
 }
 
 // ============================================
-// MODE: DECLARATIVE (Alpine.js CDN injection)
+// MODE: HYPERMEDIA (Alpine.js & HTMX injected)
 // ============================================
 
-function assembleDeclarative(page: WebAppPage): string {
+function assembleHypermedia(page: WebAppPage): string {
     const safeName = escapeHtml(page.name)
     const safeCss = sanitizeCss(page.css)
+
+    // User can manipulate the head, we inject their custom tags here.
+    // They are responsible for validity, but the application isolates scripts anyway.
+    const customHead = page.head || ''
 
     return renderDocument({
         name: safeName,
         css: safeCss,
         html: page.html,
-        headScripts: `    <script defer src="${CDN_ALPINEJS}"><\/script>`,
+        headScripts: `${customHead}\n    <script defer src="${CDN_ALPINEJS}"><\/script>\n    <script src="${CDN_HTMX}"><\/script>`,
         bodyScripts: `    <script>
         if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.ready(); }
     <\/script>`,
     })
 }
 
-// ============================================
-// MODE: HTMX (HTMX CDN injection)
-// ============================================
 
-function assembleHtmx(page: WebAppPage): string {
-    const safeName = escapeHtml(page.name)
-    const safeCss = sanitizeCss(page.css)
-
-    return renderDocument({
-        name: safeName,
-        css: safeCss,
-        html: page.html,
-        headScripts: `    <script src="${CDN_HTMX}"><\/script>`,
-        bodyScripts: `    <script>
-        if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.ready(); }
-    <\/script>`,
-    })
-}
 
 // ============================================
 // PUBLIC API
@@ -145,16 +131,14 @@ export function assembleHtml(page: WebAppPage): string {
             return assembleClassic(page)
         case 'singlefile':
             return assembleSinglefile(page)
-        case 'declarative':
-            return assembleDeclarative(page)
-        case 'htmx':
-            return assembleHtmx(page)
+        case 'hypermedia':
+            return assembleHypermedia(page)
         default: {
-            // Backward compatibility: old 'composed' entries still work
+            // Backward compatibility
             const fallback = page as any
-            if (fallback.mode === 'composed') {
-                return assembleClassic(page)
-            }
+            if (fallback.mode === 'composed') return assembleClassic(page)
+            if (fallback.mode === 'declarative' || fallback.mode === 'htmx') return assembleHypermedia(page)
+
             console.warn(`[WebApp Assembler] Unknown mode "${page.mode}", falling back to classic`)
             return assembleClassic(page)
         }
