@@ -1,5 +1,5 @@
 /** @jsxImportSource react */
-import React from 'react'
+import { Select } from '../../atoms'
 import type { ActionParam } from '../../../../../engine/src/lib/shared'
 
 interface BlueprintPropertyFieldProps {
@@ -24,7 +24,8 @@ export const BlueprintPropertyField: React.FC<BlueprintPropertyFieldProps> = ({
                         value={strValue}
                         onChange={(e) => onChange(param.key, e.target.value)}
                         placeholder={param.placeholder}
-                        style={{ ...styles.input, minHeight: '80px', resize: 'vertical' }}
+                        className="input"
+                        style={{ minHeight: '80px', resize: 'vertical' }}
                     />
                 )
             case 'number':
@@ -34,32 +35,30 @@ export const BlueprintPropertyField: React.FC<BlueprintPropertyFieldProps> = ({
                         value={strValue}
                         onChange={(e) => onChange(param.key, Number(e.target.value))}
                         placeholder={param.placeholder}
-                        style={styles.input}
+                        className="input"
                     />
                 )
             case 'select':
                 return (
-                    <select
+                    <Select
                         value={strValue}
-                        onChange={(e) => onChange(param.key, e.target.value)}
-                        style={styles.select}
-                    >
-                        {param.options?.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={(val) => onChange(param.key, val)}
+                        options={param.options?.map(opt => ({
+                            value: opt.value,
+                            label: opt.label
+                        }))}
+                    />
                 )
             case 'boolean':
                 return (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <label className="flex items-center gap-2 cursor-pointer py-2">
                         <input
                             type="checkbox"
                             checked={value === true || value === 'true'}
                             onChange={(e) => onChange(param.key, e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                         />
-                        <span style={styles.label}>{param.label}</span>
+                        <span className="text-sm font-medium text-white">{param.label}</span>
                     </label>
                 )
             default:
@@ -69,52 +68,21 @@ export const BlueprintPropertyField: React.FC<BlueprintPropertyFieldProps> = ({
                         value={strValue}
                         onChange={(e) => onChange(param.key, e.target.value)}
                         placeholder={param.placeholder}
-                        style={styles.input}
+                        className="input"
                     />
                 )
         }
     }
 
     return (
-        <div style={styles.field}>
+        <div className="flex flex-col gap-1.5 mb-4">
             {param.type !== 'boolean' && (
-                <label style={styles.label}>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     {param.label}
-                    {param.required && <span style={{ color: '#ef4444' }}> *</span>}
+                    {param.required && <span className="text-danger"> *</span>}
                 </label>
             )}
             {renderInput()}
         </div>
     )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-    field: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '6px',
-    },
-    label: {
-        fontSize: '12px',
-        fontWeight: 500,
-        opacity: 0.8,
-        color: 'white',
-    },
-    input: {
-        padding: '10px 12px',
-        borderRadius: '6px',
-        border: '1px solid #0f3460',
-        background: '#1a1a2e',
-        color: 'white',
-        fontSize: '14px',
-        fontFamily: 'inherit',
-    },
-    select: {
-        padding: '10px 12px',
-        borderRadius: '6px',
-        border: '1px solid #0f3460',
-        background: '#1a1a2e',
-        color: 'white',
-        fontSize: '14px',
-    },
 }
