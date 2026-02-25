@@ -1,0 +1,142 @@
+{
+    "join": {
+        "update_id": 999999991,
+        "chat_member": {
+            "chat": {
+                "id": -1001234567890,
+                "title": "My Awesome Test Group",
+                "type": "supergroup"
+            },
+            "from": {
+                "id": 1111111,
+                "is_bot": false,
+                "first_name": "Test",
+                "username": "testuser"
+            },
+            "date": 1700000000,
+            "old_chat_member": {
+                "user": {
+                    "id": 2222222,
+                    "is_bot": false,
+                    "first_name": "NewUser",
+                    "username": "newuser"
+                },
+                "status": "left"
+            },
+            "new_chat_member": {
+                "user": {
+                    "id": 2222222,
+                    "is_bot": false,
+                    "first_name": "NewUser",
+                    "username": "newuser"
+                },
+                "status": "member"
+            }
+        }
+    },
+    "leave": {
+        "update_id": 999999992,
+        "chat_member": {
+            "chat": {
+                "id": -1001234567890,
+                "title": "My Awesome Test Group",
+                "type": "supergroup"
+            },
+            "from": {
+                "id": 2222222,
+                "is_bot": false,
+                "first_name": "NewUser",
+                "username": "newuser"
+            },
+            "date": 1700000010,
+            "old_chat_member": {
+                "user": {
+                    "id": 2222222,
+                    "is_bot": false,
+                    "first_name": "NewUser",
+                    "username": "newuser"
+                },
+                "status": "member"
+            },
+            "new_chat_member": {
+                "user": {
+                    "id": 2222222,
+                    "is_bot": false,
+                    "first_name": "NewUser",
+                    "username": "newuser"
+                },
+                "status": "left"
+            }
+        }
+    },
+    "join_forced": {
+        "update_id": 999999993,
+        "chat_member": {
+            "chat": {
+                "id": -1003749262518,
+                "title": "Forced Test Group",
+                "type": "supergroup"
+            },
+            "from": {
+                "id": 3333333,
+                "is_bot": false,
+                "first_name": "ForcedUser",
+                "username": "forceduser"
+            },
+            "date": 1700000100,
+            "old_chat_member": {
+                "user": {
+                    "id": 3333333,
+                    "is_bot": false,
+                    "first_name": "ForcedUser",
+                    "username": "forceduser"
+                },
+                "status": "left"
+            },
+            "new_chat_member": {
+                "user": {
+                    "id": 3333333,
+                    "is_bot": false,
+                    "first_name": "ForcedUser",
+                    "username": "forceduser"
+                },
+                "status": "member"
+            }
+        }
+    },
+    "leave_forced": {
+        "update_id": 999999994,
+        "chat_member": {
+            "chat": {
+                "id": -1003749262518,
+                "title": "Forced Test Group",
+                "type": "supergroup"
+            },
+            "from": {
+                "id": 3333333,
+                "is_bot": false,
+                "first_name": "ForcedUser",
+                "username": "forceduser"
+            },
+            "date": 1700000200,
+            "old_chat_member": {
+                "user": {
+                    "id": 3333333,
+                    "is_bot": false,
+                    "first_name": "ForcedUser",
+                    "username": "forceduser"
+                },
+                "status": "member"
+            },
+            "new_chat_member": {
+                "user": {
+                    "id": 3333333,
+                    "is_bot": false,
+                    "first_name": "ForcedUser",
+                    "username": "forceduser"
+                },
+                "status": "left"
+            }
+        }
+    }
+}

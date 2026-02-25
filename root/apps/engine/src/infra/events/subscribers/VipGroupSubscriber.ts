@@ -88,6 +88,16 @@ export function registerVipGroupSubscriber(
                     username: p.username,
                     name: p.firstName || 'Unknown',
                 })
+
+                // Increment member_count in metadata
+                const currentCount = parseInt(group.metadata?.member_count || '0', 10)
+                await vipService.updateGroup(group.id, {
+                    metadata: {
+                        ...group.metadata,
+                        member_count: isNaN(currentCount) ? 1 : currentCount + 1,
+                        last_sync: new Date().toISOString()
+                    }
+                })
             }
         }
     })
@@ -102,6 +112,18 @@ export function registerVipGroupSubscriber(
             const group = groups.data.find(g => g.providerId === p.chatId && g.provider === 'telegram')
             if (group) {
                 await vipService.updateMemberStatus(group.id, p.userId, p.status as any)
+
+                // Decrement member_count in metadata
+                const currentCount = parseInt(group.metadata?.member_count || '0', 10)
+                const newCount = isNaN(currentCount) ? 0 : Math.max(0, currentCount - 1)
+
+                await vipService.updateGroup(group.id, {
+                    metadata: {
+                        ...group.metadata,
+                        member_count: newCount,
+                        last_sync: new Date().toISOString()
+                    }
+                })
             }
         }
     })

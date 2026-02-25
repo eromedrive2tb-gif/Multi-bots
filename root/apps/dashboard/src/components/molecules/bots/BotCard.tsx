@@ -4,7 +4,7 @@ import { useSocket } from '../../../client/context/SocketContext'
 import { Card, CardHeader, CardBody } from '../../atoms/ui/Card'
 import { Button } from '../../atoms/ui/Button'
 import { StatusBadge, ProviderBadge } from '../../atoms/ui/StatusBadge'
-import { RefreshCw, Zap, Trash2 } from 'lucide-react'
+import { RefreshCw, Zap, Trash2, Copy } from 'lucide-react'
 import { BotBlueprintsModal } from '../../organisms/blueprints/BotBlueprintsModal'
 import type { Bot } from '../../../../../engine/src/core/types'
 
@@ -61,7 +61,24 @@ export const BotCard: React.FC<BotCardProps> = ({ bot, onUpdate }) => {
                 <div className="bot-details">
                     <div className="bot-detail-row">
                         <span className="detail-label">ID</span>
-                        <code className="detail-value">{bot.id.slice(0, 8)}...</code>
+                        <div className="flex items-center gap-2">
+                            <code className="detail-value">{bot.id.slice(0, 8)}...</code>
+                            <button
+                                onClick={(e) => {
+                                    navigator.clipboard.writeText(bot.id)
+                                    const btn = e.currentTarget as HTMLButtonElement
+                                    if (btn) {
+                                        const originalHtml = btn.innerHTML
+                                        btn.innerHTML = '<span style="font-size: 10px; color: var(--success-color);">Copiado!</span>'
+                                        setTimeout(() => { btn.innerHTML = originalHtml }, 2000)
+                                    }
+                                }}
+                                className="copy-id-btn"
+                                title="Copiar ID Completo"
+                            >
+                                <Copy size={12} />
+                            </button>
+                        </div>
                     </div>
                     <div className="bot-detail-row">
                         <span className="detail-label">Última verificação</span>
