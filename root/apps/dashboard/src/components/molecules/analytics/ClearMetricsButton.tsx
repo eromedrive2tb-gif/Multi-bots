@@ -1,11 +1,23 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useSocket } from '../../../client/context/SocketContext'
 
 export const ClearMetricsButton: React.FC = () => {
     const { request } = useSocket()
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+
+    React.useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden'
+        } else {
+            document.body.style.overflow = ''
+        }
+        return () => {
+            document.body.style.overflow = ''
+        }
+    }, [isOpen])
 
     const handleClear = async () => {
         setLoading(true)
@@ -33,7 +45,7 @@ export const ClearMetricsButton: React.FC = () => {
             </button>
 
             {/* Modal */}
-            {isOpen && (
+            {isOpen && createPortal(
                 <div
                     className="modal-overlay open"
                     onClick={() => setIsOpen(false)}
@@ -78,7 +90,8 @@ export const ClearMetricsButton: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     )
